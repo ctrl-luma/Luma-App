@@ -1,15 +1,25 @@
 /**
  * Stripe Terminal Service for Tap to Pay
  * Handles Terminal SDK initialization, reader discovery, and payment collection
+ * Note: Only works on native platforms (iOS/Android), not on web
  */
 
-import {
-  StripeTerminal,
-  createStripeTerminal,
-  Reader,
-  PaymentIntent,
-} from '@stripe/stripe-terminal-react-native';
+import { Platform } from 'react-native';
 import { stripeTerminalApi } from './api';
+
+// Conditionally import Terminal SDK only on native platforms
+let StripeTerminal: any = null;
+let createStripeTerminal: any = null;
+
+if (Platform.OS !== 'web') {
+  const terminal = require('@stripe/stripe-terminal-react-native');
+  StripeTerminal = terminal.StripeTerminal;
+  createStripeTerminal = terminal.createStripeTerminal;
+}
+
+// Type definitions for Terminal SDK
+type Reader = any;
+type PaymentIntent = any;
 
 class StripeTerminalService {
   private terminal: StripeTerminal | null = null;
@@ -21,6 +31,11 @@ class StripeTerminalService {
    * Must be called before any other Terminal operations
    */
   async initialize(): Promise<void> {
+    // Web platform check
+    if (Platform.OS === 'web') {
+      throw new Error('Stripe Terminal is not supported on web. Please use a native build or the dev skip button.');
+    }
+
     if (this.isInitialized) {
       console.log('[StripeTerminal] Already initialized');
       return;

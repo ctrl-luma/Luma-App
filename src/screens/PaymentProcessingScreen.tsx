@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
   Alert,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -120,6 +121,13 @@ export function PaymentProcessingScreen() {
     try {
       setIsProcessing(true);
       setError(null);
+
+      // Check if running on web - Terminal SDK not supported
+      if (Platform.OS === 'web') {
+        setStatusText('Tap to Pay not available on web');
+        setIsProcessing(false);
+        return;
+      }
 
       // Initialize Terminal SDK
       setStatusText('Initializing Stripe Terminal...');
@@ -269,14 +277,16 @@ export function PaymentProcessingScreen() {
             <Text style={styles.statusText}>{statusText}</Text>
           </View>
 
-          {/* Dev Mode Skip Button */}
-          {config.isDev && (
+          {/* Dev Mode Skip Button - Show in dev mode or on web platform */}
+          {(config.isDev || Platform.OS === 'web') && (
             <TouchableOpacity
               style={styles.devSkipButton}
               onPress={handleDevSkip}
             >
               <Ionicons name="flash" size={20} color="#F59E0B" />
-              <Text style={styles.devSkipButtonText}>Skip Payment (Dev)</Text>
+              <Text style={styles.devSkipButtonText}>
+                {Platform.OS === 'web' ? 'Skip Payment (Web)' : 'Skip Payment (Dev)'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
