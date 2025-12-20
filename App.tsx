@@ -1,17 +1,28 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import * as SplashScreen from 'expo-splash-screen';
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 
 import { QueryProvider } from './src/providers/QueryProvider';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { CatalogProvider, useCatalog } from './src/context/CatalogContext';
 import { CartProvider } from './src/context/CartContext';
+import { SocketProvider } from './src/context/SocketContext';
+import { SocketEventHandlers } from './src/components/SocketEventHandlers';
 
 // Auth screens
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -32,10 +43,22 @@ import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { PaymentProcessingScreen } from './src/screens/PaymentProcessingScreen';
 import { PaymentResultScreen } from './src/screens/PaymentResultScreen';
 
+// Keep splash screen visible while loading fonts
+SplashScreen.preventAutoHideAsync();
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const MenuStack = createNativeStackNavigator();
 const HistoryStack = createNativeStackNavigator();
+
+// Font family constants
+export const fonts = {
+  regular: 'Inter_400Regular',
+  medium: 'Inter_500Medium',
+  semiBold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+  extraBold: 'Inter_800ExtraBold',
+};
 
 // Menu tab stack (Menu + Cart)
 function MenuStackNavigator() {
@@ -218,10 +241,10 @@ function AppNavigator() {
           notification: colors.primary,
         },
         fonts: {
-          regular: { fontFamily: 'System', fontWeight: '400' },
-          medium: { fontFamily: 'System', fontWeight: '500' },
-          bold: { fontFamily: 'System', fontWeight: '700' },
-          heavy: { fontFamily: 'System', fontWeight: '800' },
+          regular: { fontFamily: fonts.regular, fontWeight: '400' },
+          medium: { fontFamily: fonts.medium, fontWeight: '500' },
+          bold: { fontFamily: fonts.bold, fontWeight: '700' },
+          heavy: { fontFamily: fonts.extraBold, fontWeight: '800' },
         },
       }}
     >
@@ -248,16 +271,66 @@ function AppNavigator() {
 
 // Root component with all providers
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded || fontError) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    onLayoutRootView();
+  }, [onLayoutRootView]);
+
+  // Inject CSS for autofill styling on web
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const style = document.createElement('style');
+      style.textContent = `
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #1F2937 inset !important;
+          -webkit-text-fill-color: #F3F4F6 !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
+        input::placeholder {
+          color: #6B7280 !important;
+          opacity: 1;
+        }
+      `;
+      document.head.appendChild(style);
+      return () => {
+        document.head.removeChild(style);
+      };
+    }
+  }, []);
+
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
   return (
     <QueryProvider>
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <CatalogProvider>
-              <CartProvider>
-                <AppNavigator />
-              </CartProvider>
-            </CatalogProvider>
+            <SocketProvider>
+              <SocketEventHandlers />
+              <CatalogProvider>
+                <CartProvider>
+                  <AppNavigator />
+                </CartProvider>
+              </CatalogProvider>
+            </SocketProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>

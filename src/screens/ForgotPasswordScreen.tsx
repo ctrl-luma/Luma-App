@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -13,9 +12,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/colors';
+import { fonts } from '../lib/fonts';
 import { authService } from '../lib/api';
+import { Input } from '../components/Input';
 
 export function ForgotPasswordScreen() {
   const navigation = useNavigation();
@@ -47,10 +47,10 @@ export function ForgotPasswordScreen() {
   if (isSuccess) {
     return (
       <LinearGradient
-        colors={[colors.gray950, colors.background, colors.gray950]}
+        colors={['#030712', '#0c1a2d', '#030712']}
         locations={[0, 0.5, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
         style={styles.gradient}
       >
         <SafeAreaView style={styles.container}>
@@ -60,7 +60,12 @@ export function ForgotPasswordScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.contentWrapper}>
-              <View style={styles.card}>
+              <LinearGradient
+                colors={['#111827', '#030712']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.card}
+              >
                 <View style={styles.successIcon}>
                   <Text style={styles.successIconText}>✓</Text>
                 </View>
@@ -91,7 +96,7 @@ export function ForgotPasswordScreen() {
                 >
                   <Text style={styles.tryAgainText}>Try a different email</Text>
                 </TouchableOpacity>
-              </View>
+              </LinearGradient>
             </View>
           </ScrollView>
         </SafeAreaView>
@@ -101,10 +106,10 @@ export function ForgotPasswordScreen() {
 
   return (
     <LinearGradient
-      colors={[colors.gray950, colors.background, colors.gray950]}
+      colors={['#030712', '#0c1a2d', '#030712']}
       locations={[0, 0.5, 1]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container}>
@@ -138,7 +143,12 @@ export function ForgotPasswordScreen() {
               </View>
 
               {/* Card */}
-              <View style={styles.card}>
+              <LinearGradient
+                colors={['#111827', '#030712']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.card}
+              >
               {error && (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>{error}</Text>
@@ -148,20 +158,16 @@ export function ForgotPasswordScreen() {
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email</Text>
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="mail-outline" size={20} color={colors.gray500} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, styles.inputWithIcon]}
-                      value={email}
-                      onChangeText={setEmail}
-                      placeholder="you@example.com"
-                      placeholderTextColor={colors.gray500}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      autoComplete="email"
-                    />
-                  </View>
+                  <Input
+                    icon="mail-outline"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                  />
                   <Text style={styles.inputHint}>
                     Enter the email address associated with your account
                   </Text>
@@ -183,7 +189,7 @@ export function ForgotPasswordScreen() {
                   )}
                 </TouchableOpacity>
               </View>
-            </View>
+            </LinearGradient>
           </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -206,10 +212,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 32,
+    paddingTop: 32,
+    paddingBottom: 52,
   },
   contentWrapper: {
-    maxWidth: 400,
+    maxWidth: 384,
     width: '100%',
     alignSelf: 'center',
   },
@@ -219,6 +226,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 14,
+    fontFamily: fonts.regular,
     color: colors.gray400,
   },
   header: {
@@ -226,31 +234,31 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     backgroundColor: 'rgba(37, 99, 235, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
   },
   iconText: {
-    fontSize: 28,
+    fontSize: 32,
     color: colors.primary,
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.text,
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: fonts.regular,
     color: colors.gray400,
     marginTop: 4,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: 'rgba(17, 24, 39, 0.8)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.gray800,
@@ -266,6 +274,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 14,
+    fontFamily: fonts.regular,
     color: colors.error,
   },
   form: {
@@ -276,32 +285,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
     color: colors.gray300,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(31, 41, 55, 0.5)',
-    borderWidth: 1,
-    borderColor: colors.gray700,
-    borderRadius: 12,
-  },
-  input: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-  },
-  inputWithIcon: {
-    paddingLeft: 8,
-  },
-  inputIcon: {
-    marginLeft: 12,
   },
   inputHint: {
     fontSize: 12,
+    fontFamily: fonts.regular,
     color: colors.gray500,
     marginTop: 4,
   },
@@ -327,7 +316,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.text,
   },
   // Success styles
@@ -347,25 +336,27 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   successSubtitle: {
     fontSize: 16,
+    fontFamily: fonts.regular,
     color: colors.gray400,
     textAlign: 'center',
   },
   successEmail: {
     fontSize: 16,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
     color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   successHint: {
     fontSize: 14,
+    fontFamily: fonts.regular,
     color: colors.gray500,
     textAlign: 'center',
     marginBottom: 24,
@@ -376,6 +367,7 @@ const styles = StyleSheet.create({
   },
   tryAgainText: {
     fontSize: 14,
+    fontFamily: fonts.regular,
     color: colors.primary,
   },
 });

@@ -17,7 +17,7 @@ export function useUpdateProfile() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<User>) => apiClient.patch<User>('/auth/profile', data),
+    mutationFn: (data: Partial<User>) => apiClient.patch<User>('/auth/me', data),
     onSuccess: (updatedUser) => {
       // Update the profile cache
       queryClient.setQueryData(['profile'], (old: Profile | undefined) => {

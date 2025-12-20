@@ -143,7 +143,7 @@ class AuthService {
   }
 
   async getProfile(): Promise<{ user: User; organization: Organization }> {
-    return apiClient.get('/auth/profile');
+    return apiClient.get('/auth/me');
   }
 
   async isAuthenticated(): Promise<boolean> {

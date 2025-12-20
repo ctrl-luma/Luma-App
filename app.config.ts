@@ -39,6 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ],
     },
     plugins: [
+      'expo-font',
       [
         '@stripe/stripe-react-native',
         {

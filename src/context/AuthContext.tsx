@@ -24,62 +24,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isAuthenticated: false,
   });
 
-  const loadStoredAuth = useCallback(async () => {
+  // Load cached user/org and stop loading immediately if we have cached data
+  const loadCachedAuth = useCallback(async (): Promise<boolean> => {
     try {
       const isAuthenticated = await authService.isAuthenticated();
 
-      if (isAuthenticated) {
-        // Try to get cached user/org first
-        let user = await authService.getUser();
-        let organization = await authService.getOrganization();
+      if (!isAuthenticated) {
+        setState(prev => ({ ...prev, isLoading: false }));
+        return false;
+      }
 
-        // If we have tokens but no cached data, fetch from API
-        if (!user || !organization) {
-          try {
-            const profile = await authService.getProfile();
-            user = profile.user;
-            organization = profile.organization;
+      // Try to get cached user/org
+      const user = await authService.getUser();
+      const organization = await authService.getOrganization();
 
-            // Cache the data
-            await authService.saveUser(user);
-            await authService.saveOrganization(organization);
-          } catch (error) {
-            // Token might be expired, try refresh
-            try {
-              await authService.refreshTokens();
-              const profile = await authService.getProfile();
-              user = profile.user;
-              organization = profile.organization;
-
-              await authService.saveUser(user);
-              await authService.saveOrganization(organization);
-            } catch (refreshError) {
-              // Refresh failed, user needs to login again
-              await authService.logout();
-              setState({ user: null, organization: null, isLoading: false, isAuthenticated: false });
-              return;
-            }
-          }
-        }
-
+      if (user && organization) {
+        // We have cached data, show it immediately
         setState({
           user,
           organization,
           isLoading: false,
           isAuthenticated: true,
         });
-      } else {
-        setState(prev => ({ ...prev, isLoading: false }));
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Failed to load cached auth:', error);
+      return false;
+    }
+  }, []);
+
+  // Fetch fresh profile data from API and update cache
+  const refreshProfileFromAPI = useCallback(async (hadCachedData: boolean) => {
+    try {
+      const isAuthenticated = await authService.isAuthenticated();
+
+      if (!isAuthenticated) {
+        if (!hadCachedData) {
+          setState(prev => ({ ...prev, isLoading: false }));
+        }
+        return;
+      }
+
+      try {
+        const profile = await authService.getProfile();
+
+        // Cache the fresh data
+        await authService.saveUser(profile.user);
+        await authService.saveOrganization(profile.organization);
+
+        // Update state with fresh data
+        setState({
+          user: profile.user,
+          organization: profile.organization,
+          isLoading: false,
+          isAuthenticated: true,
+        });
+      } catch (error: any) {
+        console.error('Failed to fetch profile:', error);
+        // If it's a 401, the API client already tried to refresh and failed
+        // In that case, or any auth error, log the user out
+        if (error?.statusCode === 401) {
+          await authService.logout();
+          setState({ user: null, organization: null, isLoading: false, isAuthenticated: false });
+        } else {
+          // For other errors (network, 404, 500, etc.), keep the user logged in with cached data
+          // Just stop loading if we didn't have cached data
+          if (!hadCachedData) {
+            setState(prev => ({ ...prev, isLoading: false }));
+          }
+        }
       }
     } catch (error) {
-      console.error('Failed to load auth:', error);
-      setState({ user: null, organization: null, isLoading: false, isAuthenticated: false });
+      console.error('Failed to refresh profile:', error);
+      // If we didn't have cached data, stop loading
+      if (!hadCachedData) {
+        setState(prev => ({ ...prev, isLoading: false }));
+      }
     }
   }, []);
 
   useEffect(() => {
-    loadStoredAuth();
-  }, [loadStoredAuth]);
+    // Load cached data first (instant), then refresh from API in background
+    loadCachedAuth().then((hadCachedData) => {
+      refreshProfileFromAPI(hadCachedData);
+    });
+  }, [loadCachedAuth, refreshProfileFromAPI]);
 
   const signIn = async (email: string, password: string) => {
     const response = await authService.login({ email, password });
@@ -93,12 +125,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await authService.logout();
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout API error:', error);
+      // Continue with local logout even if API fails
+    }
     setState({ user: null, organization: null, isLoading: false, isAuthenticated: false });
   };
 
   const refreshAuth = async () => {
-    await loadStoredAuth();
+    await refreshProfileFromAPI(true);
   };
 
   return (

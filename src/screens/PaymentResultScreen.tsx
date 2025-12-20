@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
@@ -12,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
+import { fonts } from '../lib/fonts';
 
 type RouteParams = {
   PaymentResult: {
@@ -30,21 +32,35 @@ export function PaymentResultScreen() {
 
   const { success, amount, errorMessage } = route.params;
 
-  // Animation
+  // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  // Confetti animations (for success)
+  const confetti = useRef(
+    Array.from({ length: 20 }, () => ({
+      x: useRef(new Animated.Value(0)).current,
+      y: useRef(new Animated.Value(0)).current,
+      rotate: useRef(new Animated.Value(0)).current,
+      opacity: useRef(new Animated.Value(0)).current,
+    }))
+  ).current;
 
   useEffect(() => {
-    // Animate success/failure icon
+    // Icon scale animation
     Animated.sequence([
       Animated.timing(scaleAnim, {
-        toValue: 1.2,
-        duration: 300,
+        toValue: 1.3,
+        duration: 400,
+        easing: Easing.out(Easing.back(2)),
         useNativeDriver: true,
       }),
-      Animated.timing(scaleAnim, {
+      Animated.spring(scaleAnim, {
         toValue: 1,
-        duration: 200,
+        friction: 3,
+        tension: 40,
         useNativeDriver: true,
       }),
     ]).start();
@@ -52,13 +68,78 @@ export function PaymentResultScreen() {
     // Fade in content
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 500,
+      duration: 600,
       delay: 200,
       useNativeDriver: true,
     }).start();
 
-    // Clear cart on success
+    // Success animations
     if (success) {
+      // Single pulse on load
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: 1.08,
+          duration: 300,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Confetti animation
+      confetti.forEach((particle, index) => {
+        const delay = index * 50;
+        const duration = 2000 + Math.random() * 1000;
+        const startX = Math.random() * 300 - 150;
+        const endX = startX + (Math.random() * 100 - 50);
+        const endY = 600 + Math.random() * 200;
+
+        Animated.parallel([
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(particle.opacity, {
+              toValue: 1,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(particle.x, {
+              toValue: endX,
+              duration,
+              easing: Easing.out(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(particle.y, {
+              toValue: endY,
+              duration,
+              easing: Easing.in(Easing.ease),
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.loop(
+              Animated.timing(particle.rotate, {
+                toValue: 360,
+                duration: 1000,
+                easing: Easing.linear,
+                useNativeDriver: true,
+              })
+            ),
+          ]),
+        ]).start();
+      });
+
       clearCart();
     }
   }, []);
@@ -77,114 +158,240 @@ export function PaymentResultScreen() {
     navigation.goBack();
   };
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, success);
+
+  const confettiColors = [colors.primary, colors.success, '#FFD700', '#FF6B6B', '#4ECDC4'];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Success/Failure Icon */}
-        <Animated.View
-          style={[
-            styles.iconContainer,
-            {
-              backgroundColor: success ? colors.success + '15' : colors.error + '15',
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          <Ionicons
-            name={success ? 'checkmark' : 'close'}
-            size={64}
-            color={success ? colors.success : colors.error}
-          />
-        </Animated.View>
+    <View style={styles.container}>
+      {/* Background Gradient */}
+      {success && (
+        <View style={styles.backgroundGradients}>
+          <View style={[styles.gradientOrb, styles.gradientOrb1]} />
+          <View style={[styles.gradientOrb, styles.gradientOrb2]} />
+        </View>
+      )}
 
-        <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
-          <Text style={styles.title}>
-            {success ? 'Payment Successful!' : 'Payment Failed'}
-          </Text>
+      {/* Confetti */}
+      {success && (
+        <View style={styles.confettiContainer}>
+          {confetti.map((particle, index) => (
+            <Animated.View
+              key={index}
+              style={[
+                styles.confetti,
+                {
+                  backgroundColor: confettiColors[index % confettiColors.length],
+                  opacity: particle.opacity,
+                  transform: [
+                    { translateX: particle.x },
+                    { translateY: particle.y },
+                    {
+                      rotate: particle.rotate.interpolate({
+                        inputRange: [0, 360],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          ))}
+        </View>
+      )}
 
-          {success ? (
-            <>
-              <Text style={styles.amount}>${(amount / 100).toFixed(2)}</Text>
-              <Text style={styles.subtitle}>
-                Transaction completed successfully
-              </Text>
-            </>
-          ) : (
-            <Text style={styles.errorText}>
-              {errorMessage || 'The payment could not be processed. Please try again.'}
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
+          {/* Success/Failure Icon */}
+          <Animated.View
+            style={[
+              styles.iconContainer,
+              {
+                transform: [
+                  { scale: success ? Animated.multiply(scaleAnim, bounceAnim) : scaleAnim }
+                ],
+              },
+            ]}
+          >
+            <View style={[styles.iconGlow, { backgroundColor: success ? colors.success : colors.error }]} />
+            <Ionicons
+              name={success ? 'checkmark-circle' : 'close-circle'}
+              size={100}
+              color={success ? colors.success : colors.error}
+            />
+          </Animated.View>
+
+          <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
+            <Text style={styles.title}>
+              {success ? 'Payment Successful!' : 'Payment Failed'}
             </Text>
+
+            {success ? (
+              <>
+                <View style={styles.amountContainer}>
+                  <Text style={styles.amountLabel}>Amount Charged</Text>
+                  <Text style={styles.amount}>${(amount / 100).toFixed(2)}</Text>
+                </View>
+                <View style={styles.successBadge}>
+                  <Ionicons name="shield-checkmark" size={18} color={colors.success} />
+                  <Text style={styles.successBadgeText}>Transaction completed</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>
+                  {errorMessage || 'The payment could not be processed. Please try again.'}
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </View>
+
+        {/* Actions */}
+        <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
+          {success ? (
+            <TouchableOpacity style={styles.primaryButton} onPress={handleNewSale}>
+              <Ionicons name="add-circle" size={24} color="#fff" />
+              <Text style={styles.primaryButtonText}>New Sale</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity style={styles.primaryButton} onPress={handleTryAgain}>
+                <Ionicons name="refresh" size={24} color="#fff" />
+                <Text style={styles.primaryButtonText}>Try Again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.secondaryButton} onPress={handleNewSale}>
+                <Text style={styles.secondaryButtonText}>Cancel Order</Text>
+              </TouchableOpacity>
+            </>
           )}
         </Animated.View>
-      </View>
-
-      {/* Actions */}
-      <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
-        {success ? (
-          <TouchableOpacity style={styles.primaryButton} onPress={handleNewSale}>
-            <Ionicons name="add-circle-outline" size={22} color="#fff" />
-            <Text style={styles.primaryButtonText}>New Sale</Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleTryAgain}>
-              <Ionicons name="refresh-outline" size={22} color="#fff" />
-              <Text style={styles.primaryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleNewSale}>
-              <Text style={styles.secondaryButtonText}>Cancel Order</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </Animated.View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const createStyles = (colors: any) =>
+const createStyles = (colors: any, success: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
+    backgroundGradients: {
+      ...StyleSheet.absoluteFillObject,
+      overflow: 'hidden',
+    },
+    gradientOrb: {
+      position: 'absolute',
+      borderRadius: 9999,
+      opacity: 0.06,
+    },
+    gradientOrb1: {
+      width: 500,
+      height: 500,
+      backgroundColor: colors.success,
+      top: -250,
+      right: -150,
+    },
+    gradientOrb2: {
+      width: 450,
+      height: 450,
+      backgroundColor: colors.primary,
+      bottom: -200,
+      left: -150,
+    },
+    confettiContainer: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      pointerEvents: 'none',
+    },
+    confetti: {
+      position: 'absolute',
+      width: 10,
+      height: 10,
+      borderRadius: 2,
+      top: 200,
+    },
+    safeArea: {
+      flex: 1,
+    },
     content: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 40,
+      paddingHorizontal: 32,
     },
     iconContainer: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
+      position: 'relative',
+      marginBottom: 40,
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 32,
+    },
+    iconGlow: {
+      position: 'absolute',
+      width: 160,
+      height: 160,
+      borderRadius: 80,
+      opacity: 0.08,
     },
     title: {
-      fontSize: 24,
+      fontSize: 32,
       fontWeight: '700',
+      fontFamily: fonts.bold,
       color: colors.text,
-      marginBottom: 16,
+      marginBottom: 24,
       textAlign: 'center',
+    },
+    amountContainer: {
+      alignItems: 'center',
+      marginBottom: 24,
+    },
+    amountLabel: {
+      fontSize: 13,
+      fontFamily: fonts.medium,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 8,
     },
     amount: {
-      fontSize: 48,
+      fontSize: 64,
       fontWeight: '700',
+      fontFamily: fonts.bold,
       color: colors.success,
-      marginBottom: 12,
     },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: 'center',
+    successBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.successBg,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 9999,
+      borderWidth: 1,
+      borderColor: colors.success + '30',
+    },
+    successBadgeText: {
+      fontSize: 15,
+      fontFamily: fonts.medium,
+      color: colors.success,
+    },
+    errorContainer: {
+      backgroundColor: colors.errorBg,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.error + '30',
+      marginTop: 8,
     },
     errorText: {
-      fontSize: 16,
-      color: colors.textSecondary,
+      fontSize: 15,
+      fontFamily: fonts.regular,
+      color: colors.error,
       textAlign: 'center',
-      lineHeight: 24,
+      lineHeight: 22,
     },
     footer: {
       padding: 20,
@@ -198,20 +405,27 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.primary,
       paddingVertical: 18,
       borderRadius: 9999,
-      gap: 10,
+      gap: 12,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 8,
     },
     primaryButtonText: {
       color: '#fff',
       fontSize: 18,
       fontWeight: '600',
+      fontFamily: fonts.semiBold,
     },
     secondaryButton: {
       alignItems: 'center',
-      paddingVertical: 14,
+      paddingVertical: 16,
     },
     secondaryButtonText: {
       fontSize: 16,
       fontWeight: '500',
+      fontFamily: fonts.medium,
       color: colors.textSecondary,
     },
   });

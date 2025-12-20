@@ -20,7 +20,7 @@ import { useCatalog } from '../context/CatalogContext';
 const VENDOR_PORTAL_URL = 'https://vendor.useluma.io';
 
 export function SettingsScreen() {
-  const { colors, theme, isDark, setTheme, toggleTheme } = useTheme();
+  const { colors, isDark, toggleTheme } = useTheme();
   const { user, organization, signOut } = useAuth();
   const { selectedCatalog, clearCatalog } = useCatalog();
   const navigation = useNavigation<any>();
@@ -28,7 +28,18 @@ export function SettingsScreen() {
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: signOut },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch (error) {
+            console.error('Sign out error:', error);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          }
+        },
+      },
     ]);
   };
 
@@ -48,37 +59,6 @@ export function SettingsScreen() {
     Linking.openURL(`${VENDOR_PORTAL_URL}/categories`);
   };
 
-  const handleThemeSelect = () => {
-    Alert.alert('Theme', 'Choose your preferred theme', [
-      {
-        text: 'Light',
-        onPress: () => setTheme('light'),
-      },
-      {
-        text: 'Dark',
-        onPress: () => setTheme('dark'),
-      },
-      {
-        text: 'System',
-        onPress: () => setTheme('system'),
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
-  };
-
-  const getThemeLabel = () => {
-    switch (theme) {
-      case 'light':
-        return 'Light';
-      case 'dark':
-        return 'Dark';
-      case 'system':
-        return 'System';
-      default:
-        return 'System';
-    }
-  };
-
   const styles = createStyles(colors);
 
   return (
@@ -92,7 +72,7 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
           <View style={styles.card}>
-            <TouchableOpacity style={styles.row} onPress={handleThemeSelect}>
+            <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons
@@ -100,21 +80,6 @@ export function SettingsScreen() {
                     size={18}
                     color={colors.primary}
                   />
-                </View>
-                <Text style={styles.label}>Theme</Text>
-              </View>
-              <View style={styles.rowRight}>
-                <Text style={styles.value}>{getThemeLabel()}</Text>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </View>
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="contrast" size={18} color={colors.primary} />
                 </View>
                 <Text style={styles.label}>Dark Mode</Text>
               </View>

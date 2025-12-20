@@ -7,6 +7,9 @@ export const config = {
   // Website
   websiteUrl: process.env.EXPO_PUBLIC_WEBSITE_URL || 'https://lumapos.co',
 
+  // Vendor Dashboard
+  vendorDashboardUrl: process.env.EXPO_PUBLIC_VENDOR_DASHBOARD_URL || 'https://portal.lumapos.co',
+
   // Stripe
   stripePublishableKey: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
 

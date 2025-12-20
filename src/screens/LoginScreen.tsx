@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -17,7 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { Input } from '../components/Input';
 import { colors } from '../lib/colors';
+import { fonts } from '../lib/fonts';
 import { config } from '../lib/config';
 
 export function LoginScreen() {
@@ -56,10 +57,10 @@ export function LoginScreen() {
 
   return (
     <LinearGradient
-      colors={[colors.gray950, colors.background, colors.gray950]}
+      colors={['#030712', '#0c1a2d', '#030712']}
       locations={[0, 0.5, 1]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
       style={styles.gradient}
     >
       <SafeAreaView style={styles.container}>
@@ -83,7 +84,12 @@ export function LoginScreen() {
             </View>
 
             {/* Card */}
-            <View style={styles.card}>
+            <LinearGradient
+              colors={['#111827', '#030712']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.card}
+            >
               {error && (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>{error}</Text>
@@ -93,50 +99,47 @@ export function LoginScreen() {
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email</Text>
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="mail-outline" size={20} color={colors.gray500} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, styles.inputWithIcon]}
-                      value={email}
-                      onChangeText={setEmail}
-                      placeholder="you@example.com"
-                      placeholderTextColor={colors.gray500}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      autoComplete="email"
-                    />
-                  </View>
+                  <Input
+                    icon="mail-outline"
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="email"
+                  />
                 </View>
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Password</Text>
-                  <View style={styles.inputContainer}>
-                    <Ionicons name="lock-closed-outline" size={20} color={colors.gray500} style={styles.inputIcon} />
-                    <TextInput
-                      style={[styles.input, styles.inputWithIcon, styles.passwordInput]}
-                      value={password}
-                      onChangeText={setPassword}
-                      placeholder="Enter your password"
-                      placeholderTextColor={colors.gray500}
-                      secureTextEntry={!showPassword}
-                      autoComplete="password"
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.showHideButton}
-                    >
-                      <Ionicons
-                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                        size={20}
-                        color={colors.gray400}
-                      />
-                    </TouchableOpacity>
-                  </View>
+                  <Input
+                    icon="lock-closed-outline"
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Enter your password"
+                    secureTextEntry={!showPassword}
+                    autoComplete="password"
+                    rightIcon={
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.showHideButton}
+                      >
+                        <Ionicons
+                          name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                          size={20}
+                          color={colors.gray400}
+                        />
+                      </TouchableOpacity>
+                    }
+                  />
                 </View>
 
                 {/* Forgot Password */}
-                <TouchableOpacity onPress={handleForgotPassword}>
+                <TouchableOpacity
+                  onPress={handleForgotPassword}
+                  style={styles.forgotPasswordButton}
+                >
                   <Text style={styles.forgotPassword}>Forgot password?</Text>
                 </TouchableOpacity>
 
@@ -156,7 +159,7 @@ export function LoginScreen() {
                   )}
                 </TouchableOpacity>
               </View>
-            </View>
+            </LinearGradient>
 
             {/* Footer */}
             <View style={styles.footer}>
@@ -187,7 +190,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 48,
+    paddingBottom: 68,
   },
   header: {
     alignItems: 'center',
@@ -197,25 +200,25 @@ const styles = StyleSheet.create({
     width: 128,
     height: 128,
     borderRadius: 24,
-    marginBottom: 8,
+    marginBottom: -2,
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.text,
   },
   subtitle: {
     fontSize: 16,
+    fontFamily: fonts.regular,
     color: colors.gray400,
     marginTop: 4,
   },
   card: {
-    backgroundColor: 'rgba(17, 24, 39, 0.8)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.gray800,
     padding: 24,
-    maxWidth: 400,
+    maxWidth: 384,
     width: '100%',
     alignSelf: 'center',
   },
@@ -239,43 +242,22 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
     color: colors.gray300,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(31, 41, 55, 0.5)',
-    borderWidth: 1,
-    borderColor: colors.gray700,
-    borderRadius: 12,
-  },
-  input: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-  },
-  inputWithIcon: {
-    paddingLeft: 8,
-  },
-  inputIcon: {
-    marginLeft: 12,
-  },
-  passwordInput: {
-    paddingRight: 48,
   },
   showHideButton: {
     position: 'absolute',
     right: 12,
     padding: 8,
   },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginTop: -8,
+  },
   forgotPassword: {
     fontSize: 14,
+    fontFamily: fonts.regular,
     color: colors.primary,
-    textAlign: 'right',
-    marginTop: -8,
   },
   button: {
     backgroundColor: colors.primary,
@@ -299,7 +281,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.text,
   },
   footer: {
@@ -309,11 +291,12 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
+    fontFamily: fonts.regular,
     color: colors.gray500,
   },
   footerLink: {
     fontSize: 14,
+    fontFamily: fonts.medium,
     color: colors.primary,
-    fontWeight: '500',
   },
 });
