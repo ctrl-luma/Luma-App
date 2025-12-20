@@ -94,8 +94,9 @@ export function LoginScreen() {
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email</Text>
                   <View style={styles.inputContainer}>
+                    <Ionicons name="mail-outline" size={20} color={colors.gray500} style={styles.inputIcon} />
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, styles.inputWithIcon]}
                       value={email}
                       onChangeText={setEmail}
                       placeholder="you@example.com"
@@ -111,8 +112,9 @@ export function LoginScreen() {
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Password</Text>
                   <View style={styles.inputContainer}>
+                    <Ionicons name="lock-closed-outline" size={20} color={colors.gray500} style={styles.inputIcon} />
                     <TextInput
-                      style={[styles.input, styles.passwordInput]}
+                      style={[styles.input, styles.inputWithIcon, styles.passwordInput]}
                       value={password}
                       onChangeText={setPassword}
                       placeholder="Enter your password"
@@ -184,7 +186,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 32,
+    paddingTop: 16,
+    paddingBottom: 48,
   },
   header: {
     alignItems: 'center',
@@ -207,7 +210,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   card: {
-    backgroundColor: colors.gray900,
+    backgroundColor: 'rgba(17, 24, 39, 0.8)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.gray800,
@@ -242,7 +245,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray900,
+    backgroundColor: 'rgba(31, 41, 55, 0.5)',
     borderWidth: 1,
     borderColor: colors.gray700,
     borderRadius: 12,
@@ -253,6 +256,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: colors.text,
+  },
+  inputWithIcon: {
+    paddingLeft: 8,
+  },
+  inputIcon: {
+    marginLeft: 12,
   },
   passwordInput: {
     paddingRight: 48,

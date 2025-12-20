@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/colors';
 import { authService } from '../lib/api';
 
@@ -148,8 +149,9 @@ export function ForgotPasswordScreen() {
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email</Text>
                   <View style={styles.inputContainer}>
+                    <Ionicons name="mail-outline" size={20} color={colors.gray500} style={styles.inputIcon} />
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, styles.inputWithIcon]}
                       value={email}
                       onChangeText={setEmail}
                       placeholder="you@example.com"
@@ -248,7 +250,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: colors.gray900,
+    backgroundColor: 'rgba(17, 24, 39, 0.8)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.gray800,
@@ -280,7 +282,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray900,
+    backgroundColor: 'rgba(31, 41, 55, 0.5)',
     borderWidth: 1,
     borderColor: colors.gray700,
     borderRadius: 12,
@@ -291,6 +293,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: colors.text,
+  },
+  inputWithIcon: {
+    paddingLeft: 8,
+  },
+  inputIcon: {
+    marginLeft: 12,
   },
   inputHint: {
     fontSize: 12,
