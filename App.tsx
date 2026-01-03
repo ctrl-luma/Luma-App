@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -37,6 +37,7 @@ import { ChargeScreen } from './src/screens/ChargeScreen';
 import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { TransactionDetailScreen } from './src/screens/TransactionDetailScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { TapToPaySettingsScreen } from './src/screens/TapToPaySettingsScreen';
 
 // Payment flow screens
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
@@ -185,6 +186,11 @@ function AuthenticatedNavigator() {
         component={CatalogSelectScreen}
         options={{ presentation: 'modal' }}
       />
+      <Stack.Screen
+        name="TapToPaySettings"
+        component={TapToPaySettingsScreen}
+        options={{ presentation: 'card' }}
+      />
 
       {/* Payment flow modals */}
       <Stack.Screen
@@ -289,22 +295,19 @@ export default function App() {
     onLayoutRootView();
   }, [onLayoutRootView]);
 
-  // Inject CSS for autofill styling on web
+  // Inject CSS to fix Chrome autofill background on web
   useEffect(() => {
-    if (typeof document !== 'undefined') {
+    if (Platform.OS === 'web') {
       const style = document.createElement('style');
       style.textContent = `
         input:-webkit-autofill,
         input:-webkit-autofill:hover,
         input:-webkit-autofill:focus,
         input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 1000px #1F2937 inset !important;
-          -webkit-text-fill-color: #F3F4F6 !important;
+          -webkit-box-shadow: 0 0 0 30px rgba(31, 41, 55, 0.5) inset !important;
+          -webkit-text-fill-color: #ffffff !important;
+          caret-color: #ffffff !important;
           transition: background-color 5000s ease-in-out 0s;
-        }
-        input::placeholder {
-          color: #6B7280 !important;
-          opacity: 1;
         }
       `;
       document.head.appendChild(style);

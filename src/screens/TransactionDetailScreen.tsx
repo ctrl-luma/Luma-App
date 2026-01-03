@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Linking,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -29,6 +29,10 @@ export function TransactionDetailScreen() {
 
   const { id } = route.params;
 
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultMessage, setResultMessage] = useState({ title: '', message: '', isError: false });
+
   const { data: transaction, isLoading } = useQuery({
     queryKey: ['transaction', id],
     queryFn: () => transactionsApi.get(id),
@@ -39,26 +43,23 @@ export function TransactionDetailScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transaction', id] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      Alert.alert('Success', 'Refund processed successfully');
+      setShowRefundModal(false);
+      setResultMessage({ title: 'Success', message: 'Refund processed successfully', isError: false });
+      setShowResultModal(true);
     },
     onError: (error: any) => {
-      Alert.alert('Error', error.message || 'Failed to process refund');
+      setShowRefundModal(false);
+      setResultMessage({ title: 'Error', message: error.message || 'Failed to process refund', isError: true });
+      setShowResultModal(true);
     },
   });
 
   const handleRefund = () => {
-    Alert.alert(
-      'Issue Refund',
-      'Are you sure you want to refund this transaction? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Refund',
-          style: 'destructive',
-          onPress: () => refundMutation.mutate(),
-        },
-      ]
-    );
+    setShowRefundModal(true);
+  };
+
+  const confirmRefund = () => {
+    refundMutation.mutate();
   };
 
   const handleViewReceipt = () => {
@@ -258,6 +259,74 @@ export function TransactionDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Refund Confirmation Modal */}
+      <Modal
+        visible={showRefundModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRefundModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons name="arrow-undo" size={32} color={colors.error} />
+            </View>
+            <Text style={styles.modalTitle}>Issue Refund</Text>
+            <Text style={styles.modalMessage}>
+              Are you sure you want to refund this transaction? This action cannot be undone.
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonCancel]}
+                onPress={() => setShowRefundModal(false)}
+                disabled={refundMutation.isPending}
+              >
+                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonDestructive]}
+                onPress={confirmRefund}
+                disabled={refundMutation.isPending}
+              >
+                {refundMutation.isPending ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalButtonDestructiveText}>Refund</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Result Modal */}
+      <Modal
+        visible={showResultModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowResultModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={[styles.modalIconContainer, { backgroundColor: resultMessage.isError ? colors.errorBg : colors.successBg }]}>
+              <Ionicons
+                name={resultMessage.isError ? 'close-circle' : 'checkmark-circle'}
+                size={32}
+                color={resultMessage.isError ? colors.error : colors.success}
+              />
+            </View>
+            <Text style={styles.modalTitle}>{resultMessage.title}</Text>
+            <Text style={styles.modalMessage}>{resultMessage.message}</Text>
+            <TouchableOpacity
+              style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 20, flex: 0, width: '100%' }]}
+              onPress={() => setShowResultModal(false)}
+            >
+              <Text style={styles.modalButtonPrimaryText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -408,5 +477,85 @@ const createStyles = (colors: any) =>
     errorText: {
       fontSize: 16,
       color: colors.textSecondary,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 24,
+      width: '100%',
+      maxWidth: 340,
+      alignItems: 'center',
+    },
+    modalIconContainer: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.errorBg,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    modalMessage: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+    },
+    modalButtons: {
+      flexDirection: 'row',
+      marginTop: 24,
+      gap: 12,
+      width: '100%',
+    },
+    modalButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 14,
+      borderRadius: 12,
+      gap: 8,
+    },
+    modalButtonCancel: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalButtonCancelText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    modalButtonDestructive: {
+      backgroundColor: colors.errorBg,
+    },
+    modalButtonDestructiveText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.error,
+    },
+    modalButtonPrimary: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modalButtonPrimaryText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
     },
   });

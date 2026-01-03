@@ -34,6 +34,7 @@ export interface TransactionsListParams {
   limit?: number;
   starting_after?: string;
   status?: string;
+  catalog_id?: string;
 }
 
 export interface TransactionsListResponse {
@@ -54,6 +55,7 @@ export const transactionsApi = {
     if (params?.limit) searchParams.append('limit', params.limit.toString());
     if (params?.starting_after) searchParams.append('starting_after', params.starting_after);
     if (params?.status) searchParams.append('status', params.status);
+    if (params?.catalog_id) searchParams.append('catalog_id', params.catalog_id);
 
     const query = searchParams.toString();
     return apiClient.get<TransactionsListResponse>(

@@ -13,10 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
 import { useCart, CartItem } from '../context/CartContext';
+import { useCatalog } from '../context/CatalogContext';
 
 export function CartScreen() {
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
+  const { selectedCatalog } = useCatalog();
   const {
     items,
     subtotal,
@@ -28,9 +30,9 @@ export function CartScreen() {
 
   const styles = createStyles(colors);
 
-  // Calculate tax (example: 8.875% NYC tax)
-  const taxRate = 0.08875;
-  const tax = Math.round(subtotal * taxRate);
+  // Use catalog's tax rate (default 0 if not set)
+  const taxRate = selectedCatalog?.taxRate ?? 0;
+  const tax = taxRate > 0 ? Math.round(subtotal * (taxRate / 100)) : 0;
   const total = subtotal + tax;
 
   const renderCartItem = ({ item }: { item: CartItem }) => (
@@ -137,10 +139,12 @@ export function CartScreen() {
           <Text style={styles.summaryLabel}>Subtotal</Text>
           <Text style={styles.summaryValue}>${(subtotal / 100).toFixed(2)}</Text>
         </View>
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Tax</Text>
-          <Text style={styles.summaryValue}>${(tax / 100).toFixed(2)}</Text>
-        </View>
+        {taxRate > 0 && (
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Tax ({taxRate}%)</Text>
+            <Text style={styles.summaryValue}>${(tax / 100).toFixed(2)}</Text>
+          </View>
+        )}
         <View style={[styles.summaryRow, styles.totalRow]}>
           <Text style={styles.totalLabel}>Total</Text>
           <Text style={styles.totalValue}>${(total / 100).toFixed(2)}</Text>
@@ -148,7 +152,7 @@ export function CartScreen() {
 
         <TouchableOpacity
           style={styles.checkoutButton}
-          onPress={() => navigation.navigate('Checkout', { total })}
+          onPress={() => navigation.navigate('Checkout', { total: subtotal })}
         >
           <Text style={styles.checkoutButtonText}>Checkout</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />

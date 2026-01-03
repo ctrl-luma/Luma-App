@@ -148,18 +148,26 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
   }, [selectedCatalog]);
 
   // Listen for socket events to refresh catalogs in real-time
-  const handleCatalogUpdate = useCallback(() => {
+  const handleCatalogUpdate = useCallback((data?: { catalogId?: string }) => {
     if (isAuthenticated) {
+      // Immediately refresh catalogs when any catalog changes
       refreshCatalogs();
     }
   }, [isAuthenticated, refreshCatalogs]);
 
+  const handleCatalogDelete = useCallback((data?: { catalogId?: string }) => {
+    if (isAuthenticated) {
+      // If the deleted catalog is currently selected, we need to handle it
+      if (data?.catalogId && selectedCatalog?.id === data.catalogId) {
+        clearCatalog();
+      }
+      refreshCatalogs();
+    }
+  }, [isAuthenticated, refreshCatalogs, selectedCatalog, clearCatalog]);
+
   useSocketEvent(SocketEvents.CATALOG_UPDATED, handleCatalogUpdate);
   useSocketEvent(SocketEvents.CATALOG_CREATED, handleCatalogUpdate);
-  useSocketEvent(SocketEvents.CATALOG_DELETED, handleCatalogUpdate);
-  useSocketEvent(SocketEvents.PRODUCT_UPDATED, handleCatalogUpdate);
-  useSocketEvent(SocketEvents.PRODUCT_CREATED, handleCatalogUpdate);
-  useSocketEvent(SocketEvents.PRODUCT_DELETED, handleCatalogUpdate);
+  useSocketEvent(SocketEvents.CATALOG_DELETED, handleCatalogDelete);
 
   return (
     <CatalogContext.Provider

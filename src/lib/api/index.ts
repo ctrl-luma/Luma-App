@@ -11,7 +11,7 @@ export type {
 } from './auth';
 
 export { catalogsApi } from './catalogs';
-export type { Catalog } from './catalogs';
+export type { Catalog, CatalogLayoutType, UpdateCatalogData } from './catalogs';
 
 export { productsApi } from './products';
 export type { Product } from './products';
@@ -36,3 +36,16 @@ export type {
   CreatePaymentIntentParams,
   PaymentIntent,
 } from './stripe-terminal';
+
+export { organizationsService } from './organizations';
+
+export { customersApi } from './customers';
+export type { Customer } from './customers';
+
+export { ordersApi } from './orders';
+export type {
+  Order,
+  OrderItem,
+  CreateOrderParams,
+  OrdersListResponse,
+} from './orders';

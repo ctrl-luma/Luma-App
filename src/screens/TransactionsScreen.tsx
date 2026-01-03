@@ -14,12 +14,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
 
 import { useTheme } from '../context/ThemeContext';
+import { useCatalog } from '../context/CatalogContext';
 import { transactionsApi, Transaction } from '../lib/api';
 
 type FilterType = 'all' | 'succeeded' | 'refunded';
 
 export function TransactionsScreen() {
   const { colors } = useTheme();
+  const { selectedCatalog } = useCatalog();
   const navigation = useNavigation<any>();
   const [filter, setFilter] = useState<FilterType>('all');
 
@@ -32,12 +34,12 @@ export function TransactionsScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['transactions', filter],
+    queryKey: ['transactions', selectedCatalog?.id],
     queryFn: ({ pageParam }) =>
       transactionsApi.list({
-        limit: 20,
+        limit: 25,
         starting_after: pageParam,
-        status: filter === 'all' ? undefined : filter,
+        catalog_id: selectedCatalog?.id,
       }),
     getNextPageParam: (lastPage) => {
       if (!lastPage.hasMore || lastPage.data.length === 0) return undefined;
@@ -46,7 +48,14 @@ export function TransactionsScreen() {
     initialPageParam: undefined as string | undefined,
   });
 
-  const transactions = data?.pages.flatMap((page) => page.data) || [];
+  // Get all transactions and apply client-side filter
+  const allTransactions = data?.pages.flatMap((page) => page.data) || [];
+  const transactions = allTransactions.filter((t) => {
+    if (filter === 'all') return true;
+    if (filter === 'succeeded') return t.status === 'succeeded';
+    if (filter === 'refunded') return t.status === 'refunded' || t.status === 'partially_refunded';
+    return true;
+  });
 
   const styles = createStyles(colors);
 

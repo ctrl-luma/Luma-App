@@ -27,9 +27,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load cached user/org and stop loading immediately if we have cached data
   const loadCachedAuth = useCallback(async (): Promise<boolean> => {
     try {
+      console.log('[AuthContext] loadCachedAuth: checking authentication...');
       const isAuthenticated = await authService.isAuthenticated();
+      console.log('[AuthContext] loadCachedAuth: isAuthenticated =', isAuthenticated);
 
       if (!isAuthenticated) {
+        console.log('[AuthContext] loadCachedAuth: no token, setting isLoading=false');
         setState(prev => ({ ...prev, isLoading: false }));
         return false;
       }
@@ -37,9 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Try to get cached user/org
       const user = await authService.getUser();
       const organization = await authService.getOrganization();
+      console.log('[AuthContext] loadCachedAuth: cached user =', user?.email, ', org =', organization?.name);
 
       if (user && organization) {
         // We have cached data, show it immediately
+        console.log('[AuthContext] loadCachedAuth: using cached data');
         setState({
           user,
           organization,
@@ -49,9 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return true;
       }
 
+      // Token exists but no cached data - keep isLoading true, refreshProfileFromAPI will handle it
+      console.log('[AuthContext] loadCachedAuth: token exists but no cached data');
       return false;
     } catch (error) {
-      console.error('Failed to load cached auth:', error);
+      console.error('[AuthContext] loadCachedAuth: error', error);
+      setState(prev => ({ ...prev, isLoading: false }));
       return false;
     }
   }, []);

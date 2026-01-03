@@ -7,7 +7,6 @@ import {
   Alert,
   ScrollView,
   Linking,
-  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,8 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
-
-const VENDOR_PORTAL_URL = 'https://vendor.useluma.io';
+import { createVendorDashboardUrl } from '../lib/auth-handoff';
+import { config } from '../lib/config';
+import { Toggle } from '../components/Toggle';
 
 export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -47,16 +47,15 @@ export function SettingsScreen() {
     navigation.navigate('CatalogSelect');
   };
 
-  const handleManageProducts = () => {
-    Linking.openURL(`${VENDOR_PORTAL_URL}/products`);
-  };
-
-  const handleViewDashboard = () => {
-    Linking.openURL(`${VENDOR_PORTAL_URL}/dashboard`);
-  };
-
-  const handleManageCategories = () => {
-    Linking.openURL(`${VENDOR_PORTAL_URL}/categories`);
+  const handleOpenVendorPortal = async () => {
+    const url = await createVendorDashboardUrl();
+    if (url) {
+      // Open vendor portal with auth - callback will redirect to home
+      Linking.openURL(url);
+    } else {
+      // Fallback: open without auth
+      Linking.openURL(config.vendorDashboardUrl);
+    }
   };
 
   const styles = createStyles(colors);
@@ -83,11 +82,9 @@ export function SettingsScreen() {
                 </View>
                 <Text style={styles.label}>Dark Mode</Text>
               </View>
-              <Switch
+              <Toggle
                 value={isDark}
                 onValueChange={toggleTheme}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#fff"
               />
             </View>
           </View>
@@ -129,36 +126,12 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Management</Text>
           <View style={styles.card}>
-            <TouchableOpacity style={styles.row} onPress={handleViewDashboard}>
+            <TouchableOpacity style={styles.row} onPress={handleOpenVendorPortal}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="analytics" size={18} color={colors.primary} />
+                  <Ionicons name="storefront" size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.label}>View Dashboard</Text>
-              </View>
-              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.row} onPress={handleManageProducts}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.success + '15' }]}>
-                  <Ionicons name="cube" size={18} color={colors.success} />
-                </View>
-                <Text style={styles.label}>Manage Products</Text>
-              </View>
-              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.row} onPress={handleManageCategories}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.warning + '15' }]}>
-                  <Ionicons name="folder" size={18} color={colors.warning} />
-                </View>
-                <Text style={styles.label}>Manage Categories</Text>
+                <Text style={styles.label}>Open Vendor Portal</Text>
               </View>
               <Ionicons name="open-outline" size={18} color={colors.textMuted} />
             </TouchableOpacity>
@@ -213,12 +186,15 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Payment</Text>
           <View style={styles.card}>
-            <TouchableOpacity style={styles.row}>
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('TapToPaySettings')}
+            >
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="card" size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.label}>Tap to Pay Settings</Text>
+                <Text style={styles.label}>Payment Settings</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>

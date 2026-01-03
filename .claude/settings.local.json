@@ -3,7 +3,10 @@
     "allow": [
       "Bash(find:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx expo install expo-font @expo-google-fonts/inter expo-splash-screen)"
+      "Bash(npx expo install expo-font @expo-google-fonts/inter expo-splash-screen)",
+      "WebSearch",
+      "WebFetch(domain:dribbble.com)",
+      "WebFetch(domain:mobbin.com)"
     ]
   }
 }

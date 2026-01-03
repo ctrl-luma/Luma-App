@@ -9,6 +9,7 @@ export interface CreatePaymentIntentParams {
   currency?: string;
   description?: string;
   metadata?: Record<string, string>;
+  receiptEmail?: string;
 }
 
 export interface PaymentIntent {
@@ -43,4 +44,33 @@ export const stripeTerminalApi = {
    */
   cancelPaymentIntent: (paymentIntentId: string) =>
     apiClient.post<{ success: boolean }>(`/stripe/terminal/payment-intent/${paymentIntentId}/cancel`, {}),
+
+  /**
+   * Send receipt email for a completed payment
+   */
+  sendReceipt: (paymentIntentId: string, email: string) =>
+    apiClient.post<{ success: boolean; receiptUrl: string | null }>(
+      `/stripe/terminal/payment-intent/${paymentIntentId}/send-receipt`,
+      { email }
+    ),
+
+  /**
+   * Get payment intent details (including receipt URL)
+   */
+  getPaymentIntent: (paymentIntentId: string) =>
+    apiClient.get<PaymentIntent & { receiptUrl: string | null }>(
+      `/stripe/terminal/payment-intent/${paymentIntentId}`
+    ),
+
+  /**
+   * Simulate a terminal payment for testing (test mode only)
+   * Creates a real test payment in Stripe without requiring NFC/card tap
+   */
+  simulatePayment: (paymentIntentId: string) =>
+    apiClient.post<{
+      id: string;
+      status: string;
+      amount: number;
+      receiptUrl: string | null;
+    }>(`/stripe/terminal/payment-intent/${paymentIntentId}/simulate`, {}),
 };

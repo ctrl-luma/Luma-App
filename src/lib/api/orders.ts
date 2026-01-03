@@ -1,0 +1,82 @@
+import { apiClient } from './client';
+
+export interface OrderItem {
+  productId: string;
+  catalogProductId?: string;
+  categoryId?: string;
+  name: string;
+  quantity: number;
+  unitPrice: number; // in cents
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded';
+  paymentMethod: 'card' | 'cash' | 'tap_to_pay' | null;
+  subtotal: number; // in cents
+  taxAmount: number;
+  tipAmount: number;
+  totalAmount: number;
+  stripePaymentIntentId: string | null;
+  customerEmail: string | null;
+  customerId: string | null;
+  catalogId: string | null;
+  items?: Array<{
+    id: string;
+    productId: string | null;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateOrderParams {
+  catalogId?: string;
+  items?: OrderItem[];
+  subtotal: number; // in cents
+  taxAmount?: number;
+  tipAmount?: number;
+  totalAmount: number; // in cents
+  paymentMethod?: 'card' | 'cash' | 'tap_to_pay';
+  customerEmail?: string;
+  stripePaymentIntentId?: string;
+  isQuickCharge?: boolean;
+  description?: string;
+}
+
+export interface OrdersListResponse {
+  orders: Order[];
+  total: number;
+}
+
+export const ordersApi = {
+  /**
+   * Create a new order
+   * Call this BEFORE creating a Stripe PaymentIntent
+   */
+  create: (params: CreateOrderParams) =>
+    apiClient.post<Order>('/orders', params),
+
+  /**
+   * Link a Stripe PaymentIntent to an existing order
+   */
+  linkPaymentIntent: (orderId: string, stripePaymentIntentId: string) =>
+    apiClient.patch<Order>(`/orders/${orderId}/payment-intent`, {
+      stripePaymentIntentId,
+    }),
+
+  /**
+   * Get order by ID
+   */
+  get: (orderId: string) =>
+    apiClient.get<Order>(`/orders/${orderId}`),
+
+  /**
+   * List orders for the organization
+   */
+  list: (params?: { limit?: number; offset?: number; status?: string }) =>
+    apiClient.get<OrdersListResponse>('/orders', params),
+};

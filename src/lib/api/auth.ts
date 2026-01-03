@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from './client';
+import { organizationsService } from './organizations';
 
 export interface User {
   id: string;
@@ -11,12 +12,26 @@ export interface User {
   organizationId: string;
   role: string;
   cognitoUsername?: string;
+  emailAlerts?: boolean;
+  marketingEmails?: boolean;
+  weeklyReports?: boolean;
 }
 
 export interface Organization {
   id: string;
   name: string;
-  slug: string;
+  slug?: string;
+  settings?: {
+    tips?: {
+      enabled: boolean;
+      percentages: number[];
+      allowCustom: boolean;
+    };
+    receipts?: {
+      autoEmailReceipt: boolean;
+      promptForEmail: boolean;
+    };
+  };
 }
 
 export interface AuthTokens {
@@ -143,7 +158,13 @@ class AuthService {
   }
 
   async getProfile(): Promise<{ user: User; organization: Organization }> {
-    return apiClient.get('/auth/me');
+    // Fetch user data from /auth/me
+    const user = await apiClient.get<User>('/auth/me');
+
+    // Fetch organization data using user's organizationId
+    const organization = await organizationsService.getById(user.organizationId);
+
+    return { user, organization };
   }
 
   async isAuthenticated(): Promise<boolean> {

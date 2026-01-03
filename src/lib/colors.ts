@@ -93,6 +93,10 @@ export const darkColors = {
   // Shadows (for dark mode, use subtle glows)
   shadow: 'rgba(0, 0, 0, 0.5)',
   shadowPrimary: 'rgba(37, 99, 235, 0.25)',
+
+  // Keypad
+  keypadButton: '#1F2937',
+  keypadButtonPressed: '#374151',
 };
 
 // Light theme colors
@@ -142,6 +146,10 @@ export const lightColors = {
   // Shadows
   shadow: 'rgba(0, 0, 0, 0.1)',
   shadowPrimary: 'rgba(37, 99, 235, 0.15)',
+
+  // Keypad
+  keypadButton: '#F3F4F6',
+  keypadButtonPressed: '#E5E7EB',
 };
 
 // Type for theme colors

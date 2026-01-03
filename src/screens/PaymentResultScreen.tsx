@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
+  TextInput,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
@@ -14,12 +17,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { fonts } from '../lib/fonts';
+import { stripeTerminalApi } from '../lib/api';
 
 type RouteParams = {
   PaymentResult: {
     success: boolean;
     amount: number;
     paymentIntentId: string;
+    orderId?: string;
+    orderNumber?: string;
+    customerEmail?: string;
     errorMessage?: string;
   };
 };
@@ -30,7 +37,13 @@ export function PaymentResultScreen() {
   const route = useRoute<RouteProp<RouteParams, 'PaymentResult'>>();
   const { clearCart } = useCart();
 
-  const { success, amount, errorMessage } = route.params;
+  const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage } = route.params;
+
+  // Receipt state
+  const [receiptEmail, setReceiptEmail] = useState(customerEmail || '');
+  const [receiptSent, setReceiptSent] = useState(!!customerEmail); // Auto-sent if email was provided
+  const [sendingReceipt, setSendingReceipt] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -158,6 +171,33 @@ export function PaymentResultScreen() {
     navigation.goBack();
   };
 
+  const handleSendReceipt = async () => {
+    if (!receiptEmail.trim()) {
+      Alert.alert('Email Required', 'Please enter an email address to send the receipt.');
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(receiptEmail.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address.');
+      return;
+    }
+
+    setSendingReceipt(true);
+    try {
+      await stripeTerminalApi.sendReceipt(paymentIntentId, receiptEmail.trim());
+      setReceiptSent(true);
+      setShowEmailInput(false);
+      Alert.alert('Receipt Sent', `A receipt has been sent to ${receiptEmail.trim()}`);
+    } catch (error: any) {
+      console.error('Error sending receipt:', error);
+      Alert.alert('Error', error.message || 'Failed to send receipt. Please try again.');
+    } finally {
+      setSendingReceipt(false);
+    }
+  };
+
   const styles = createStyles(colors, success);
 
   const confettiColors = [colors.primary, colors.success, '#FFD700', '#FF6B6B', '#4ECDC4'];
@@ -232,10 +272,58 @@ export function PaymentResultScreen() {
                   <Text style={styles.amountLabel}>Amount Charged</Text>
                   <Text style={styles.amount}>${(amount / 100).toFixed(2)}</Text>
                 </View>
+                {orderNumber && (
+                  <Text style={styles.orderNumber}>Order #{orderNumber}</Text>
+                )}
                 <View style={styles.successBadge}>
                   <Ionicons name="shield-checkmark" size={18} color={colors.success} />
-                  <Text style={styles.successBadgeText}>Transaction completed</Text>
+                  <Text style={styles.successBadgeText}>
+                    {receiptSent ? 'Receipt sent' : 'Transaction completed'}
+                  </Text>
                 </View>
+
+                {/* Receipt Section */}
+                {!receiptSent && !showEmailInput && (
+                  <TouchableOpacity
+                    style={styles.receiptButton}
+                    onPress={() => setShowEmailInput(true)}
+                  >
+                    <Ionicons name="mail-outline" size={20} color={colors.primary} />
+                    <Text style={styles.receiptButtonText}>Send Receipt</Text>
+                  </TouchableOpacity>
+                )}
+
+                {showEmailInput && (
+                  <View style={styles.emailInputContainer}>
+                    <TextInput
+                      style={styles.emailInput}
+                      placeholder="Enter email address"
+                      placeholderTextColor={colors.textMuted}
+                      value={receiptEmail}
+                      onChangeText={setReceiptEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    <TouchableOpacity
+                      style={[styles.sendButton, sendingReceipt && styles.sendButtonDisabled]}
+                      onPress={handleSendReceipt}
+                      disabled={sendingReceipt}
+                    >
+                      {sendingReceipt ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Ionicons name="send" size={18} color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {receiptSent && customerEmail && (
+                  <Text style={styles.receiptSentText}>
+                    Sent to {customerEmail}
+                  </Text>
+                )}
               </>
             ) : (
               <View style={styles.errorContainer}>
@@ -361,6 +449,12 @@ const createStyles = (colors: any, success: boolean) =>
       fontFamily: fonts.bold,
       color: colors.success,
     },
+    orderNumber: {
+      fontSize: 14,
+      fontFamily: fonts.medium,
+      color: colors.textMuted,
+      marginBottom: 16,
+    },
     successBadge: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -376,6 +470,60 @@ const createStyles = (colors: any, success: boolean) =>
       fontSize: 15,
       fontFamily: fonts.medium,
       color: colors.success,
+    },
+    receiptButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 20,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 9999,
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
+      backgroundColor: colors.primary + '10',
+    },
+    receiptButtonText: {
+      fontSize: 15,
+      fontFamily: fonts.medium,
+      color: colors.primary,
+    },
+    emailInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 20,
+      gap: 12,
+      width: '100%',
+      maxWidth: 320,
+    },
+    emailInput: {
+      flex: 1,
+      height: 48,
+      backgroundColor: colors.card,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sendButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+      opacity: 0.7,
+    },
+    receiptSentText: {
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
+      marginTop: 12,
     },
     errorContainer: {
       backgroundColor: colors.errorBg,
