@@ -39,9 +39,6 @@ export type {
 
 export { organizationsService } from './organizations';
 
-export { customersApi } from './customers';
-export type { Customer } from './customers';
-
 export { ordersApi } from './orders';
 export type {
   Order,

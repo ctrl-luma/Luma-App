@@ -24,6 +24,7 @@ import { useCatalog } from '../context/CatalogContext';
 import { useCart } from '../context/CartContext';
 import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { productsApi, Product, categoriesApi, Category, CatalogLayoutType } from '../lib/api';
+import { openVendorDashboard } from '../lib/auth-handoff';
 
 const isWeb = Platform.OS === 'web';
 
@@ -463,7 +464,7 @@ export function MenuScreen() {
           style={styles.cartButton}
           onPress={() => navigation.navigate('Cart')}
         >
-          <Ionicons name="cart-outline" size={24} color={colors.text} />
+          <Ionicons name="cart-outline" size={20} color={colors.text} />
           {itemCount > 0 && (
             <View style={styles.cartBadge}>
               <Text style={styles.cartBadgeText}>{itemCount}</Text>
@@ -506,7 +507,18 @@ export function MenuScreen() {
       {filteredProducts.length === 0 ? (
         <View style={styles.centered}>
           <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
-          <Text style={styles.emptyText}>No products available</Text>
+          <Text style={styles.emptyTitle}>No products available</Text>
+          <Text style={styles.emptySubtext}>
+            Add products to this catalog in the Vendor Portal
+          </Text>
+          <TouchableOpacity
+            style={[styles.vendorPortalButton, { backgroundColor: colors.primary }]}
+            onPress={openVendorDashboard}
+          >
+            <Ionicons name="storefront" size={18} color="#fff" />
+            <Text style={styles.vendorPortalButtonText}>Open Vendor Portal</Text>
+            <Ionicons name="open-outline" size={16} color="#fff" />
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -540,15 +552,17 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingHorizontal: 16,
+      height: 56,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     headerLeft: {
       flex: 1,
     },
     catalogName: {
-      fontSize: 24,
-      fontWeight: '700',
+      fontSize: 20,
+      fontWeight: '600',
       color: colors.text,
     },
     cartButton: {
@@ -873,9 +887,31 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       fontSize: 16,
       color: colors.textSecondary,
     },
-    emptyText: {
-      fontSize: 16,
-      color: colors.textSecondary,
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
       marginTop: 16,
+    },
+    emptySubtext: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 8,
+      textAlign: 'center',
+      paddingHorizontal: 32,
+    },
+    vendorPortalButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginTop: 24,
+      paddingVertical: 14,
+      paddingHorizontal: 20,
+      borderRadius: 12,
+    },
+    vendorPortalButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#fff',
     },
   });

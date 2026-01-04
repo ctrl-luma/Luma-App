@@ -34,12 +34,6 @@ export const stripeTerminalApi = {
     apiClient.post<PaymentIntent>('/stripe/terminal/payment-intent', params),
 
   /**
-   * Capture a payment intent (if using manual capture)
-   */
-  capturePaymentIntent: (paymentIntentId: string) =>
-    apiClient.post<PaymentIntent>(`/stripe/terminal/payment-intent/${paymentIntentId}/capture`, {}),
-
-  /**
    * Cancel a payment intent
    */
   cancelPaymentIntent: (paymentIntentId: string) =>
@@ -52,14 +46,6 @@ export const stripeTerminalApi = {
     apiClient.post<{ success: boolean; receiptUrl: string | null }>(
       `/stripe/terminal/payment-intent/${paymentIntentId}/send-receipt`,
       { email }
-    ),
-
-  /**
-   * Get payment intent details (including receipt URL)
-   */
-  getPaymentIntent: (paymentIntentId: string) =>
-    apiClient.get<PaymentIntent & { receiptUrl: string | null }>(
-      `/stripe/terminal/payment-intent/${paymentIntentId}`
     ),
 
   /**

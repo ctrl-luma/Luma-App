@@ -131,7 +131,7 @@ export function TransactionsScreen() {
           {getStatusLabel(item.status)}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
     </TouchableOpacity>
   );
 
@@ -217,20 +217,22 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.background,
     },
     header: {
-      paddingHorizontal: 20,
-      paddingTop: 16,
-      paddingBottom: 12,
+      paddingHorizontal: 16,
+      height: 56,
+      justifyContent: 'center',
     },
     title: {
-      fontSize: 28,
-      fontWeight: '700',
+      fontSize: 20,
+      fontWeight: '600',
       color: colors.text,
     },
     filterContainer: {
       flexDirection: 'row',
-      paddingHorizontal: 20,
-      marginBottom: 16,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
       gap: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     filterTab: {
       paddingHorizontal: 16,

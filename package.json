@@ -20,6 +20,7 @@
     "@stripe/stripe-terminal-react-native": "^0.0.1-beta.28",
     "@tanstack/react-query": "^5.90.12",
     "expo": "~54.0.29",
+    "expo-build-properties": "^1.0.10",
     "expo-dev-client": "^6.0.20",
     "expo-font": "~14.0.10",
     "expo-haptics": "~15.0.8",

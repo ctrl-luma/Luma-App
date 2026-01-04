@@ -225,14 +225,15 @@ const createStyles = (colors: any) =>
       backgroundColor: colors.background,
     },
     header: {
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingHorizontal: 16,
+      height: 56,
+      justifyContent: 'center',
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
     },
     title: {
-      fontSize: 28,
-      fontWeight: '700',
+      fontSize: 20,
+      fontWeight: '600',
       color: colors.text,
     },
     content: {

@@ -38,8 +38,23 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         'android.permission.ACCESS_FINE_LOCATION',
       ],
     },
+    web: {
+      bundler: 'metro',
+      backgroundColor: '#000000',
+      themeColor: '#000000',
+    },
     plugins: [
       'expo-font',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            minSdkVersion: 26,
+            enableProguardInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
+          },
+        },
+      ],
       [
         '@stripe/stripe-react-native',
         {
@@ -50,7 +65,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ],
     extra: {
       eas: {
-        projectId: process.env.EAS_PROJECT_ID || '',
+        projectId: '2fde0ea8-4005-4003-a81c-492378f175b8',
       },
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
       env: ENV,

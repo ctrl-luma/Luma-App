@@ -8,6 +8,7 @@ import {
   Alert,
   Animated,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -162,7 +163,7 @@ export function ChargeScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* Header - Sticky */}
       <View style={styles.header}>
         <Text style={styles.title}>Quick Charge</Text>
         <Pressable
@@ -180,68 +181,75 @@ export function ChargeScreen() {
         </Pressable>
       </View>
 
-      {/* Description Input (Optional) */}
-      {showDescription && (
-        <View style={styles.descriptionContainer}>
-          <TextInput
-            style={styles.descriptionInput}
-            placeholder="Add a note (optional)"
-            placeholderTextColor={colors.inputPlaceholder}
-            value={description}
-            onChangeText={setDescription}
-            maxLength={100}
-          />
-        </View>
-      )}
-
-      {/* Amount Display */}
-      <View style={styles.amountContainer}>
-        <Text style={styles.currencySymbol}>$</Text>
-        <Text style={styles.amount}>{displayAmount}</Text>
-      </View>
-
-      {/* Keypad */}
-      <View style={styles.keypad}>
-        {KEYPAD_ROWS.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.keypadRow}>
-            {row.map((key) => (
-              <KeypadButton
-                key={key}
-                keyValue={key}
-                onPress={handleKeypadPress}
-                colors={colors}
-              />
-            ))}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Description Input (Optional) */}
+        {showDescription && (
+          <View style={styles.descriptionContainer}>
+            <TextInput
+              style={styles.descriptionInput}
+              placeholder="Add a note (optional)"
+              placeholderTextColor={colors.inputPlaceholder}
+              value={description}
+              onChangeText={setDescription}
+              maxLength={100}
+            />
           </View>
-        ))}
-      </View>
+        )}
 
-      {/* Charge Button */}
-      <View style={styles.footer}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.chargeButton,
-            cents < 50 && styles.chargeButtonDisabled,
-            pressed && cents >= 50 && styles.chargeButtonPressed,
-          ]}
-          onPress={() => {
-            if (cents >= 50) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              handleCharge();
-            }
-          }}
-          disabled={cents < 50}
-        >
-          <Ionicons name="flash" size={22} color="#fff" />
-          <Text style={styles.chargeButtonText}>
-            {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
+        {/* Amount Display */}
+        <View style={styles.amountContainer}>
+          <Text style={styles.currencySymbol}>$</Text>
+          <Text style={styles.amount}>{displayAmount}</Text>
+        </View>
+
+        {/* Keypad */}
+        <View style={styles.keypad}>
+          {KEYPAD_ROWS.map((row, rowIndex) => (
+            <View key={rowIndex} style={styles.keypadRow}>
+              {row.map((key) => (
+                <KeypadButton
+                  key={key}
+                  keyValue={key}
+                  onPress={handleKeypadPress}
+                  colors={colors}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
+
+        {/* Charge Button */}
+        <View style={styles.footer}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.chargeButton,
+              cents < 50 && styles.chargeButtonDisabled,
+              pressed && cents >= 50 && styles.chargeButtonPressed,
+            ]}
+            onPress={() => {
+              if (cents >= 50) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                handleCharge();
+              }
+            }}
+            disabled={cents < 50}
+          >
+            <Ionicons name="flash" size={22} color="#fff" />
+            <Text style={styles.chargeButtonText}>
+              {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
+            </Text>
+          </Pressable>
+
+          <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
+            Minimum charge is $0.50
           </Text>
-        </Pressable>
-
-        <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
-          Minimum charge is $0.50
-        </Text>
-      </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -252,16 +260,24 @@ const createStyles = (colors: any) =>
       flex: 1,
       backgroundColor: colors.background,
     },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      paddingVertical: 16,
+      paddingHorizontal: 16,
+      height: 56,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     title: {
-      fontSize: 28,
-      fontFamily: fonts.bold,
+      fontSize: 20,
+      fontFamily: fonts.semiBold,
       color: colors.text,
     },
     noteButton: {
@@ -288,12 +304,11 @@ const createStyles = (colors: any) =>
       color: colors.inputText,
     },
     amountContainer: {
-      flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
       flexDirection: 'row',
       paddingHorizontal: 20,
-      minHeight: 140,
+      paddingVertical: 24,
     },
     currencySymbol: {
       fontSize: 48,
@@ -317,7 +332,7 @@ const createStyles = (colors: any) =>
     },
     footer: {
       paddingHorizontal: 20,
-      paddingBottom: 36,
+      paddingBottom: 8,
       paddingTop: 8,
     },
     chargeButton: {

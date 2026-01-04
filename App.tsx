@@ -109,6 +109,12 @@ function TabNavigator() {
           borderTopColor: colors.tabBarBorder,
           borderTopWidth: 1,
           height: 56,
+          maxWidth: '100%',
+          overflow: 'hidden',
+        },
+        tabBarItemStyle: {
+          flex: 1,
+          maxWidth: '25%',
         },
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
@@ -132,7 +138,7 @@ function TabNavigator() {
               iconName = 'ellipse';
           }
 
-          return <Ionicons name={iconName} size={26} color={color} />;
+          return <Ionicons name={iconName} size={24} color={color} />;
         },
       })}
     >

@@ -9,6 +9,7 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
@@ -36,19 +37,43 @@ export function PaymentResultScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PaymentResult'>>();
   const { clearCart } = useCart();
+  const { width: screenWidth } = useWindowDimensions();
 
   const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage } = route.params;
 
+  // Dynamic font sizes based on screen width (accounting for 24px padding on each side)
+  const amountText = `$${(amount / 100).toFixed(2)}`;
+  const availableWidth = screenWidth - 48;
+  const amountFontSize = Math.min(56, availableWidth / (amountText.length * 0.55));
+  const titleFontSize = Math.min(26, availableWidth / 11);
+
   // Receipt state
   const [receiptEmail, setReceiptEmail] = useState(customerEmail || '');
-  const [receiptSent, setReceiptSent] = useState(!!customerEmail); // Auto-sent if email was provided
+  const [receiptSent, setReceiptSent] = useState(false);
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [showEmailInput, setShowEmailInput] = useState(false);
+
+  // Auto-send receipt if customer email was provided during checkout
+  useEffect(() => {
+    if (success && customerEmail && paymentIntentId && !receiptSent) {
+      const autoSendReceipt = async () => {
+        try {
+          await stripeTerminalApi.sendReceipt(paymentIntentId, customerEmail.trim());
+          setReceiptSent(true);
+          console.log('[PaymentResult] Auto-sent receipt to:', customerEmail);
+        } catch (error) {
+          console.error('[PaymentResult] Failed to auto-send receipt:', error);
+          // Don't show error to user - they can manually send later
+        }
+      };
+      autoSendReceipt();
+    }
+  }, [success, customerEmail, paymentIntentId, receiptSent]);
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const bounceAnim = useRef(new Animated.Value(1)).current; // Start at 1 to avoid layout shift
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   // Confetti animations (for success)
@@ -120,6 +145,13 @@ export function PaymentResultScreen() {
               duration: 200,
               useNativeDriver: true,
             }),
+            // Fade out near the end of the fall
+            Animated.delay(duration - 500),
+            Animated.timing(particle.opacity, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }),
           ]),
           Animated.sequence([
             Animated.delay(delay),
@@ -141,14 +173,12 @@ export function PaymentResultScreen() {
           ]),
           Animated.sequence([
             Animated.delay(delay),
-            Animated.loop(
-              Animated.timing(particle.rotate, {
-                toValue: 360,
-                duration: 1000,
-                easing: Easing.linear,
-                useNativeDriver: true,
-              })
-            ),
+            Animated.timing(particle.rotate, {
+              toValue: 360 * 3, // 3 rotations instead of infinite loop
+              duration,
+              easing: Easing.linear,
+              useNativeDriver: true,
+            }),
           ]),
         ]).start();
       });
@@ -261,8 +291,8 @@ export function PaymentResultScreen() {
             />
           </Animated.View>
 
-          <Animated.View style={{ opacity: fadeAnim, alignItems: 'center' }}>
-            <Text style={styles.title}>
+          <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', width: '100%' }}>
+            <Text style={[styles.title, { fontSize: titleFontSize }]}>
               {success ? 'Payment Successful!' : 'Payment Failed'}
             </Text>
 
@@ -270,7 +300,9 @@ export function PaymentResultScreen() {
               <>
                 <View style={styles.amountContainer}>
                   <Text style={styles.amountLabel}>Amount Charged</Text>
-                  <Text style={styles.amount}>${(amount / 100).toFixed(2)}</Text>
+                  <Text style={[styles.amount, { fontSize: amountFontSize }]}>
+                    {amountText}
+                  </Text>
                 </View>
                 {orderNumber && (
                   <Text style={styles.orderNumber}>Order #{orderNumber}</Text>
@@ -320,9 +352,15 @@ export function PaymentResultScreen() {
                 )}
 
                 {receiptSent && customerEmail && (
-                  <Text style={styles.receiptSentText}>
-                    Sent to {customerEmail}
-                  </Text>
+                  <View style={styles.receiptSentContainer}>
+                    <Text
+                      style={styles.receiptSentText}
+                      numberOfLines={1}
+                      ellipsizeMode="middle"
+                    >
+                      Sent to {customerEmail}
+                    </Text>
+                  </View>
                 )}
               </>
             ) : (
@@ -364,6 +402,7 @@ const createStyles = (colors: any, success: boolean) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+      overflow: 'hidden',
     },
     backgroundGradients: {
       ...StyleSheet.absoluteFillObject,
@@ -393,6 +432,7 @@ const createStyles = (colors: any, success: boolean) =>
       alignItems: 'center',
       justifyContent: 'flex-start',
       pointerEvents: 'none',
+      overflow: 'hidden',
     },
     confetti: {
       position: 'absolute',
@@ -403,12 +443,14 @@ const createStyles = (colors: any, success: boolean) =>
     },
     safeArea: {
       flex: 1,
+      overflow: 'hidden',
     },
     content: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: 32,
+      paddingHorizontal: 24,
+      overflow: 'hidden',
     },
     iconContainer: {
       position: 'relative',
@@ -424,7 +466,6 @@ const createStyles = (colors: any, success: boolean) =>
       opacity: 0.08,
     },
     title: {
-      fontSize: 32,
       fontWeight: '700',
       fontFamily: fonts.bold,
       color: colors.text,
@@ -434,6 +475,7 @@ const createStyles = (colors: any, success: boolean) =>
     amountContainer: {
       alignItems: 'center',
       marginBottom: 24,
+      alignSelf: 'stretch',
     },
     amountLabel: {
       fontSize: 13,
@@ -444,10 +486,10 @@ const createStyles = (colors: any, success: boolean) =>
       marginBottom: 8,
     },
     amount: {
-      fontSize: 64,
       fontWeight: '700',
       fontFamily: fonts.bold,
       color: colors.success,
+      textAlign: 'center',
     },
     orderNumber: {
       fontSize: 14,
@@ -493,11 +535,11 @@ const createStyles = (colors: any, success: boolean) =>
       alignItems: 'center',
       marginTop: 20,
       gap: 12,
-      width: '100%',
-      maxWidth: 320,
+      alignSelf: 'stretch',
     },
     emailInput: {
       flex: 1,
+      minWidth: 0,
       height: 48,
       backgroundColor: colors.card,
       borderRadius: 12,
@@ -511,6 +553,8 @@ const createStyles = (colors: any, success: boolean) =>
     sendButton: {
       width: 48,
       height: 48,
+      minWidth: 48,
+      flexShrink: 0,
       borderRadius: 12,
       backgroundColor: colors.primary,
       alignItems: 'center',
@@ -519,11 +563,17 @@ const createStyles = (colors: any, success: boolean) =>
     sendButtonDisabled: {
       opacity: 0.7,
     },
+    receiptSentContainer: {
+      alignSelf: 'stretch',
+      alignItems: 'center',
+      marginTop: 12,
+      paddingHorizontal: 20,
+    },
     receiptSentText: {
       fontSize: 13,
       fontFamily: fonts.regular,
       color: colors.textMuted,
-      marginTop: 12,
+      textAlign: 'center',
     },
     errorContainer: {
       backgroundColor: colors.errorBg,

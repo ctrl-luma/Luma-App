@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
@@ -37,7 +37,14 @@ export function CheckoutScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'Checkout'>>();
   const { items, clearCart } = useCart();
-  const { selectedCatalog } = useCatalog();
+  const { selectedCatalog, refreshCatalogs } = useCatalog();
+
+  // Refresh catalog data when screen is focused to ensure latest settings
+  useFocusEffect(
+    useCallback(() => {
+      refreshCatalogs();
+    }, [refreshCatalogs])
+  );
 
   const [customerEmail, setCustomerEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
