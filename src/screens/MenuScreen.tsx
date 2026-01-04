@@ -607,7 +607,8 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       paddingBottom: 20,
     },
     productRow: {
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
+      gap: GRID_GAP,
     },
     // Grid layout styles
     productCard: {

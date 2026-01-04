@@ -181,26 +181,27 @@ export function ChargeScreen() {
         </Pressable>
       </View>
 
+      {/* Description Input (Optional) */}
+      {showDescription && (
+        <View style={styles.descriptionContainer}>
+          <TextInput
+            style={styles.descriptionInput}
+            placeholder="Add a note (optional)"
+            placeholderTextColor={colors.inputPlaceholder}
+            value={description}
+            onChangeText={setDescription}
+            maxLength={100}
+          />
+        </View>
+      )}
+
+      {/* Centered Content - Amount & Keypad */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        bounces={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Description Input (Optional) */}
-        {showDescription && (
-          <View style={styles.descriptionContainer}>
-            <TextInput
-              style={styles.descriptionInput}
-              placeholder="Add a note (optional)"
-              placeholderTextColor={colors.inputPlaceholder}
-              value={description}
-              onChangeText={setDescription}
-              maxLength={100}
-            />
-          </View>
-        )}
-
         {/* Amount Display */}
         <View style={styles.amountContainer}>
           <Text style={styles.currencySymbol}>$</Text>
@@ -222,34 +223,34 @@ export function ChargeScreen() {
             </View>
           ))}
         </View>
-
-        {/* Charge Button */}
-        <View style={styles.footer}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.chargeButton,
-              cents < 50 && styles.chargeButtonDisabled,
-              pressed && cents >= 50 && styles.chargeButtonPressed,
-            ]}
-            onPress={() => {
-              if (cents >= 50) {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                handleCharge();
-              }
-            }}
-            disabled={cents < 50}
-          >
-            <Ionicons name="flash" size={22} color="#fff" />
-            <Text style={styles.chargeButtonText}>
-              {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
-            </Text>
-          </Pressable>
-
-          <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
-            Minimum charge is $0.50
-          </Text>
-        </View>
       </ScrollView>
+
+      {/* Charge Button - Fixed at Bottom */}
+      <View style={styles.footer}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.chargeButton,
+            cents < 50 && styles.chargeButtonDisabled,
+            pressed && cents >= 50 && styles.chargeButtonPressed,
+          ]}
+          onPress={() => {
+            if (cents >= 50) {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              handleCharge();
+            }
+          }}
+          disabled={cents < 50}
+        >
+          <Ionicons name="flash" size={22} color="#fff" />
+          <Text style={styles.chargeButtonText}>
+            {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
+          </Text>
+        </Pressable>
+
+        <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
+          Minimum charge is $0.50
+        </Text>
+      </View>
     </SafeAreaView>
   );
 }
@@ -265,6 +266,7 @@ const createStyles = (colors: any) =>
     },
     scrollContent: {
       flexGrow: 1,
+      justifyContent: 'center',
     },
     header: {
       flexDirection: 'row',
