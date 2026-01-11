@@ -12,17 +12,23 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { colors } from '../lib/colors';
+import { colors, glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
+import { shadows } from '../lib/shadows';
 import { authService } from '../lib/api';
 import { Input } from '../components/Input';
+import { useTheme } from '../context/ThemeContext';
 
 export function ForgotPasswordScreen() {
+  const { isDark } = useTheme();
+  const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const styles = createStyles(glassColors);
 
   const handleSubmit = async () => {
     if (!email) {
@@ -198,7 +204,7 @@ export function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (glassColors: typeof glass.dark) => StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -211,12 +217,12 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 32,
-    paddingBottom: 52,
+    paddingBottom: 40,
   },
   contentWrapper: {
-    maxWidth: 384,
+    maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
   },
@@ -226,7 +232,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 14,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.medium,
     color: colors.gray400,
   },
   header: {
@@ -236,8 +242,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 72,
     height: 72,
-    borderRadius: 18,
-    backgroundColor: 'rgba(37, 99, 235, 0.2)',
+    borderRadius: 20,
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -247,34 +253,37 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: fonts.bold,
     color: colors.text,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: fonts.regular,
     color: colors.gray400,
-    marginTop: 4,
+    marginTop: 6,
     textAlign: 'center',
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: colors.gray800,
+    borderColor: glassColors.border,
+    backgroundColor: glassColors.backgroundElevated,
     padding: 24,
+    ...shadows.lg,
   },
   errorContainer: {
-    backgroundColor: colors.errorBg,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.2)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 20,
   },
   errorText: {
     fontSize: 14,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.medium,
     color: colors.error,
   },
   form: {
@@ -287,24 +296,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.medium,
     color: colors.gray300,
+    marginLeft: 4,
   },
   inputHint: {
     fontSize: 12,
     fontFamily: fonts.regular,
     color: colors.gray500,
     marginTop: 4,
+    marginLeft: 4,
   },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: 9999,
-    paddingVertical: 14,
+    borderRadius: 20,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
+    ...shadows.md,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 8,
+    shadowOpacity: 0.3,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -312,26 +321,26 @@ const styles = StyleSheet.create({
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: fonts.semiBold,
-    color: colors.text,
+    color: '#fff',
   },
   // Success styles
   successIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: 24,
   },
   successIconText: {
-    fontSize: 28,
+    fontSize: 32,
     color: colors.success,
   },
   successTitle: {
@@ -342,14 +351,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   successSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: fonts.regular,
     color: colors.gray400,
     textAlign: 'center',
   },
   successEmail: {
     fontSize: 16,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semiBold,
     color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
@@ -367,7 +376,7 @@ const styles = StyleSheet.create({
   },
   tryAgainText: {
     fontSize: 14,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.medium,
     color: colors.primary,
   },
 });

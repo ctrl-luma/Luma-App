@@ -16,15 +16,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { useTheme } from '../context/ThemeContext';
 import { transactionsApi } from '../lib/api';
+import { glass } from '../lib/colors';
+import { fonts } from '../lib/fonts';
+import { shadows } from '../lib/shadows';
 
 type RouteParams = {
   TransactionDetail: { id: string };
 };
 
 export function TransactionDetailScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'TransactionDetail'>>();
+  const glassColors = isDark ? glass.dark : glass.light;
   const queryClient = useQueryClient();
 
   const { id } = route.params;
@@ -68,7 +72,7 @@ export function TransactionDetailScreen() {
     }
   };
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, glassColors);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -331,8 +335,8 @@ export function TransactionDetailScreen() {
   );
 }
 
-const createStyles = (colors: any) =>
-  StyleSheet.create({
+const createStyles = (colors: any, glassColors: typeof glass.dark) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -341,20 +345,25 @@ const createStyles = (colors: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      height: 56,
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      backgroundColor: glassColors.backgroundSubtle,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: glassColors.borderSubtle,
     },
     backButton: {
       width: 44,
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     headerTitle: {
       fontSize: 18,
-      fontWeight: '600',
+      fontFamily: fonts.semiBold,
       color: colors.text,
     },
     content: {
@@ -555,7 +564,8 @@ const createStyles = (colors: any) =>
     },
     modalButtonPrimaryText: {
       fontSize: 16,
-      fontWeight: '500',
+      fontFamily: fonts.medium,
       color: colors.text,
     },
   });
+};

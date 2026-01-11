@@ -6,7 +6,10 @@
       "Bash(npx expo install expo-font @expo-google-fonts/inter expo-splash-screen)",
       "WebSearch",
       "WebFetch(domain:dribbble.com)",
-      "WebFetch(domain:mobbin.com)"
+      "WebFetch(domain:mobbin.com)",
+      "WebFetch(domain:docs.stripe.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(grep:*)"
     ]
   }
 }

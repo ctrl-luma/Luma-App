@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Animated,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,13 +18,92 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
 import { transactionsApi, Transaction } from '../lib/api';
+import { glass } from '../lib/colors';
+import { fonts } from '../lib/fonts';
+import { shadows } from '../lib/shadows';
 
-type FilterType = 'all' | 'succeeded' | 'refunded';
+type FilterType = 'all' | 'succeeded' | 'refunded' | 'failed';
+
+// Animated transaction item component
+function AnimatedTransactionItem({
+  item,
+  onPress,
+  colors,
+  styles,
+  getStatusColor,
+  getStatusLabel,
+  formatDate,
+}: {
+  item: Transaction;
+  onPress: () => void;
+  colors: any;
+  styles: any;
+  getStatusColor: (status: string) => string;
+  getStatusLabel: (status: string) => string;
+  formatDate: (timestamp: number) => string;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.97,
+      useNativeDriver: true,
+      tension: 150,
+      friction: 10,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 150,
+      friction: 8,
+    }).start();
+  }, [scaleAnim]);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View style={[styles.transactionItem, { transform: [{ scale: scaleAnim }] }]}>
+        <View style={styles.transactionLeft}>
+          <View
+            style={[
+              styles.statusIndicator,
+              { backgroundColor: getStatusColor(item.status) },
+            ]}
+          />
+          <View style={styles.transactionInfo}>
+            <Text style={styles.transactionAmount}>
+              ${(item.amount / 100).toFixed(2)}
+            </Text>
+            <Text style={styles.transactionMeta}>
+              {item.paymentMethod
+                ? `${item.paymentMethod.brand?.toUpperCase() || 'Card'} ****${item.paymentMethod.last4}`
+                : 'Card payment'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.transactionRight}>
+          <Text style={styles.transactionDate}>{formatDate(item.created)}</Text>
+          <Text style={[styles.statusBadge, { color: getStatusColor(item.status) }]}>
+            {getStatusLabel(item.status)}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export function TransactionsScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { selectedCatalog } = useCatalog();
   const navigation = useNavigation<any>();
+  const glassColors = isDark ? glass.dark : glass.light;
   const [filter, setFilter] = useState<FilterType>('all');
 
   const {
@@ -54,10 +135,11 @@ export function TransactionsScreen() {
     if (filter === 'all') return true;
     if (filter === 'succeeded') return t.status === 'succeeded';
     if (filter === 'refunded') return t.status === 'refunded' || t.status === 'partially_refunded';
+    if (filter === 'failed') return t.status === 'failed';
     return true;
   });
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, glassColors);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -102,37 +184,15 @@ export function TransactionsScreen() {
   };
 
   const renderTransaction = ({ item }: { item: Transaction }) => (
-    <TouchableOpacity
-      style={styles.transactionItem}
+    <AnimatedTransactionItem
+      item={item}
       onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.transactionLeft}>
-        <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: getStatusColor(item.status) },
-          ]}
-        />
-        <View style={styles.transactionInfo}>
-          <Text style={styles.transactionAmount}>
-            ${(item.amount / 100).toFixed(2)}
-          </Text>
-          <Text style={styles.transactionMeta}>
-            {item.paymentMethod
-              ? `${item.paymentMethod.brand?.toUpperCase() || 'Card'} ****${item.paymentMethod.last4}`
-              : 'Card payment'}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.transactionRight}>
-        <Text style={styles.transactionDate}>{formatDate(item.created)}</Text>
-        <Text style={[styles.statusBadge, { color: getStatusColor(item.status) }]}>
-          {getStatusLabel(item.status)}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-    </TouchableOpacity>
+      colors={colors}
+      styles={styles}
+      getStatusColor={getStatusColor}
+      getStatusLabel={getStatusLabel}
+      formatDate={formatDate}
+    />
   );
 
   const renderFooter = () => {
@@ -158,7 +218,7 @@ export function TransactionsScreen() {
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {(['all', 'succeeded', 'refunded'] as FilterType[]).map((f) => (
+        {(['all', 'succeeded', 'refunded', 'failed'] as FilterType[]).map((f) => (
           <TouchableOpacity
             key={f}
             style={[styles.filterTab, filter === f && styles.filterTabActive]}
@@ -177,8 +237,22 @@ export function TransactionsScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonList}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <View key={i} style={styles.skeletonItem}>
+              <View style={styles.skeletonLeft}>
+                <View style={styles.skeletonDot} />
+                <View style={styles.skeletonInfo}>
+                  <View style={[styles.skeletonBox, { width: 80, height: 20 }]} />
+                  <View style={[styles.skeletonBox, { width: 120, height: 14, marginTop: 6 }]} />
+                </View>
+              </View>
+              <View style={styles.skeletonRight}>
+                <View style={[styles.skeletonBox, { width: 50, height: 14 }]} />
+                <View style={[styles.skeletonBox, { width: 70, height: 12, marginTop: 6 }]} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : transactions.length === 0 ? (
         <View style={styles.centered}>
@@ -210,60 +284,68 @@ export function TransactionsScreen() {
   );
 }
 
-const createStyles = (colors: any) =>
-  StyleSheet.create({
+const createStyles = (colors: any, glassColors: typeof glass.dark) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
     header: {
-      paddingHorizontal: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
       height: 56,
-      justifyContent: 'center',
+      paddingHorizontal: 16,
+      backgroundColor: glassColors.backgroundSubtle,
+      borderBottomWidth: 1,
+      borderBottomColor: glassColors.borderSubtle,
     },
     title: {
-      fontSize: 20,
-      fontWeight: '600',
+      fontSize: 18,
+      fontFamily: fonts.semiBold,
       color: colors.text,
     },
     filterContainer: {
       flexDirection: 'row',
       paddingHorizontal: 16,
-      paddingBottom: 12,
+      paddingVertical: 12,
       gap: 8,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      backgroundColor: glassColors.backgroundSubtle,
     },
     filterTab: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: colors.surface,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 16,
+      backgroundColor: glassColors.backgroundElevated,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     filterTabActive: {
       backgroundColor: colors.primary,
+      borderColor: colors.primary,
     },
     filterText: {
       fontSize: 14,
-      fontWeight: '500',
+      fontFamily: fonts.medium,
       color: colors.textSecondary,
     },
     filterTextActive: {
       color: '#fff',
     },
     list: {
-      padding: 20,
-      paddingTop: 0,
+      padding: 16,
+      paddingTop: 12,
+      paddingBottom: 20,
     },
     transactionItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.card,
-      borderRadius: 12,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
       borderWidth: 1,
-      borderColor: colors.cardBorder,
-      padding: 14,
-      marginBottom: 10,
+      borderColor: glassColors.border,
+      padding: 16,
+      marginBottom: 12,
+      ...shadows.sm,
     },
     transactionLeft: {
       flexDirection: 'row',
@@ -271,36 +353,38 @@ const createStyles = (colors: any) =>
       flex: 1,
     },
     statusIndicator: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      marginRight: 12,
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      marginRight: 14,
     },
     transactionInfo: {
       flex: 1,
     },
     transactionAmount: {
-      fontSize: 17,
-      fontWeight: '600',
+      fontSize: 18,
+      fontFamily: fonts.semiBold,
       color: colors.text,
-      marginBottom: 2,
+      marginBottom: 4,
     },
     transactionMeta: {
       fontSize: 13,
+      fontFamily: fonts.regular,
       color: colors.textMuted,
     },
     transactionRight: {
       alignItems: 'flex-end',
-      marginRight: 8,
+      marginRight: 10,
     },
     transactionDate: {
       fontSize: 13,
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: 2,
+      marginBottom: 4,
     },
     statusBadge: {
       fontSize: 12,
-      fontWeight: '500',
+      fontFamily: fonts.medium,
     },
     centered: {
       flex: 1,
@@ -309,14 +393,15 @@ const createStyles = (colors: any) =>
       paddingHorizontal: 40,
     },
     emptyTitle: {
-      fontSize: 20,
-      fontWeight: '600',
+      fontSize: 22,
+      fontFamily: fonts.bold,
       color: colors.text,
       marginTop: 16,
       marginBottom: 8,
     },
     emptyText: {
       fontSize: 15,
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
     },
@@ -324,4 +409,43 @@ const createStyles = (colors: any) =>
       paddingVertical: 20,
       alignItems: 'center',
     },
+    // Skeleton styles
+    skeletonList: {
+      padding: 16,
+      paddingTop: 12,
+    },
+    skeletonItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      padding: 16,
+      marginBottom: 12,
+    },
+    skeletonLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    skeletonDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: glassColors.background,
+      marginRight: 14,
+    },
+    skeletonInfo: {
+      flex: 1,
+    },
+    skeletonRight: {
+      alignItems: 'flex-end',
+    },
+    skeletonBox: {
+      backgroundColor: glassColors.background,
+      borderRadius: 6,
+    },
   });
+};

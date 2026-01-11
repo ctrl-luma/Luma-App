@@ -16,12 +16,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { Input } from '../components/Input';
-import { colors } from '../lib/colors';
+import { colors, glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
+import { shadows } from '../lib/shadows';
 import { config } from '../lib/config';
 
 export function LoginScreen() {
+  const { isDark } = useTheme();
+  const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation<any>();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
@@ -29,6 +33,8 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const styles = createStyles(glassColors);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -79,8 +85,8 @@ export function LoginScreen() {
                 source={require('../../assets/icon.png')}
                 style={styles.logo}
               />
-              <Text style={styles.title}>Welcome back</Text>
-              <Text style={styles.subtitle}>Sign in to start taking payments</Text>
+              <Text style={styles.title}>Sign In</Text>
+              <Text style={styles.subtitle}>Access your account to start taking payments</Text>
             </View>
 
             {/* Card */}
@@ -175,7 +181,7 @@ export function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (glassColors: typeof glass.dark) => StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -188,50 +194,55 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 68,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
     marginBottom: 32,
   },
   logo: {
-    width: 128,
-    height: 128,
-    borderRadius: 24,
-    marginBottom: -2,
+    width: 120,
+    height: 120,
+    borderRadius: 28,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: fonts.bold,
     color: colors.text,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: fonts.regular,
     color: colors.gray400,
-    marginTop: 4,
+    marginTop: 6,
+    textAlign: 'center',
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: colors.gray800,
+    borderColor: glassColors.border,
     padding: 24,
-    maxWidth: 384,
+    maxWidth: 400,
     width: '100%',
     alignSelf: 'center',
+    backgroundColor: glassColors.backgroundElevated,
+    ...shadows.lg,
   },
   errorContainer: {
-    backgroundColor: colors.errorBg,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.2)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 20,
   },
   errorText: {
     fontSize: 14,
+    fontFamily: fonts.medium,
     color: colors.error,
   },
   form: {
@@ -244,6 +255,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.medium,
     color: colors.gray300,
+    marginLeft: 4,
   },
   showHideButton: {
     position: 'absolute',
@@ -256,20 +268,18 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     fontSize: 14,
-    fontFamily: fonts.regular,
+    fontFamily: fonts.medium,
     color: colors.primary,
   },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: 9999,
-    paddingVertical: 14,
+    borderRadius: 20,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
+    ...shadows.md,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 8,
+    shadowOpacity: 0.3,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -277,17 +287,17 @@ const styles = StyleSheet.create({
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: fonts.semiBold,
-    color: colors.text,
+    color: '#fff',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 28,
   },
   footerText: {
     fontSize: 14,
@@ -296,7 +306,8 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 14,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semiBold,
     color: colors.primary,
   },
 });
+

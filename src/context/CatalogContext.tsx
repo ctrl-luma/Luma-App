@@ -28,15 +28,15 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasFetched, setHasFetched] = useState(false);
 
-  // Load cached catalog and stop loading immediately if we have cached data
-  const loadCachedCatalogAndFinish = useCallback(async () => {
+  // Load cached catalog (for selectedCatalog) - but don't stop loading until catalogs list is fetched
+  const loadCachedCatalog = useCallback(async () => {
     try {
       const savedCatalogJson = await AsyncStorage.getItem(CATALOG_STORAGE_KEY);
       if (savedCatalogJson) {
         const savedCatalog = JSON.parse(savedCatalogJson) as Catalog;
         setSelectedCatalogState(savedCatalog);
-        // We have cached data, stop loading immediately
-        setIsLoading(false);
+        // Return true to indicate we have a cached catalog, but keep isLoading=true
+        // until the full catalogs list is fetched (so MenuScreen doesn't show "no catalogs" prematurely)
         return true;
       }
     } catch (error) {
@@ -80,10 +80,8 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
       console.error('Failed to fetch catalogs:', error);
       // Keep using cached catalog if API fails
     } finally {
-      // Only set loading false here if we didn't have cached data
-      if (!hadCachedData) {
-        setIsLoading(false);
-      }
+      // Always set loading false after fetch completes (or fails)
+      setIsLoading(false);
       setHasFetched(true);
     }
   }, []);
@@ -91,15 +89,18 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
   // Load cached catalog immediately when authenticated, then validate with API
   useEffect(() => {
     if (!authLoading && isAuthenticated && !hasFetched) {
-      // First load from cache (instant), then fetch from API in background
-      loadCachedCatalogAndFinish().then((hadCachedData) => {
+      // Ensure loading is true when starting fetch
+      setIsLoading(true);
+      // First load from cache (instant), then fetch from API
+      // Note: isLoading stays true until catalogs list is fetched
+      loadCachedCatalog().then((hadCachedData) => {
         fetchAndValidateCatalogs(hadCachedData);
       });
     } else if (!authLoading && !isAuthenticated) {
       // Not authenticated, stop loading
       setIsLoading(false);
     }
-  }, [authLoading, isAuthenticated, hasFetched, loadCachedCatalogAndFinish, fetchAndValidateCatalogs]);
+  }, [authLoading, isAuthenticated, hasFetched, loadCachedCatalog, fetchAndValidateCatalogs]);
 
   // Reset when user logs out
   useEffect(() => {
@@ -155,15 +156,28 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
     }
   }, [isAuthenticated, refreshCatalogs]);
 
-  const handleCatalogDelete = useCallback((data?: { catalogId?: string }) => {
+  const handleCatalogDelete = useCallback(async (data?: { catalogId?: string }) => {
     if (isAuthenticated) {
-      // If the deleted catalog is currently selected, we need to handle it
-      if (data?.catalogId && selectedCatalog?.id === data.catalogId) {
-        clearCatalog();
+      // Refresh catalogs first to get the updated list
+      try {
+        const fetchedCatalogs = await catalogsApi.list();
+        setCatalogs(fetchedCatalogs);
+
+        // If the deleted catalog was selected, auto-select the first remaining one
+        if (data?.catalogId && selectedCatalog?.id === data.catalogId) {
+          if (fetchedCatalogs.length > 0) {
+            setSelectedCatalogState(fetchedCatalogs[0]);
+            await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(fetchedCatalogs[0]));
+          } else {
+            setSelectedCatalogState(null);
+            await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to handle catalog deletion:', error);
       }
-      refreshCatalogs();
     }
-  }, [isAuthenticated, refreshCatalogs, selectedCatalog, clearCatalog]);
+  }, [isAuthenticated, selectedCatalog]);
 
   useSocketEvent(SocketEvents.CATALOG_UPDATED, handleCatalogUpdate);
   useSocketEvent(SocketEvents.CATALOG_CREATED, handleCatalogUpdate);

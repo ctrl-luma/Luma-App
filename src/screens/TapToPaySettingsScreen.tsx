@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
@@ -19,6 +21,8 @@ import { catalogsApi } from '../lib/api';
 import { Toggle } from '../components/Toggle';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { fonts } from '../lib/fonts';
+import { glass } from '../lib/colors';
+import { shadows } from '../lib/shadows';
 
 interface CatalogSettings {
   showTipScreen: boolean;
@@ -42,6 +46,9 @@ export function TapToPaySettingsScreen() {
   const [showDiscardModal, setShowDiscardModal] = useState(false);
   const [editingTipIndex, setEditingTipIndex] = useState<number | null>(null);
   const [editingTipValue, setEditingTipValue] = useState('');
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const toastTranslateY = useRef(new Animated.Value(-20)).current;
 
   const originalSettings: CatalogSettings = useMemo(() => ({
     showTipScreen: selectedCatalog?.showTipScreen ?? true,
@@ -94,6 +101,28 @@ export function TapToPaySettingsScreen() {
     }
   }, [selectedCatalog]);
 
+  const showToastAndNavigate = () => {
+    setShowSuccessToast(true);
+    Animated.parallel([
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(toastTranslateY, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Wait a moment then navigate back
+      setTimeout(() => {
+        isDiscardingRef.current = true; // Prevent discard modal
+        navigation.goBack();
+      }, 1200);
+    });
+  };
+
   const saveSettings = async () => {
     if (!selectedCatalog?.id || !hasChanges) return;
 
@@ -106,10 +135,10 @@ export function TapToPaySettingsScreen() {
         allowCustomTip: settings.allowCustomTip,
       });
       await refreshCatalogs();
-      Alert.alert('Success', 'Settings saved successfully.');
+      showToastAndNavigate();
     } catch (error) {
       console.error('Failed to save settings:', error);
-      Alert.alert('Error', 'Failed to save settings.');
+      Alert.alert('Error', 'Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -159,7 +188,8 @@ export function TapToPaySettingsScreen() {
     setEditingTipValue('');
   };
 
-  const styles = createStyles(colors, isDark);
+  const glassColors = isDark ? glass.dark : glass.light;
+  const styles = createStyles(colors, glassColors);
 
   if (!selectedCatalog) {
     return (
@@ -168,7 +198,7 @@ export function TapToPaySettingsScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Checkout Settings</Text>
+          <Text style={styles.headerTitle}>Payment Settings</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.emptyContainer}>
@@ -186,7 +216,7 @@ export function TapToPaySettingsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Checkout Settings</Text>
+        <Text style={styles.headerTitle}>Payment Settings</Text>
         <TouchableOpacity
           style={styles.saveButtonContainer}
           onPress={saveSettings}
@@ -333,12 +363,37 @@ export function TapToPaySettingsScreen() {
         onConfirm={handleDiscardConfirm}
         onCancel={() => setShowDiscardModal(false)}
       />
+
+      {/* Success Toast */}
+      {showSuccessToast && (
+        <Animated.View
+          style={[
+            styles.toastContainer,
+            {
+              opacity: toastOpacity,
+              transform: [{ translateY: toastTranslateY }],
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['#1a3a2a', '#0f2920', '#0a1f18']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.toast}
+          >
+            <View style={styles.toastIcon}>
+              <Ionicons name="checkmark" size={18} color="#4ade80" />
+            </View>
+            <Text style={styles.toastText}>Settings saved</Text>
+          </LinearGradient>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
 
-const createStyles = (colors: any, isDark: boolean) =>
-  StyleSheet.create({
+const createStyles = (colors: any, glassColors: typeof glass.dark) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -347,36 +402,40 @@ const createStyles = (colors: any, isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      height: 56,
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      backgroundColor: glassColors.backgroundSubtle,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: glassColors.borderSubtle,
     },
     backButton: {
-      width: 50,
-      height: 40,
-      alignItems: 'flex-start',
+      width: 44,
+      height: 44,
+      alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     headerTitle: {
-      flex: 1,
       fontSize: 18,
-      fontWeight: '600',
       fontFamily: fonts.semiBold,
       color: colors.text,
-      textAlign: 'center',
     },
     headerRight: {
       width: 50,
     },
     saveButtonContainer: {
-      width: 50,
-      alignItems: 'flex-end',
-      justifyContent: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     saveText: {
-      fontSize: 16,
-      fontWeight: '600',
+      fontSize: 15,
       fontFamily: fonts.semiBold,
       color: colors.primary,
     },
@@ -391,7 +450,6 @@ const createStyles = (colors: any, isDark: boolean) =>
     },
     emptyText: {
       fontSize: 18,
-      fontWeight: '600',
       fontFamily: fonts.semiBold,
       color: colors.text,
       marginTop: 16,
@@ -412,20 +470,24 @@ const createStyles = (colors: any, isDark: boolean) =>
       gap: 10,
       padding: 16,
       backgroundColor: colors.primary + '15',
-      borderRadius: 12,
+      borderRadius: 16,
       marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
     },
     catalogName: {
       fontSize: 16,
-      fontWeight: '600',
       fontFamily: fonts.semiBold,
       color: colors.text,
     },
     card: {
-      backgroundColor: colors.card,
-      borderRadius: 16,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
       marginBottom: 16,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      ...shadows.sm,
     },
     cardHeader: {
       flexDirection: 'row',
@@ -433,7 +495,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       padding: 16,
       paddingBottom: 12,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: glassColors.borderSubtle,
     },
     cardHeaderIcon: {
       width: 36,
@@ -446,7 +508,6 @@ const createStyles = (colors: any, isDark: boolean) =>
     },
     cardTitle: {
       fontSize: 17,
-      fontWeight: '600',
       fontFamily: fonts.semiBold,
       color: colors.text,
     },
@@ -462,7 +523,6 @@ const createStyles = (colors: any, isDark: boolean) =>
     },
     settingLabel: {
       fontSize: 16,
-      fontWeight: '500',
       fontFamily: fonts.medium,
       color: colors.text,
       marginBottom: 2,
@@ -474,16 +534,15 @@ const createStyles = (colors: any, isDark: boolean) =>
     },
     settingRowBorder: {
       borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopColor: glassColors.borderSubtle,
     },
     tipPercentagesSection: {
       padding: 16,
       borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopColor: glassColors.borderSubtle,
     },
     tipPercentagesLabel: {
       fontSize: 14,
-      fontWeight: '500',
       fontFamily: fonts.medium,
       color: colors.text,
       marginBottom: 4,
@@ -502,23 +561,22 @@ const createStyles = (colors: any, isDark: boolean) =>
     tipChip: {
       paddingHorizontal: 16,
       paddingVertical: 10,
-      backgroundColor: colors.inputBackground,
-      borderRadius: 10,
+      backgroundColor: glassColors.background,
+      borderRadius: 12,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: glassColors.border,
     },
     tipChipEditing: {
       borderColor: colors.primary,
+      borderWidth: 2,
     },
     tipChipText: {
       fontSize: 15,
-      fontWeight: '600',
       fontFamily: fonts.semiBold,
       color: colors.text,
     },
     tipChipInput: {
       fontSize: 15,
-      fontWeight: '600',
       fontFamily: fonts.semiBold,
       color: colors.text,
       minWidth: 30,
@@ -529,7 +587,7 @@ const createStyles = (colors: any, isDark: boolean) =>
       paddingHorizontal: 14,
       paddingVertical: 10,
       backgroundColor: colors.primary + '15',
-      borderRadius: 10,
+      borderRadius: 12,
       borderWidth: 1,
       borderColor: colors.primary + '30',
       borderStyle: 'dashed',
@@ -538,9 +596,11 @@ const createStyles = (colors: any, isDark: boolean) =>
       flexDirection: 'row',
       alignItems: 'flex-start',
       padding: 16,
-      backgroundColor: colors.card,
-      borderRadius: 12,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 16,
       gap: 10,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     infoNoteText: {
       flex: 1,
@@ -549,4 +609,37 @@ const createStyles = (colors: any, isDark: boolean) =>
       color: colors.textMuted,
       lineHeight: 18,
     },
+    toastContainer: {
+      position: 'absolute',
+      top: 100,
+      left: 20,
+      right: 20,
+      borderRadius: 16,
+      overflow: 'hidden',
+      ...shadows.lg,
+    },
+    toast: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(74, 222, 128, 0.2)',
+      borderRadius: 16,
+    },
+    toastIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: 'rgba(74, 222, 128, 0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    toastText: {
+      fontSize: 16,
+      fontFamily: fonts.semiBold,
+      color: '#4ade80',
+    },
   });
+};

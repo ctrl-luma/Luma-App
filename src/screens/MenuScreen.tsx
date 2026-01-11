@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, memo } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   Animated,
   Pressable,
   useWindowDimensions,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -22,9 +23,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { productsApi, Product, categoriesApi, Category, CatalogLayoutType } from '../lib/api';
 import { openVendorDashboard } from '../lib/auth-handoff';
+import { SetupRequired } from '../components/SetupRequired';
+import { glass } from '../lib/colors';
+import { shadows } from '../lib/shadows';
 
 const isWeb = Platform.OS === 'web';
 
@@ -69,9 +74,10 @@ interface CategoryPillProps {
   isActive: boolean;
   onPress: () => void;
   colors: any;
+  glassColors: typeof glass.dark;
 }
 
-function CategoryPill({ label, count, isActive, onPress, colors }: CategoryPillProps) {
+function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: CategoryPillProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -84,8 +90,8 @@ function CategoryPill({ label, count, isActive, onPress, colors }: CategoryPillP
   const handlePressOut = () => {
     Animated.spring(scaleAnim, {
       toValue: 1,
-      friction: 3,
-      tension: 100,
+      friction: 5,
+      tension: 150,
       useNativeDriver: true,
     }).start();
   };
@@ -99,46 +105,46 @@ function CategoryPill({ label, count, isActive, onPress, colors }: CategoryPillP
       alignItems: 'center',
       paddingHorizontal: 18,
       paddingVertical: 12,
-      borderRadius: 24,
-      backgroundColor: isActive ? colors.primary : colors.card,
+      borderRadius: 20,
+      backgroundColor: isActive ? colors.primary : glassColors.backgroundElevated,
       borderWidth: 1,
-      borderColor: isActive ? colors.primary : colors.cardBorder,
+      borderColor: isActive ? colors.primary : glassColors.border,
       ...Platform.select({
         ios: {
           shadowColor: isActive ? colors.primary : '#000',
-          shadowOffset: { width: 0, height: isActive ? 4 : 2 },
-          shadowOpacity: isActive ? 0.4 : 0.15,
-          shadowRadius: isActive ? 12 : 6,
+          shadowOffset: { width: 0, height: isActive ? 0 : 4 },
+          shadowOpacity: isActive ? 0.4 : 0.2,
+          shadowRadius: isActive ? 12 : 8,
         },
         android: {
-          elevation: isActive ? 8 : 3,
+          elevation: isActive ? 8 : 4,
         },
         web: {
           boxShadow: isActive
-            ? `0 4px 20px ${colors.primary}50`
-            : '0 2px 8px rgba(0,0,0,0.2)',
+            ? `0 0 20px ${colors.primary}50`
+            : '0 4px 12px rgba(0,0,0,0.25)',
         },
       }),
     },
     label: {
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: isActive ? '700' : '500',
-      color: isActive ? '#fff' : colors.textSecondary,
-      letterSpacing: 0.3,
+      color: isActive ? '#fff' : colors.text,
+      letterSpacing: 0.2,
     },
     countBadge: {
       marginLeft: 8,
       paddingHorizontal: 8,
       paddingVertical: 2,
       borderRadius: 10,
-      backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : colors.surface,
+      backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : glassColors.background,
       minWidth: 24,
       alignItems: 'center',
     },
     countText: {
       fontSize: 12,
       fontWeight: '600',
-      color: isActive ? '#fff' : colors.textMuted,
+      color: isActive ? '#fff' : colors.textSecondary,
     },
   });
 
@@ -161,13 +167,57 @@ function CategoryPill({ label, count, isActive, onPress, colors }: CategoryPillP
   );
 }
 
+// Animated pressable wrapper for product cards
+const AnimatedPressable = memo(function AnimatedPressable({
+  children,
+  onPress,
+  style,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  style?: any;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.96,
+      useNativeDriver: true,
+      tension: 150,
+      friction: 10,
+    }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 150,
+      friction: 8,
+    }).start();
+  }, [scaleAnim]);
+
+  return (
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <Animated.View style={[style, { transform: [{ scale: scaleAnim }] }]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+});
+
 export function MenuScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
-  const { selectedCatalog } = useCatalog();
-  const { addItem, getItemQuantity, itemCount } = useCart();
+  const glassColors = isDark ? glass.dark : glass.light;
+  const { isLoading: authLoading } = useAuth();
+  const { selectedCatalog, catalogs, isLoading: catalogsLoading } = useCatalog();
+  const { addItem, getItemQuantity, itemCount, subtotal } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
   const { width: screenWidth } = useWindowDimensions();
 
   const {
@@ -211,15 +261,27 @@ export function MenuScreen() {
   useSocketEvent(SocketEvents.CATEGORY_UPDATED, handleCategoriesUpdate);
   useSocketEvent(SocketEvents.CATEGORY_DELETED, handleCategoriesUpdate);
 
-  // Filter active products and by category
+  // Filter active products by category and search query
   const filteredProducts = useMemo(() => {
     if (!products) return [];
     let filtered = products.filter((p) => p.isActive);
+
+    // Filter by category
     if (selectedCategory) {
       filtered = filtered.filter((p) => p.categoryId === selectedCategory);
     }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((p) =>
+        p.name.toLowerCase().includes(query) ||
+        (p.description && p.description.toLowerCase().includes(query))
+      );
+    }
+
     return filtered;
-  }, [products, selectedCategory]);
+  }, [products, selectedCategory, searchQuery]);
 
   // Get categories that have products, sorted by sortOrder
   const activeCategories = useMemo(() => {
@@ -263,7 +325,7 @@ export function MenuScreen() {
     addItem(product);
   };
 
-  const styles = createStyles(colors, cardWidth, currentLayoutType);
+  const styles = createStyles(colors, glassColors, cardWidth, currentLayoutType);
 
   // Render product card based on layout type
   const renderProduct = ({ item }: { item: Product }) => {
@@ -272,10 +334,9 @@ export function MenuScreen() {
     // List layout - horizontal card with image on left
     if (currentLayoutType === 'list') {
       return (
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.listCard}
           onPress={() => handleAddToCart(item)}
-          activeOpacity={0.8}
         >
           <View style={styles.listImageContainer}>
             {item.imageUrl ? (
@@ -310,17 +371,16 @@ export function MenuScreen() {
           >
             <Ionicons name="add" size={22} color="#fff" />
           </TouchableOpacity>
-        </TouchableOpacity>
+        </AnimatedPressable>
       );
     }
 
     // Large grid layout - single column large tiles
     if (currentLayoutType === 'large-grid') {
       return (
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.largeCard}
           onPress={() => handleAddToCart(item)}
-          activeOpacity={0.8}
         >
           <View style={styles.largeImageContainer}>
             {item.imageUrl ? (
@@ -359,17 +419,16 @@ export function MenuScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
+        </AnimatedPressable>
       );
     }
 
     // Compact layout - minimal text-based list
     if (currentLayoutType === 'compact') {
       return (
-        <TouchableOpacity
+        <AnimatedPressable
           style={styles.compactCard}
           onPress={() => handleAddToCart(item)}
-          activeOpacity={0.8}
         >
           <View style={styles.compactInfo}>
             <Text style={styles.compactName} numberOfLines={1}>
@@ -390,16 +449,15 @@ export function MenuScreen() {
           >
             <Ionicons name="add" size={18} color="#fff" />
           </TouchableOpacity>
-        </TouchableOpacity>
+        </AnimatedPressable>
       );
     }
 
     // Default grid layout
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         style={styles.productCard}
         onPress={() => handleAddToCart(item)}
-        activeOpacity={0.8}
       >
         <View style={styles.productImageContainer}>
           {item.imageUrl ? (
@@ -429,9 +487,50 @@ export function MenuScreen() {
         >
           <Ionicons name="add" size={20} color="#fff" />
         </TouchableOpacity>
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   };
+
+  // Show skeleton loading while auth or catalogs are being fetched
+  if (authLoading || catalogsLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Skeleton Header */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={[styles.skeletonBox, { width: 160, height: 24, borderRadius: 6 }]} />
+            <View style={[styles.skeletonBox, { width: 100, height: 14, borderRadius: 4, marginTop: 6 }]} />
+          </View>
+          <View style={[styles.skeletonBox, { width: 48, height: 48, borderRadius: 16 }]} />
+        </View>
+
+        {/* Skeleton Category Pills */}
+        <View style={styles.categorySection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContainer}>
+            {[80, 100, 90, 85].map((width, i) => (
+              <View key={i} style={[styles.skeletonBox, { width, height: 44, borderRadius: 20, marginRight: 10 }]} />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Skeleton Product Grid */}
+        <View style={[styles.productList, { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }]}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <View key={i} style={[styles.skeletonBox, { width: (screenWidth - GRID_PADDING * 2 - GRID_GAP) / 2, height: 200, borderRadius: 20 }]} />
+          ))}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show setup guidance if no catalogs exist
+  if (catalogs.length === 0) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <SetupRequired type="no-catalogs" />
+      </SafeAreaView>
+    );
+  }
 
   if (!selectedCatalog) {
     return (
@@ -445,9 +544,32 @@ export function MenuScreen() {
 
   if (productsLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header with catalog name */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
+            {selectedCatalog.location && (
+              <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
+            )}
+          </View>
+          <View style={[styles.skeletonBox, { width: 48, height: 48, borderRadius: 16 }]} />
+        </View>
+
+        {/* Skeleton Category Pills */}
+        <View style={styles.categorySection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryContainer}>
+            {[80, 100, 90, 85].map((width, i) => (
+              <View key={i} style={[styles.skeletonBox, { width, height: 44, borderRadius: 20, marginRight: 10 }]} />
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Skeleton Product Grid */}
+        <View style={[styles.productList, { flexDirection: 'row', flexWrap: 'wrap', gap: GRID_GAP }]}>
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <View key={i} style={[styles.skeletonBox, { width: (screenWidth - GRID_PADDING * 2 - GRID_GAP) / 2, height: 200, borderRadius: 20 }]} />
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -455,22 +577,81 @@ export function MenuScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* Header with glass effect */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.cartButton}
-          onPress={() => navigation.navigate('Cart')}
-        >
-          <Ionicons name="cart-outline" size={20} color={colors.text} />
-          {itemCount > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.cartBadgeText}>{itemCount}</Text>
+        {isSearching ? (
+          // Search mode - show search input
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} />
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              placeholder="Search products..."
+              placeholderTextColor={colors.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.cancelSearchButton}
+              onPress={() => {
+                setIsSearching(false);
+                setSearchQuery('');
+              }}
+            >
+              <Text style={styles.cancelSearchText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // Normal mode - show catalog name and buttons
+          <>
+            <View style={styles.headerLeft}>
+              <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
+              {selectedCatalog.location && (
+                <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
+              )}
             </View>
-          )}
-        </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.searchButton}
+                onPress={() => {
+                  setIsSearching(true);
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="search" size={20} color={colors.text} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.cartButton, itemCount === 0 && styles.cartButtonDisabled]}
+                onPress={() => {
+                  if (itemCount > 0) {
+                    navigation.navigate('Checkout', { total: subtotal });
+                  }
+                }}
+                activeOpacity={itemCount > 0 ? 0.8 : 1}
+              >
+                <Ionicons
+                  name="cart-outline"
+                  size={22}
+                  color={itemCount > 0 ? colors.text : colors.textMuted}
+                />
+                {itemCount > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{itemCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </View>
 
       {/* Category Pills */}
@@ -488,6 +669,7 @@ export function MenuScreen() {
               isActive={!selectedCategory}
               onPress={() => setSelectedCategory(null)}
               colors={colors}
+              glassColors={glassColors}
             />
             {activeCategories.map((category) => (
               <CategoryPill
@@ -497,28 +679,65 @@ export function MenuScreen() {
                 isActive={selectedCategory === category.id}
                 onPress={() => setSelectedCategory(category.id)}
                 colors={colors}
+                glassColors={glassColors}
               />
             ))}
           </ScrollView>
         </View>
       )}
 
+      {/* Search Results Count */}
+      {searchQuery.trim() && (
+        <View style={styles.searchResultsBar}>
+          <Text style={styles.searchResultsText}>
+            {filteredProducts.length === 0
+              ? 'No results'
+              : `${filteredProducts.length} result${filteredProducts.length === 1 ? '' : 's'}`}
+            {' for "'}
+            <Text style={styles.searchQueryText}>{searchQuery}</Text>
+            {'"'}
+          </Text>
+        </View>
+      )}
+
       {/* Products Grid/List */}
       {filteredProducts.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No products available</Text>
-          <Text style={styles.emptySubtext}>
-            Add products to this catalog in the Vendor Portal
-          </Text>
-          <TouchableOpacity
-            style={[styles.vendorPortalButton, { backgroundColor: colors.primary }]}
-            onPress={openVendorDashboard}
-          >
-            <Ionicons name="storefront" size={18} color="#fff" />
-            <Text style={styles.vendorPortalButtonText}>Open Vendor Portal</Text>
-            <Ionicons name="open-outline" size={16} color="#fff" />
-          </TouchableOpacity>
+          {searchQuery.trim() ? (
+            // No search results
+            <>
+              <Ionicons name="search-outline" size={64} color={colors.textMuted} />
+              <Text style={styles.emptyTitle}>No products found</Text>
+              <Text style={styles.emptySubtext}>
+                Try a different search term
+              </Text>
+              <TouchableOpacity
+                style={[styles.clearSearchButton, { borderColor: colors.primary }]}
+                onPress={() => setSearchQuery('')}
+              >
+                <Text style={[styles.clearSearchButtonText, { color: colors.primary }]}>
+                  Clear Search
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            // No products in catalog
+            <>
+              <Ionicons name="cube-outline" size={64} color={colors.textMuted} />
+              <Text style={styles.emptyTitle}>No products available</Text>
+              <Text style={styles.emptySubtext}>
+                Add products to this catalog in the Vendor Portal
+              </Text>
+              <TouchableOpacity
+                style={[styles.vendorPortalButton, { backgroundColor: colors.primary }]}
+                onPress={openVendorDashboard}
+              >
+                <Ionicons name="storefront" size={18} color="#fff" />
+                <Text style={styles.vendorPortalButtonText}>Open Vendor Portal</Text>
+                <Ionicons name="open-outline" size={16} color="#fff" />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       ) : (
         <FlatList
@@ -542,8 +761,8 @@ export function MenuScreen() {
   );
 }
 
-const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutType) =>
-  StyleSheet.create({
+const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: number, layoutType: CatalogLayoutType) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -552,78 +771,138 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      height: 56,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      backgroundColor: glassColors.backgroundSubtle,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: glassColors.borderSubtle,
     },
     headerLeft: {
       flex: 1,
     },
     catalogName: {
-      fontSize: 20,
-      fontWeight: '600',
+      fontSize: 22,
+      fontWeight: '700',
       color: colors.text,
+      letterSpacing: -0.3,
     },
-    cartButton: {
+    catalogLocation: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    headerButtons: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    searchButton: {
       width: 44,
       height: 44,
-      borderRadius: 22,
-      backgroundColor: colors.surface,
+      borderRadius: 14,
+      backgroundColor: glassColors.backgroundElevated,
+      borderWidth: 1,
+      borderColor: glassColors.border,
       alignItems: 'center',
       justifyContent: 'center',
+      ...shadows.sm,
+    },
+    searchContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      paddingHorizontal: 12,
+      height: 44,
+      gap: 8,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+      paddingVertical: 8,
+    },
+    cancelSearchButton: {
+      paddingLeft: 8,
+    },
+    cancelSearchText: {
+      fontSize: 15,
+      fontWeight: '500',
+      color: colors.primary,
+    },
+    cartButton: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      backgroundColor: glassColors.backgroundElevated,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.sm,
+    },
+    cartButtonDisabled: {
+      opacity: 0.5,
     },
     cartBadge: {
       position: 'absolute',
-      top: -4,
-      right: -4,
+      top: -6,
+      right: -6,
       backgroundColor: colors.primary,
-      borderRadius: 10,
-      minWidth: 20,
-      height: 20,
+      borderRadius: 12,
+      minWidth: 22,
+      height: 22,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 6,
+      borderWidth: 2,
+      borderColor: colors.background,
+      ...shadows.sm,
     },
     cartBadgeText: {
       color: '#fff',
-      fontSize: 12,
-      fontWeight: '600',
+      fontSize: 11,
+      fontWeight: '700',
     },
     categorySection: {
-      paddingVertical: 8,
-      marginBottom: 8,
+      paddingVertical: 4,
+      marginBottom: 4,
     },
     categoryScroll: {
       flexGrow: 0,
     },
     categoryContainer: {
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,
       paddingVertical: 8,
     },
     productList: {
       paddingHorizontal: GRID_PADDING,
-      paddingTop: 16,
-      paddingBottom: 20,
+      paddingTop: 12,
+      paddingBottom: 120, // Extra padding for floating tab bar
     },
     productRow: {
       justifyContent: 'flex-start',
       gap: GRID_GAP,
     },
-    // Grid layout styles
+    // Grid layout styles with glass effect
     productCard: {
       width: cardWidth,
-      backgroundColor: colors.card,
-      borderRadius: 16,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
       borderWidth: 1,
-      borderColor: colors.cardBorder,
+      borderColor: glassColors.border,
       marginBottom: GRID_GAP,
       overflow: 'hidden',
+      ...shadows.md,
     },
     productImageContainer: {
       width: '100%',
       aspectRatio: 1,
-      backgroundColor: colors.surface,
+      backgroundColor: glassColors.background,
     },
     productImage: {
       width: '100%',
@@ -635,67 +914,74 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       height: '100%',
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: glassColors.backgroundSubtle,
     },
     quantityBadge: {
       position: 'absolute',
-      top: 8,
-      right: 8,
+      top: 10,
+      right: 10,
       backgroundColor: colors.primary,
-      borderRadius: 12,
-      minWidth: 24,
-      height: 24,
+      borderRadius: 14,
+      minWidth: 28,
+      height: 28,
       alignItems: 'center',
       justifyContent: 'center',
       paddingHorizontal: 8,
+      borderWidth: 2,
+      borderColor: 'rgba(0,0,0,0.2)',
+      ...shadows.sm,
     },
     quantityText: {
       color: '#fff',
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '700',
     },
     productInfo: {
-      padding: 12,
+      padding: 14,
     },
     productName: {
       fontSize: 14,
       fontWeight: '600',
       color: colors.text,
-      marginBottom: 4,
+      marginBottom: 6,
+      lineHeight: 18,
     },
     productPrice: {
-      fontSize: 16,
+      fontSize: 17,
       fontWeight: '700',
       color: colors.primary,
     },
     addButton: {
       position: 'absolute',
-      bottom: 12,
-      right: 12,
-      width: 32,
-      height: 32,
-      borderRadius: 16,
+      bottom: 14,
+      right: 14,
+      width: 36,
+      height: 36,
+      borderRadius: 12,
       backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
+      ...shadows.sm,
     },
-    // List layout styles
+    // List layout styles with glass effect
     listCard: {
       width: cardWidth,
       flexDirection: 'row',
-      backgroundColor: colors.card,
-      borderRadius: 16,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
       borderWidth: 1,
-      borderColor: colors.cardBorder,
+      borderColor: glassColors.border,
       marginBottom: 12,
       overflow: 'hidden',
       alignItems: 'center',
-      padding: 12,
+      padding: 14,
+      ...shadows.sm,
     },
     listImageContainer: {
       width: 80,
       height: 80,
-      borderRadius: 12,
-      backgroundColor: colors.surface,
+      borderRadius: 14,
+      backgroundColor: glassColors.background,
       overflow: 'hidden',
     },
     listImage: {
@@ -750,20 +1036,21 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       alignItems: 'center',
       justifyContent: 'center',
     },
-    // Large grid layout styles
+    // Large grid layout styles with glass effect
     largeCard: {
       width: cardWidth,
-      backgroundColor: colors.card,
-      borderRadius: 20,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 24,
       borderWidth: 1,
-      borderColor: colors.cardBorder,
+      borderColor: glassColors.border,
       marginBottom: 16,
       overflow: 'hidden',
+      ...shadows.lg,
     },
     largeImageContainer: {
       width: '100%',
       aspectRatio: 16 / 9,
-      backgroundColor: colors.surface,
+      backgroundColor: glassColors.background,
     },
     largeImage: {
       width: '100%',
@@ -828,16 +1115,18 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       alignItems: 'center',
       justifyContent: 'center',
     },
-    // Compact layout styles
+    // Compact layout styles with glass effect
     compactCard: {
       width: cardWidth,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderRadius: 10,
-      paddingVertical: 10,
-      paddingHorizontal: 14,
-      marginBottom: 6,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: glassColors.borderSubtle,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      marginBottom: 8,
     },
     compactInfo: {
       flex: 1,
@@ -915,4 +1204,34 @@ const createStyles = (colors: any, cardWidth: number, layoutType: CatalogLayoutT
       fontWeight: '600',
       color: '#fff',
     },
+    // Search results styles
+    searchResultsBar: {
+      paddingHorizontal: GRID_PADDING,
+      paddingVertical: 8,
+    },
+    searchResultsText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    searchQueryText: {
+      fontWeight: '600',
+      color: colors.text,
+    },
+    clearSearchButton: {
+      marginTop: 24,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      borderWidth: 1,
+    },
+    clearSearchButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    // Skeleton loading styles
+    skeletonBox: {
+      backgroundColor: glassColors.backgroundElevated,
+      opacity: 0.6,
+    },
   });
+};

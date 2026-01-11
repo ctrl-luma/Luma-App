@@ -15,11 +15,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
 import { Catalog } from '../lib/api';
+import { glass } from '../lib/colors';
+import { fonts } from '../lib/fonts';
+import { shadows } from '../lib/shadows';
 
 export function CatalogSelectScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute();
+  const glassColors = isDark ? glass.dark : glass.light;
   const { catalogs, selectedCatalog, setSelectedCatalog, refreshCatalogs, isLoading } = useCatalog();
 
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -44,7 +48,7 @@ export function CatalogSelectScreen() {
     navigation.goBack();
   };
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, glassColors);
 
   const renderCatalog = ({ item }: { item: Catalog }) => {
     const isSelected = selectedCatalog?.id === item.id;
@@ -150,8 +154,8 @@ export function CatalogSelectScreen() {
   );
 }
 
-const createStyles = (colors: any) =>
-  StyleSheet.create({
+const createStyles = (colors: any, glassColors: typeof glass.dark) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -162,8 +166,9 @@ const createStyles = (colors: any) =>
       paddingHorizontal: 20,
       paddingTop: 20,
       paddingBottom: 16,
+      backgroundColor: glassColors.backgroundSubtle,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: glassColors.borderSubtle,
     },
     headerContent: {
       flex: 1,
@@ -175,30 +180,37 @@ const createStyles = (colors: any) =>
       justifyContent: 'center',
       marginTop: -8,
       marginRight: -8,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     title: {
-      fontSize: 28,
-      fontWeight: '700',
+      fontSize: 24,
+      fontFamily: fonts.bold,
       color: colors.text,
       marginBottom: 4,
+      letterSpacing: -0.3,
     },
     subtitle: {
-      fontSize: 16,
+      fontSize: 15,
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     list: {
-      padding: 20,
+      padding: 16,
       paddingTop: 16,
     },
     catalogCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.card,
-      borderRadius: 16,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
       borderWidth: 1,
-      borderColor: colors.cardBorder,
+      borderColor: glassColors.border,
       padding: 16,
       marginBottom: 12,
+      ...shadows.sm,
     },
     catalogCardSelected: {
       borderColor: colors.primary,
@@ -207,7 +219,7 @@ const createStyles = (colors: any) =>
     catalogIcon: {
       width: 48,
       height: 48,
-      borderRadius: 12,
+      borderRadius: 14,
       backgroundColor: colors.primary + '15',
       alignItems: 'center',
       justifyContent: 'center',
@@ -221,7 +233,7 @@ const createStyles = (colors: any) =>
     },
     catalogName: {
       fontSize: 17,
-      fontWeight: '600',
+      fontFamily: fonts.semiBold,
       color: colors.text,
       marginBottom: 4,
     },
@@ -232,11 +244,13 @@ const createStyles = (colors: any) =>
     },
     catalogMetaText: {
       fontSize: 13,
+      fontFamily: fonts.regular,
       color: colors.textMuted,
       marginLeft: 4,
     },
     productCount: {
       fontSize: 13,
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: 4,
     },
@@ -249,18 +263,21 @@ const createStyles = (colors: any) =>
     loadingText: {
       marginTop: 16,
       fontSize: 16,
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     emptyTitle: {
-      fontSize: 20,
-      fontWeight: '600',
+      fontSize: 22,
+      fontFamily: fonts.bold,
       color: colors.text,
       marginTop: 16,
       marginBottom: 8,
     },
     emptyText: {
       fontSize: 15,
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
     },
   });
+};

@@ -1,11 +1,13 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ActivityIndicator, View, StyleSheet, Platform, Animated, Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   useFonts,
@@ -23,6 +25,7 @@ import { CatalogProvider, useCatalog } from './src/context/CatalogContext';
 import { CartProvider } from './src/context/CartContext';
 import { SocketProvider } from './src/context/SocketContext';
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
+import { StripeTerminalContextProvider } from './src/context/StripeTerminalContext';
 
 // Auth screens
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -32,7 +35,6 @@ import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
 // Main screens
 import { CatalogSelectScreen } from './src/screens/CatalogSelectScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
-import { CartScreen } from './src/screens/CartScreen';
 import { ChargeScreen } from './src/screens/ChargeScreen';
 import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { TransactionDetailScreen } from './src/screens/TransactionDetailScreen';
@@ -61,7 +63,7 @@ export const fonts = {
   extraBold: 'Inter_800ExtraBold',
 };
 
-// Menu tab stack (Menu + Cart)
+// Menu tab stack
 function MenuStackNavigator() {
   const { colors } = useTheme();
 
@@ -73,7 +75,6 @@ function MenuStackNavigator() {
       }}
     >
       <MenuStack.Screen name="MenuHome" component={MenuScreen} />
-      <MenuStack.Screen name="Cart" component={CartScreen} />
     </MenuStack.Navigator>
   );
 }
@@ -95,9 +96,63 @@ function HistoryStackNavigator() {
   );
 }
 
-// Main tab navigator
+// Custom Tab Bar Icon with animation - Icons only, no labels
+function TabIcon({
+  route,
+  focused,
+  color
+}: {
+  route: string;
+  focused: boolean;
+  color: string;
+}) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: focused ? 1.15 : 1,
+      tension: 120,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  }, [focused, scaleAnim]);
+
+  let iconName: keyof typeof Ionicons.glyphMap;
+
+  switch (route) {
+    case 'Menu':
+      iconName = focused ? 'grid' : 'grid-outline';
+      break;
+    case 'QuickCharge':
+      iconName = focused ? 'flash' : 'flash-outline';
+      break;
+    case 'History':
+      iconName = focused ? 'receipt' : 'receipt-outline';
+      break;
+    case 'Settings':
+      iconName = focused ? 'settings' : 'settings-outline';
+      break;
+    default:
+      iconName = 'ellipse';
+  }
+
+  return (
+    <Animated.View
+      style={[
+        styles.tabIconWrapper,
+        { transform: [{ scale: scaleAnim }] },
+        focused && styles.tabIconActive,
+      ]}
+    >
+      <Ionicons name={iconName} size={24} color={color} />
+    </Animated.View>
+  );
+}
+
+// Main tab navigator with glass design
 function TabNavigator() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -105,41 +160,18 @@ function TabNavigator() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopColor: colors.tabBarBorder,
+          backgroundColor: isDark ? '#111827' : '#ffffff',
           borderTopWidth: 1,
-          height: 56,
-          maxWidth: '100%',
-          overflow: 'hidden',
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+          height: 60 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: insets.bottom,
         },
-        tabBarItemStyle: {
-          flex: 1,
-          maxWidth: '25%',
-        },
-        tabBarActiveTintColor: colors.tabActive,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.tabInactive,
-        tabBarIcon: ({ focused, color }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
-
-          switch (route.name) {
-            case 'Menu':
-              iconName = focused ? 'grid' : 'grid-outline';
-              break;
-            case 'QuickCharge':
-              iconName = focused ? 'flash' : 'flash-outline';
-              break;
-            case 'History':
-              iconName = focused ? 'receipt' : 'receipt-outline';
-              break;
-            case 'Settings':
-              iconName = focused ? 'settings' : 'settings-outline';
-              break;
-            default:
-              iconName = 'ellipse';
-          }
-
-          return <Ionicons name={iconName} size={24} color={color} />;
-        },
+        tabBarIcon: ({ focused, color }) => (
+          <TabIcon route={route.name} focused={focused} color={color} />
+        ),
       })}
     >
       <Tab.Screen
@@ -328,29 +360,46 @@ export default function App() {
   }
 
   return (
-    <QueryProvider>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <SocketProvider>
-              <SocketEventHandlers />
-              <CatalogProvider>
-                <CartProvider>
-                  <AppNavigator />
-                </CartProvider>
-              </CatalogProvider>
-            </SocketProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </QueryProvider>
+    <GestureHandlerRootView style={styles.gestureRoot}>
+      <QueryProvider>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <SocketProvider>
+                <SocketEventHandlers />
+                <StripeTerminalContextProvider>
+                  <CatalogProvider>
+                    <CartProvider>
+                      <AppNavigator />
+                    </CartProvider>
+                  </CatalogProvider>
+                </StripeTerminalContextProvider>
+              </SocketProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </QueryProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  gestureRoot: {
+    flex: 1,
+  },
   loading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  tabIconWrapper: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+  },
+  tabIconActive: {
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
   },
 });

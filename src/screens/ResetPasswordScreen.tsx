@@ -14,10 +14,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../lib/colors';
+import { colors, glass } from '../lib/colors';
+import { fonts } from '../lib/fonts';
+import { shadows } from '../lib/shadows';
 import { authService } from '../lib/api';
+import { useTheme } from '../context/ThemeContext';
 
 export function ResetPasswordScreen() {
+  const { isDark } = useTheme();
+  const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const token = route.params?.token;
@@ -28,6 +33,8 @@ export function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const styles = createStyles(glassColors);
 
   const handleSubmit = async () => {
     if (!token) {
@@ -212,7 +219,7 @@ export function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (glassColors: typeof glass.dark) => StyleSheet.create({
   gradient: {
     flex: 1,
   },
@@ -225,7 +232,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 32,
   },
   contentWrapper: {
@@ -238,33 +245,37 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 28,
+    fontFamily: fonts.bold,
     color: colors.text,
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: fonts.regular,
     color: colors.gray400,
-    marginTop: 4,
+    marginTop: 6,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: colors.gray900,
-    borderRadius: 16,
+    backgroundColor: glassColors.backgroundElevated,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: colors.gray800,
+    borderColor: glassColors.border,
     padding: 24,
+    ...shadows.lg,
   },
   errorContainer: {
-    backgroundColor: colors.errorBg,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.2)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 20,
   },
   errorText: {
     fontSize: 14,
+    fontFamily: fonts.medium,
     color: colors.error,
   },
   form: {
@@ -275,22 +286,24 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
     color: colors.gray300,
+    marginLeft: 4,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.gray900,
+    backgroundColor: glassColors.background,
     borderWidth: 1,
-    borderColor: colors.gray700,
-    borderRadius: 12,
+    borderColor: glassColors.border,
+    borderRadius: 16,
   },
   input: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 16,
+    fontFamily: fonts.regular,
     color: colors.text,
   },
   passwordInput: {
@@ -303,15 +316,13 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: colors.primary,
-    borderRadius: 9999,
-    paddingVertical: 14,
+    borderRadius: 20,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
+    ...shadows.md,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    elevation: 8,
+    shadowOpacity: 0.3,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -319,51 +330,53 @@ const styles = StyleSheet.create({
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   buttonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.text,
+    fontSize: 16,
+    fontFamily: fonts.semiBold,
+    color: '#fff',
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 28,
   },
   footerText: {
     fontSize: 14,
+    fontFamily: fonts.regular,
     color: colors.gray500,
   },
   footerLink: {
     fontSize: 14,
+    fontFamily: fonts.semiBold,
     color: colors.primary,
-    fontWeight: '500',
   },
   // Success styles
   successIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: 24,
   },
   successIconText: {
-    fontSize: 28,
+    fontSize: 32,
     color: colors.success,
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.text,
     textAlign: 'center',
     marginBottom: 8,
   },
   successSubtitle: {
-    fontSize: 16,
+    fontSize: 15,
+    fontFamily: fonts.regular,
     color: colors.gray400,
     textAlign: 'center',
     marginBottom: 24,

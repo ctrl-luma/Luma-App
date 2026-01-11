@@ -24,6 +24,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       infoPlist: {
         NFCReaderUsageDescription: 'This app uses NFC to accept contactless payments',
         NSLocationWhenInUseUsageDescription: 'This app uses your location for payment processing',
+        NSCameraUsageDescription: 'This app uses the camera to scan payment cards and QR codes',
+        NSBluetoothAlwaysUsageDescription: 'This app uses Bluetooth to connect to card readers',
+        NSBluetoothPeripheralUsageDescription: 'This app uses Bluetooth to connect to card readers',
+        ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
@@ -52,6 +56,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
             minSdkVersion: 26,
             enableProguardInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
+            extraProguardRules: `
+              # Jackson databind - java.beans not available on Android
+              -dontwarn java.beans.ConstructorProperties
+              -dontwarn java.beans.Transient
+
+              # SLF4J - implementation classes loaded dynamically
+              -dontwarn org.slf4j.impl.StaticLoggerBinder
+              -dontwarn org.slf4j.impl.StaticMDCBinder
+            `,
           },
         },
       ],

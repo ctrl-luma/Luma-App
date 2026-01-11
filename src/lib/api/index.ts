@@ -46,3 +46,6 @@ export type {
   CreateOrderParams,
   OrdersListResponse,
 } from './orders';
+
+export { stripeConnectApi } from './stripe-connect';
+export type { ConnectStatus } from './stripe-connect';

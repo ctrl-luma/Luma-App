@@ -18,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { fonts } from '../lib/fonts';
+import { glass } from '../lib/colors';
+import { shadows } from '../lib/shadows';
 import { stripeTerminalApi } from '../lib/api';
 
 type RouteParams = {
@@ -33,9 +35,10 @@ type RouteParams = {
 };
 
 export function PaymentResultScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PaymentResult'>>();
+  const glassColors = isDark ? glass.dark : glass.light;
   const { clearCart } = useCart();
   const { width: screenWidth } = useWindowDimensions();
 
@@ -228,7 +231,7 @@ export function PaymentResultScreen() {
     }
   };
 
-  const styles = createStyles(colors, success);
+  const styles = createStyles(colors, glassColors, success);
 
   const confettiColors = [colors.primary, colors.success, '#FFD700', '#FF6B6B', '#4ECDC4'];
 
@@ -397,8 +400,8 @@ export function PaymentResultScreen() {
   );
 }
 
-const createStyles = (colors: any, success: boolean) =>
-  StyleSheet.create({
+const createStyles = (colors: any, glassColors: typeof glass.dark, success: boolean) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -466,7 +469,6 @@ const createStyles = (colors: any, success: boolean) =>
       opacity: 0.08,
     },
     title: {
-      fontWeight: '700',
       fontFamily: fonts.bold,
       color: colors.text,
       marginBottom: 24,
@@ -486,7 +488,6 @@ const createStyles = (colors: any, success: boolean) =>
       marginBottom: 8,
     },
     amount: {
-      fontWeight: '700',
       fontFamily: fonts.bold,
       color: colors.success,
       textAlign: 'center',
@@ -541,24 +542,25 @@ const createStyles = (colors: any, success: boolean) =>
       flex: 1,
       minWidth: 0,
       height: 48,
-      backgroundColor: colors.card,
-      borderRadius: 12,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
       paddingHorizontal: 16,
       fontSize: 16,
       fontFamily: fonts.regular,
       color: colors.text,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: glassColors.border,
     },
     sendButton: {
       width: 48,
       height: 48,
       minWidth: 48,
       flexShrink: 0,
-      borderRadius: 12,
+      borderRadius: 14,
       backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
+      ...shadows.md,
     },
     sendButtonDisabled: {
       opacity: 0.7,
@@ -579,10 +581,11 @@ const createStyles = (colors: any, success: boolean) =>
       backgroundColor: colors.errorBg,
       paddingVertical: 16,
       paddingHorizontal: 24,
-      borderRadius: 16,
+      borderRadius: 20,
       borderWidth: 1,
       borderColor: colors.error + '30',
       marginTop: 8,
+      ...shadows.sm,
     },
     errorText: {
       fontSize: 15,
@@ -604,26 +607,26 @@ const createStyles = (colors: any, success: boolean) =>
       paddingVertical: 18,
       borderRadius: 9999,
       gap: 12,
+      ...shadows.lg,
       shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 16,
-      elevation: 8,
     },
     primaryButtonText: {
       color: '#fff',
       fontSize: 18,
-      fontWeight: '600',
       fontFamily: fonts.semiBold,
     },
     secondaryButton: {
       alignItems: 'center',
       paddingVertical: 16,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     secondaryButtonText: {
       fontSize: 16,
-      fontWeight: '500',
       fontFamily: fonts.medium,
       color: colors.textSecondary,
     },
   });
+};

@@ -5,11 +5,23 @@ import { config } from '../lib/config';
 import { authService } from '../lib/api';
 import { useAuth } from './AuthContext';
 
+// Callback for handling session kicked via socket
+let onSocketSessionKickedCallback: ((data: any) => void) | null = null;
+
+export function setOnSocketSessionKicked(callback: (data: any) => void) {
+  onSocketSessionKickedCallback = callback;
+}
+
+// Track if we're currently refreshing tokens to avoid multiple refreshes
+let isRefreshingForSocket = false;
+
 // Socket event types
 export const SocketEvents = {
   // User/Profile events
   USER_UPDATED: 'user:updated',
   ORGANIZATION_UPDATED: 'organization:updated',
+  // Session events
+  SESSION_KICKED: 'session:kicked', // Emitted when user logs in on another device
   // Catalog events
   CATALOG_UPDATED: 'catalog:updated',
   CATALOG_CREATED: 'catalog:created',
@@ -49,40 +61,96 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const [isConnected, setIsConnected] = React.useState(false);
 
   const connect = useCallback(async () => {
-    if (socketRef.current?.connected) return;
+    if (socketRef.current?.connected) {
+      console.log('[Socket] Already connected, skipping');
+      return;
+    }
 
     try {
       const token = await authService.getAccessToken();
       if (!token) {
-        console.log('No token available for socket connection');
+        console.log('[Socket] No token available for socket connection');
         return;
       }
 
       const socketUrl = config.apiUrl.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
+      console.log('[Socket] Connecting to:', socketUrl);
+      console.log('[Socket] Using token:', token.substring(0, 20) + '...');
 
       socketRef.current = io(socketUrl, {
         path: '/socket.io',
         auth: { token },
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
       });
 
       socketRef.current.on('connect', () => {
-        console.log('Socket connected');
+        console.log('[Socket] Connected successfully:', socketRef.current?.id);
         setIsConnected(true);
       });
 
       socketRef.current.on('disconnect', (reason) => {
-        console.log('Socket disconnected:', reason);
+        console.log('[Socket] Disconnected:', reason);
         setIsConnected(false);
       });
 
-      socketRef.current.on('connect_error', (error) => {
-        console.error('Socket connection error:', error.message);
+      // Listen for session kicked event (user logged in on another device)
+      socketRef.current.on(SocketEvents.SESSION_KICKED, (data: any) => {
+        console.log('[Socket] Received SESSION_KICKED event:', data);
+        if (onSocketSessionKickedCallback) {
+          onSocketSessionKickedCallback(data);
+        }
+      });
+
+      // Log reconnection attempts
+      socketRef.current.io.on('reconnect_attempt', (attempt) => {
+        console.log(`[Socket] Reconnection attempt ${attempt}...`);
+      });
+
+      socketRef.current.io.on('reconnect', (attempt) => {
+        console.log(`[Socket] Reconnected after ${attempt} attempts`);
+      });
+
+      socketRef.current.io.on('reconnect_error', (error) => {
+        console.error('[Socket] Reconnection error:', error.message);
+      });
+
+      socketRef.current.io.on('reconnect_failed', () => {
+        console.error('[Socket] Reconnection failed after all attempts');
+      });
+
+      socketRef.current.on('connect_error', async (error) => {
+        console.error('[Socket] Connection error:', error.message);
         setIsConnected(false);
+
+        // If the error is "Invalid token", try to refresh and reconnect
+        if (error.message === 'Invalid token' && !isRefreshingForSocket) {
+          console.log('[Socket] Invalid token error - attempting token refresh...');
+          isRefreshingForSocket = true;
+
+          try {
+            const newTokens = await authService.refreshTokens();
+            if (newTokens) {
+              console.log('[Socket] Token refreshed successfully, reconnecting...');
+              // Disconnect current socket and reconnect with new token
+              socketRef.current?.disconnect();
+              socketRef.current = null;
+              isRefreshingForSocket = false;
+              // Reconnect will happen with fresh token
+              connect();
+            } else {
+              console.log('[Socket] Token refresh returned null - user may need to re-login');
+              isRefreshingForSocket = false;
+            }
+          } catch (refreshError) {
+            console.error('[Socket] Token refresh failed:', refreshError);
+            isRefreshingForSocket = false;
+            // Token refresh failed - user will be logged out by authService
+          }
+        }
       });
 
       // Set up listeners for all registered events
@@ -92,12 +160,13 @@ export function SocketProvider({ children }: SocketProviderProps) {
         });
       });
     } catch (error) {
-      console.error('Failed to connect socket:', error);
+      console.error('[Socket] Failed to connect socket:', error);
     }
   }, []);
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {
+      console.log('[Socket] Disconnecting socket');
       socketRef.current.disconnect();
       socketRef.current = null;
       setIsConnected(false);
@@ -120,8 +189,10 @@ export function SocketProvider({ children }: SocketProviderProps) {
   // Handle app state changes (reconnect when app comes to foreground)
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      console.log('[Socket] App state changed to:', nextAppState);
       if (nextAppState === 'active' && isAuthenticated) {
         if (!socketRef.current?.connected) {
+          console.log('[Socket] App became active, reconnecting...');
           connect();
         }
       }

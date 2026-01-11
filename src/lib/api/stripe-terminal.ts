@@ -4,6 +4,11 @@ export interface ConnectionToken {
   secret: string;
 }
 
+export interface TerminalLocation {
+  locationId: string;
+  displayName: string;
+}
+
 export interface CreatePaymentIntentParams {
   amount: number; // In dollars (will be converted to cents by API)
   currency?: string;
@@ -21,6 +26,13 @@ export interface PaymentIntent {
 }
 
 export const stripeTerminalApi = {
+  /**
+   * Get or create a Terminal location for Tap to Pay
+   * Required before connecting to local mobile reader
+   */
+  getLocation: () =>
+    apiClient.get<TerminalLocation>('/stripe/terminal/location'),
+
   /**
    * Get a connection token for Stripe Terminal SDK
    */

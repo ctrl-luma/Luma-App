@@ -11,9 +11,10 @@ import { config } from './config';
  * Creates an authenticated URL to the vendor dashboard
  * Uses hash fragment method for cross-origin compatibility
  *
+ * @param redirectPath - Optional path to redirect to after authentication (e.g., '/products')
  * @returns The authenticated URL, or null if no tokens available
  */
-export async function createVendorDashboardUrl(): Promise<string | null> {
+export async function createVendorDashboardUrl(redirectPath?: string): Promise<string | null> {
   try {
     // Get current auth data
     const accessToken = await authService.getAccessToken();
@@ -35,6 +36,11 @@ export async function createVendorDashboardUrl(): Promise<string | null> {
       params.append('user', encodeURIComponent(JSON.stringify(user)));
     }
 
+    // Add redirect path if provided
+    if (redirectPath) {
+      params.append('redirect', redirectPath);
+    }
+
     // Use hash fragment for cross-origin compatibility
     const authCallbackUrl = `${config.vendorDashboardUrl}/auth/callback#${params.toString()}`;
 
@@ -48,26 +54,37 @@ export async function createVendorDashboardUrl(): Promise<string | null> {
 /**
  * Opens the vendor dashboard in a browser with authentication
  * The user will be automatically logged in
+ *
+ * @param redirectPath - Optional path to redirect to after authentication (e.g., '/products')
  */
-export async function openVendorDashboard(): Promise<void> {
+export async function openVendorDashboard(redirectPath?: string): Promise<void> {
   try {
-    const url = await createVendorDashboardUrl();
+    const url = await createVendorDashboardUrl(redirectPath);
 
     if (!url) {
       console.error('[AuthHandoff] Cannot open vendor dashboard - no auth URL');
-      // Fallback: open dashboard without auth
-      await Linking.openURL(config.vendorDashboardUrl);
+      // Fallback: open dashboard without auth (with redirect if provided)
+      const fallbackUrl = redirectPath
+        ? `${config.vendorDashboardUrl}${redirectPath}`
+        : config.vendorDashboardUrl;
+      await Linking.openURL(fallbackUrl);
       return;
     }
 
     // Open the authenticated URL in browser
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-    } else {
-      console.error('[AuthHandoff] Cannot open URL:', url);
-    }
+    // Note: We don't check canOpenURL() because it can return false on Android
+    // for HTTPS URLs even when they can be opened. Just try to open directly.
+    await Linking.openURL(url);
   } catch (error) {
     console.error('[AuthHandoff] Error opening vendor dashboard:', error);
+    // Try fallback URL if main URL fails
+    try {
+      const fallbackUrl = redirectPath
+        ? `${config.vendorDashboardUrl}${redirectPath}`
+        : config.vendorDashboardUrl;
+      await Linking.openURL(fallbackUrl);
+    } catch (fallbackError) {
+      console.error('[AuthHandoff] Fallback also failed:', fallbackError);
+    }
   }
 }

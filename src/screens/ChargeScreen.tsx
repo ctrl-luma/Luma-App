@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,7 @@ import {
   TextInput,
   Alert,
   Animated,
-  Dimensions,
-  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -16,10 +15,19 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useCatalog } from '../context/CatalogContext';
 import { fonts } from '../lib/fonts';
+import { glass } from '../lib/colors';
+import { shadows, glow } from '../lib/shadows';
+import { PaymentsDisabledBanner } from '../components/PaymentsDisabledBanner';
+import { SetupRequired } from '../components/SetupRequired';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const BUTTON_SIZE = Math.min(80, (SCREEN_WIDTH - 80) / 3); // Responsive button size
+// Responsive sizing constants
+const MIN_BUTTON_SIZE = 56;
+const MAX_BUTTON_SIZE = 110; // Larger for tablets
+const MIN_GAP = 10;
+const MAX_GAP = 28;
 
 const KEYPAD_ROWS = [
   ['1', '2', '3'],
@@ -33,17 +41,25 @@ interface KeypadButtonProps {
   keyValue: string;
   onPress: (key: string) => void;
   colors: any;
+  buttonSize: number;
+  glassColors: typeof glass.dark;
 }
 
-function KeypadButton({ keyValue, onPress, colors }: KeypadButtonProps) {
+function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: KeypadButtonProps) {
   const scale = React.useRef(new Animated.Value(1)).current;
+
+  // Scale font sizes based on button size
+  const numberFontSize = Math.round(buttonSize * 0.32);
+  const actionFontSize = Math.round(buttonSize * 0.2);
+  const iconSize = Math.round(buttonSize * 0.32);
+  const borderRadius = Math.round(buttonSize * 0.25);
 
   const handlePressIn = useCallback(() => {
     Animated.spring(scale, {
-      toValue: 0.92,
+      toValue: 0.9,
       useNativeDriver: true,
-      speed: 50,
-      bounciness: 4,
+      tension: 150,
+      friction: 10,
     }).start();
   }, [scale]);
 
@@ -51,8 +67,8 @@ function KeypadButton({ keyValue, onPress, colors }: KeypadButtonProps) {
     Animated.spring(scale, {
       toValue: 1,
       useNativeDriver: true,
-      speed: 20,
-      bounciness: 8,
+      tension: 100,
+      friction: 8,
     }).start();
   }, [scale]);
 
@@ -76,28 +92,31 @@ function KeypadButton({ keyValue, onPress, colors }: KeypadButtonProps) {
         onPress={handlePress}
         style={({ pressed }) => [
           {
-            width: BUTTON_SIZE,
-            height: BUTTON_SIZE,
-            borderRadius: BUTTON_SIZE / 2,
+            width: buttonSize,
+            height: buttonSize,
+            borderRadius: borderRadius,
             justifyContent: 'center',
             alignItems: 'center',
             backgroundColor: pressed
-              ? colors.keypadButtonPressed
-              : colors.keypadButton,
+              ? glassColors.backgroundElevated
+              : glassColors.background,
+            borderWidth: 1,
+            borderColor: pressed ? glassColors.borderLight : glassColors.border,
+            ...shadows.sm,
           },
         ]}
       >
         {keyValue === 'DEL' ? (
           <Ionicons
             name="backspace-outline"
-            size={28}
+            size={iconSize}
             color={colors.textSecondary}
           />
         ) : (
           <Text
             style={{
-              fontSize: isAction ? 18 : 28,
-              fontFamily: isAction ? fonts.medium : fonts.regular,
+              fontSize: isAction ? actionFontSize : numberFontSize,
+              fontFamily: isAction ? fonts.medium : fonts.semiBold,
               color: isAction ? colors.textSecondary : colors.text,
             }}
           >
@@ -110,12 +129,61 @@ function KeypadButton({ keyValue, onPress, colors }: KeypadButtonProps) {
 }
 
 export function ChargeScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const { isPaymentReady, connectLoading } = useAuth();
+  const glassColors = isDark ? glass.dark : glass.light;
+  const { catalogs, isLoading: catalogsLoading } = useCatalog();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [showDescription, setShowDescription] = useState(false);
+
+  // Calculate responsive sizes based on screen dimensions
+  const responsiveSizes = useMemo(() => {
+    const minDimension = Math.min(screenWidth, screenHeight);
+    const isTablet = minDimension >= 600;
+    const isLargePhone = !isTablet && minDimension >= 380;
+
+    // Max button size varies by device type
+    const maxSize = isTablet ? MAX_BUTTON_SIZE : isLargePhone ? 76 : 64;
+    const maxGap = isTablet ? MAX_GAP : isLargePhone ? 14 : 12;
+
+    // Reserved space for fixed elements
+    const headerHeight = 70;
+    const footerHeight = 150;
+    const amountDisplayHeight = isTablet ? 110 : 80;
+    const safeAreaBuffer = isTablet ? 50 : 60;
+
+    // Available height for keypad (4 rows + gaps)
+    const availableHeight = screenHeight - headerHeight - footerHeight - amountDisplayHeight - safeAreaBuffer;
+
+    // Available width for 3 buttons + gaps
+    const horizontalPadding = isTablet ? 100 : 80;
+    const availableWidth = screenWidth - horizontalPadding;
+
+    // Divisors account for 4 buttons + gaps between them
+    // On tablets, gaps are larger so we need bigger divisor
+    const heightDivisor = isTablet ? 5.2 : 4.8;
+    const widthDivisor = isTablet ? 3.6 : 3.5;
+    const maxButtonFromHeight = availableHeight / heightDivisor;
+    const maxButtonFromWidth = availableWidth / widthDivisor;
+
+    // Use the smaller of the two constraints, then clamp to min/max for device type
+    const constrainedSize = Math.min(maxButtonFromHeight, maxButtonFromWidth);
+    const buttonSize = Math.max(MIN_BUTTON_SIZE, Math.min(maxSize, constrainedSize));
+
+    // Calculate gap proportionally
+    const gapRatio = (buttonSize - MIN_BUTTON_SIZE) / (maxSize - MIN_BUTTON_SIZE);
+    const buttonGap = MIN_GAP + (maxGap - MIN_GAP) * Math.max(0, Math.min(1, gapRatio));
+
+    // Amount font sizes scale with button size
+    const amountFontSize = Math.round(buttonSize * 0.75);
+    const currencyFontSize = Math.round(buttonSize * 0.5);
+
+    return { buttonSize, buttonGap, amountFontSize, currencyFontSize };
+  }, [screenWidth, screenHeight]);
 
   const formatAmount = (value: string) => {
     const digits = value.replace(/\D/g, '');
@@ -159,11 +227,30 @@ export function ChargeScreen() {
     setShowDescription(false);
   };
 
-  const styles = createStyles(colors);
+  const styles = createStyles(colors, glassColors, responsiveSizes);
+
+  // Check if payments are ready
+  const paymentsDisabled = !connectLoading && !isPaymentReady;
+  const noCatalogs = !catalogsLoading && catalogs.length === 0;
+
+  // Disable charge button if payments not ready, no catalogs, or amount too low
+  const chargeDisabled = cents < 50 || paymentsDisabled || noCatalogs;
+
+  // Show setup guidance if no catalogs exist
+  if (noCatalogs) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <SetupRequired type="no-catalogs" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header - Sticky */}
+      {/* Payments Disabled Banner */}
+      {paymentsDisabled && <PaymentsDisabledBanner compact />}
+
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Quick Charge</Text>
         <Pressable
@@ -196,54 +283,55 @@ export function ChargeScreen() {
       )}
 
       {/* Centered Content - Amount & Keypad */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={styles.mainContent}>
         {/* Amount Display */}
         <View style={styles.amountContainer}>
-          <Text style={styles.currencySymbol}>$</Text>
-          <Text style={styles.amount}>{displayAmount}</Text>
+          <Text style={[styles.currencySymbol, { fontSize: responsiveSizes.currencyFontSize }]}>$</Text>
+          <Text style={[styles.amount, { fontSize: responsiveSizes.amountFontSize }]}>{displayAmount}</Text>
         </View>
 
         {/* Keypad */}
         <View style={styles.keypad}>
           {KEYPAD_ROWS.map((row, rowIndex) => (
-            <View key={rowIndex} style={styles.keypadRow}>
+            <View key={rowIndex} style={[styles.keypadRow, { gap: responsiveSizes.buttonGap }]}>
               {row.map((key) => (
                 <KeypadButton
                   key={key}
                   keyValue={key}
                   onPress={handleKeypadPress}
                   colors={colors}
+                  buttonSize={responsiveSizes.buttonSize}
+                  glassColors={glassColors}
                 />
               ))}
             </View>
           ))}
         </View>
-      </ScrollView>
+      </View>
 
       {/* Charge Button - Fixed at Bottom */}
       <View style={styles.footer}>
         <Pressable
           style={({ pressed }) => [
             styles.chargeButton,
-            cents < 50 && styles.chargeButtonDisabled,
-            pressed && cents >= 50 && styles.chargeButtonPressed,
+            chargeDisabled && styles.chargeButtonDisabled,
+            pressed && !chargeDisabled && styles.chargeButtonPressed,
           ]}
           onPress={() => {
-            if (cents >= 50) {
+            if (!chargeDisabled) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               handleCharge();
             }
           }}
-          disabled={cents < 50}
+          disabled={chargeDisabled}
         >
           <Ionicons name="flash" size={22} color="#fff" />
           <Text style={styles.chargeButtonText}>
-            {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
+            {paymentsDisabled
+              ? 'Payments Not Set Up'
+              : cents < 50
+                ? 'Enter Amount'
+                : `Charge $${displayAmount}`}
           </Text>
         </Pressable>
 
@@ -255,30 +343,36 @@ export function ChargeScreen() {
   );
 }
 
-const createStyles = (colors: any) =>
-  StyleSheet.create({
+interface ResponsiveSizes {
+  buttonSize: number;
+  buttonGap: number;
+  amountFontSize: number;
+  currencyFontSize: number;
+}
+
+const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: ResponsiveSizes) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
-    scrollView: {
+    mainContent: {
       flex: 1,
-    },
-    scrollContent: {
-      flexGrow: 1,
       justifyContent: 'center',
+      alignItems: 'center',
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
       height: 56,
+      paddingHorizontal: 16,
+      backgroundColor: glassColors.backgroundSubtle,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: glassColors.borderSubtle,
     },
     title: {
-      fontSize: 20,
+      fontSize: 18,
       fontFamily: fonts.semiBold,
       color: colors.text,
     },
@@ -287,67 +381,73 @@ const createStyles = (colors: any) =>
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.keypadButton,
-      borderRadius: 22,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: glassColors.border,
     },
     descriptionContainer: {
       paddingHorizontal: 20,
       paddingVertical: 12,
     },
     descriptionInput: {
-      backgroundColor: colors.inputBackground,
+      backgroundColor: glassColors.backgroundElevated,
       borderWidth: 1,
-      borderColor: colors.inputBorder,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
+      borderColor: glassColors.border,
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
       fontSize: 16,
       fontFamily: fonts.regular,
-      color: colors.inputText,
+      color: colors.text,
     },
     amountContainer: {
       justifyContent: 'center',
       alignItems: 'center',
       flexDirection: 'row',
       paddingHorizontal: 20,
-      paddingVertical: 24,
+      paddingVertical: Math.round(sizes.buttonGap * 1.5),
     },
     currencySymbol: {
-      fontSize: 48,
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
-      marginRight: 4,
+      color: colors.textMuted,
+      marginRight: 2,
+      marginTop: 4,
     },
     amount: {
-      fontSize: 56,
       fontFamily: fonts.bold,
       color: colors.text,
+      letterSpacing: -2,
     },
     keypad: {
-      paddingHorizontal: 20,
-      paddingBottom: 16,
+      paddingHorizontal: 24,
+      paddingBottom: sizes.buttonGap,
     },
     keypadRow: {
       flexDirection: 'row',
-      justifyContent: 'space-evenly',
-      marginBottom: 12,
+      justifyContent: 'center',
+      marginBottom: sizes.buttonGap,
     },
     footer: {
       paddingHorizontal: 20,
-      paddingBottom: 8,
-      paddingTop: 8,
+      paddingBottom: 24,
+      paddingTop: 12,
     },
     chargeButton: {
       flexDirection: 'row',
       backgroundColor: colors.primary,
-      borderRadius: 16,
+      borderRadius: 20,
       paddingVertical: 18,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 10,
+      ...shadows.md,
+      shadowColor: colors.primary,
+      shadowOpacity: 0.3,
     },
     chargeButtonDisabled: {
       opacity: 0.4,
+      shadowOpacity: 0,
     },
     chargeButtonPressed: {
       opacity: 0.9,
@@ -366,3 +466,4 @@ const createStyles = (colors: any) =>
       color: colors.textMuted,
     },
   });
+};

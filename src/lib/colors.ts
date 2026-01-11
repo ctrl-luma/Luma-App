@@ -1,5 +1,55 @@
 // Matches Luma Vendor site design system
 
+// Glass/Glassmorphism colors
+export const glass = {
+  // Dark theme glass
+  dark: {
+    background: 'rgba(255, 255, 255, 0.05)',
+    backgroundElevated: 'rgba(255, 255, 255, 0.08)',
+    backgroundSubtle: 'rgba(255, 255, 255, 0.03)',
+    border: 'rgba(255, 255, 255, 0.1)',
+    borderLight: 'rgba(255, 255, 255, 0.15)',
+    borderSubtle: 'rgba(255, 255, 255, 0.06)',
+    highlight: 'rgba(255, 255, 255, 0.2)',
+    overlay: 'rgba(0, 0, 0, 0.6)',
+  },
+  // Light theme glass - clean whites, minimal borders
+  light: {
+    background: '#FFFFFF',
+    backgroundElevated: '#FFFFFF',
+    backgroundSubtle: '#F9FAFB',
+    border: 'rgba(0, 0, 0, 0.06)',
+    borderLight: 'rgba(0, 0, 0, 0.04)',
+    borderSubtle: 'rgba(0, 0, 0, 0.03)',
+    highlight: 'rgba(0, 0, 0, 0.05)',
+    overlay: 'rgba(255, 255, 255, 0.9)',
+  },
+};
+
+// Gradient presets
+export const gradients = {
+  // Primary blue gradient
+  primary: ['#2563EB', '#3B82F6'] as const,
+  primaryReverse: ['#3B82F6', '#2563EB'] as const,
+
+  // Surface gradients
+  surfaceDark: ['#111827', '#0a0a0f'] as const,
+  surfaceLight: ['#FFFFFF', '#F9FAFB'] as const,
+
+  // Glass gradients (for borders/highlights)
+  glassDark: ['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)'] as const,
+  glassLight: ['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.01)'] as const,
+
+  // Background gradients
+  backgroundDark: ['#030712', '#0c1a2d', '#030712'] as const,
+  backgroundLight: ['#FFFFFF', '#F3F4F6', '#FFFFFF'] as const,
+
+  // Success/Error gradients
+  success: ['#22c55e', '#16a34a'] as const,
+  error: ['#ef4444', '#dc2626'] as const,
+  warning: ['#f59e0b', '#d97706'] as const,
+};
+
 // Primary blue palette (shared between themes)
 const primaryPalette = {
   primary: '#2563EB',

@@ -39,6 +39,11 @@ yarn-error.*
 .env.dev
 .env.prod
 
+# Google service account keys
+luma-*.json
+*-service-account*.json
+google-*.json
+
 # typescript
 *.tsbuildinfo
 

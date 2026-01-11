@@ -49,6 +49,7 @@ export interface LoginResponse {
   user: User;
   organization: Organization;
   tokens: AuthTokens;
+  sessionVersion: number; // For single session enforcement
 }
 
 class AuthService {
@@ -56,6 +57,7 @@ class AuthService {
   private static readonly REFRESH_TOKEN_KEY = 'refreshToken';
   private static readonly USER_KEY = 'user';
   private static readonly ORGANIZATION_KEY = 'organization';
+  private static readonly SESSION_VERSION_KEY = 'sessionVersion';
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
@@ -125,15 +127,23 @@ class AuthService {
     }
 
     try {
+      console.log('[AuthService] Calling /auth/refresh...');
       const tokens = await apiClient.post<AuthTokens>('/auth/refresh', {
         refreshToken,
         username: cognitoUsername,
       });
 
+      console.log('[AuthService] Got new tokens, saving...');
+      console.log('[AuthService] New access token:', tokens.accessToken?.substring(0, 20) + '...');
       await this.saveTokens(tokens);
+
+      // Verify tokens were saved
+      const savedToken = await this.getAccessToken();
+      console.log('[AuthService] Verified saved token:', savedToken?.substring(0, 20) + '...');
 
       return tokens;
     } catch (error: any) {
+      console.log('[AuthService] Refresh failed:', error?.message);
       await this.clearAuthData();
       throw error;
     }
@@ -215,7 +225,17 @@ class AuthService {
       this.saveTokens(response.tokens),
       this.saveUser(response.user),
       this.saveOrganization(response.organization),
+      this.saveSessionVersion(response.sessionVersion),
     ]);
+  }
+
+  async getSessionVersion(): Promise<number | null> {
+    const version = await AsyncStorage.getItem(AuthService.SESSION_VERSION_KEY);
+    return version ? parseInt(version, 10) : null;
+  }
+
+  private async saveSessionVersion(version: number): Promise<void> {
+    await AsyncStorage.setItem(AuthService.SESSION_VERSION_KEY, version.toString());
   }
 
   private async saveTokens(tokens: AuthTokens): Promise<void> {
@@ -231,6 +251,7 @@ class AuthService {
       AuthService.REFRESH_TOKEN_KEY,
       AuthService.USER_KEY,
       AuthService.ORGANIZATION_KEY,
+      AuthService.SESSION_VERSION_KEY,
     ]);
   }
 }

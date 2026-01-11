@@ -1,21 +1,22 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Animated,
-  Easing,
+  ActivityIndicator,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
+import { useTerminal } from '../context/StripeTerminalContext';
 import { stripeTerminalApi } from '../lib/api';
-import { stripeTerminalService } from '../lib/stripe-terminal';
 import { config } from '../lib/config';
+import { fonts } from '../lib/fonts';
+import { glass } from '../lib/colors';
+import { shadows } from '../lib/shadows';
 
 type RouteParams = {
   PaymentProcessing: {
@@ -29,90 +30,49 @@ type RouteParams = {
 };
 
 export function PaymentProcessingScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PaymentProcessing'>>();
+  const glassColors = isDark ? glass.dark : glass.light;
+  const { initializeTerminal, connectReader, processPayment: terminalProcessPayment, cancelPayment } = useTerminal();
 
   const { paymentIntentId, amount, orderId, orderNumber, customerEmail } = route.params;
   const [isCancelling, setIsCancelling] = useState(false);
-  const [statusText, setStatusText] = useState('Preparing...');
-  const [isReady, setIsReady] = useState(false);
-
-  // Animations
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const ringAnim = useRef(new Animated.Value(0)).current;
+  const [statusText, setStatusText] = useState('Preparing payment...');
+  const [isSimulating, setIsSimulating] = useState(false);
 
   useEffect(() => {
-    // Pulse animation for the icon
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.08,
-          duration: 1200,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1200,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    // Ring expand animation
-    const ring = Animated.loop(
-      Animated.sequence([
-        Animated.timing(ringAnim, {
-          toValue: 1,
-          duration: 2000,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(ringAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    pulse.start();
-    ring.start();
     processPayment();
-
-    return () => {
-      pulse.stop();
-      ring.stop();
-    };
   }, []);
 
   const processPayment = async () => {
     try {
       if (Platform.OS === 'web') {
         setStatusText('Tap to Pay unavailable on web');
-        setIsReady(true);
         return;
       }
 
-      setStatusText('Preparing...');
-      await stripeTerminalService.initialize();
+      setStatusText('Initializing...');
 
-      setStatusText('Connecting...');
-      const readers = await stripeTerminalService.discoverReaders();
-
-      if (readers.length === 0) {
-        throw new Error('No readers found');
+      try {
+        await initializeTerminal();
+      } catch (initErr: any) {
+        throw new Error(`Initialization failed: ${initErr.message}`);
       }
 
-      await stripeTerminalService.connectReader(readers[0]);
-      setStatusText('Ready');
-      setIsReady(true);
+      setStatusText('Connecting...');
 
-      const paymentIntent = await stripeTerminalService.processPayment(paymentIntentId);
+      try {
+        await connectReader();
+      } catch (connectErr: any) {
+        throw new Error(`Connection failed: ${connectErr.message}`);
+      }
 
-      if (paymentIntent.status === 'succeeded') {
+      setStatusText('Starting payment...');
+
+      const result = await terminalProcessPayment(paymentIntentId);
+
+      if (result.status === 'succeeded') {
         navigation.replace('PaymentResult', {
           success: true,
           amount,
@@ -122,10 +82,11 @@ export function PaymentProcessingScreen() {
           customerEmail,
         });
       } else {
-        throw new Error(`Payment failed: ${paymentIntent.status}`);
+        throw new Error(`Payment status: ${result.status}`);
       }
     } catch (error: any) {
-      console.error('[PaymentProcessing] Error:', error);
+      const errorMessage = error.message || 'Payment failed';
+
       navigation.replace('PaymentResult', {
         success: false,
         amount,
@@ -133,7 +94,7 @@ export function PaymentProcessingScreen() {
         orderId,
         orderNumber,
         customerEmail,
-        errorMessage: error.message || 'Payment failed',
+        errorMessage,
       });
     }
   };
@@ -141,7 +102,7 @@ export function PaymentProcessingScreen() {
   const handleCancel = async () => {
     setIsCancelling(true);
     try {
-      await stripeTerminalService.cancelCollectPayment();
+      await cancelPayment();
       await stripeTerminalApi.cancelPaymentIntent(paymentIntentId);
     } catch (e) {
       // Ignore
@@ -149,21 +110,18 @@ export function PaymentProcessingScreen() {
     navigation.goBack();
   };
 
-  const [isSimulating, setIsSimulating] = useState(false);
-
   const handleDevSkip = async () => {
     setIsSimulating(true);
     setStatusText('Simulating payment...');
 
     try {
-      // Call the simulate API to create a real test payment in Stripe
       const result = await stripeTerminalApi.simulatePayment(paymentIntentId);
 
       if (result.status === 'succeeded') {
         navigation.replace('PaymentResult', {
           success: true,
           amount,
-          paymentIntentId: result.id, // Use the new payment intent ID
+          paymentIntentId: result.id,
           orderId,
           orderNumber,
           customerEmail,
@@ -172,7 +130,6 @@ export function PaymentProcessingScreen() {
         throw new Error(`Payment simulation failed: ${result.status}`);
       }
     } catch (error: any) {
-      console.error('[PaymentProcessing] Simulation error:', error);
       navigation.replace('PaymentResult', {
         success: false,
         amount,
@@ -187,17 +144,7 @@ export function PaymentProcessingScreen() {
     }
   };
 
-  const styles = createStyles(colors);
-
-  const ringScale = ringAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.8],
-  });
-
-  const ringOpacity = ringAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.3, 0.15, 0],
-  });
+  const styles = createStyles(colors, glassColors);
 
   return (
     <View style={styles.container}>
@@ -206,37 +153,13 @@ export function PaymentProcessingScreen() {
           {/* Amount Display */}
           <Text style={styles.amount}>${(amount / 100).toFixed(2)}</Text>
 
-          {/* NFC Icon with animation */}
-          <View style={styles.iconWrapper}>
-            <Animated.View
-              style={[
-                styles.ring,
-                {
-                  transform: [{ scale: ringScale }],
-                  opacity: ringOpacity,
-                },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.iconContainer,
-                { transform: [{ scale: pulseAnim }] },
-              ]}
-            >
-              <Ionicons name="wifi" size={40} color={colors.primary} style={styles.nfcIcon} />
-            </Animated.View>
+          {/* Loading indicator */}
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
 
           {/* Status */}
-          <View style={styles.statusContainer}>
-            <View style={[styles.statusDot, isReady && styles.statusDotReady]} />
-            <Text style={styles.statusText}>{statusText}</Text>
-          </View>
-
-          {/* Instruction */}
-          <Text style={styles.instruction}>
-            Tap card or device to pay
-          </Text>
+          <Text style={styles.statusText}>{statusText}</Text>
 
           {/* Dev Skip Button */}
           {(config.isDev || Platform.OS === 'web') && (
@@ -274,8 +197,8 @@ export function PaymentProcessingScreen() {
   );
 }
 
-const createStyles = (colors: any) =>
-  StyleSheet.create({
+const createStyles = (colors: any, glassColors: typeof glass.dark) => {
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -291,78 +214,36 @@ const createStyles = (colors: any) =>
     },
     amount: {
       fontSize: 56,
-      fontWeight: '700',
+      fontFamily: fonts.bold,
       color: colors.text,
-      marginBottom: 60,
+      marginBottom: 48,
       fontVariant: ['tabular-nums'],
     },
-    iconWrapper: {
-      position: 'relative',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: 40,
-      width: 120,
-      height: 120,
-    },
-    ring: {
-      position: 'absolute',
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      borderWidth: 2,
-      borderColor: colors.primary,
-    },
-    iconContainer: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: colors.primary + '15',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    nfcIcon: {
-      transform: [{ rotate: '90deg' }],
-    },
-    statusContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 12,
-    },
-    statusDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: colors.textMuted,
-    },
-    statusDotReady: {
-      backgroundColor: colors.success || '#22C55E',
+    loaderContainer: {
+      marginBottom: 24,
     },
     statusText: {
-      fontSize: 15,
-      fontWeight: '500',
-      color: colors.textSecondary,
-    },
-    instruction: {
       fontSize: 16,
-      color: colors.textMuted,
+      fontFamily: fonts.medium,
+      color: colors.textSecondary,
       textAlign: 'center',
     },
     devButton: {
       marginTop: 40,
       paddingHorizontal: 24,
       paddingVertical: 12,
-      backgroundColor: colors.surface,
-      borderRadius: 8,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: glassColors.border,
+      ...shadows.sm,
     },
     devButtonDisabled: {
       opacity: 0.6,
     },
     devButtonText: {
       fontSize: 14,
-      fontWeight: '500',
+      fontFamily: fonts.medium,
       color: colors.textSecondary,
     },
     footer: {
@@ -373,14 +254,16 @@ const createStyles = (colors: any) =>
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 16,
-      borderRadius: 12,
-      backgroundColor: colors.surface,
+      borderRadius: 16,
+      backgroundColor: glassColors.backgroundElevated,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: glassColors.border,
+      ...shadows.sm,
     },
     cancelButtonText: {
       fontSize: 16,
-      fontWeight: '600',
+      fontFamily: fonts.semiBold,
       color: colors.textSecondary,
     },
   });
+};
