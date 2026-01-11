@@ -218,22 +218,36 @@ export function TransactionsScreen() {
 
       {/* Filter Tabs */}
       <View style={styles.filterContainer}>
-        {(['all', 'succeeded', 'refunded', 'failed'] as FilterType[]).map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.filterTab, filter === f && styles.filterTabActive]}
-            onPress={() => setFilter(f)}
-          >
-            <Text
+        {(['all', 'succeeded', 'refunded', 'failed'] as FilterType[]).map((f) => {
+          const isActive = filter === f;
+          const filterColors = {
+            all: { bg: colors.primary + '20', border: colors.primary + '40', text: colors.primary },
+            succeeded: { bg: colors.success + '20', border: colors.success + '40', text: colors.success },
+            refunded: { bg: colors.warning + '20', border: colors.warning + '40', text: colors.warning },
+            failed: { bg: colors.error + '20', border: colors.error + '40', text: colors.error },
+          };
+          const colorSet = filterColors[f];
+
+          return (
+            <TouchableOpacity
+              key={f}
               style={[
-                styles.filterText,
-                filter === f && styles.filterTextActive,
+                styles.filterTab,
+                isActive && { backgroundColor: colorSet.bg, borderColor: colorSet.border },
               ]}
+              onPress={() => setFilter(f)}
             >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[
+                  styles.filterText,
+                  isActive && { color: colorSet.text, fontFamily: fonts.semiBold },
+                ]}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {isLoading ? (
@@ -316,20 +330,13 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       paddingVertical: 10,
       borderRadius: 16,
       backgroundColor: glassColors.backgroundElevated,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: glassColors.border,
-    },
-    filterTabActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
     },
     filterText: {
       fontSize: 14,
       fontFamily: fonts.medium,
       color: colors.textSecondary,
-    },
-    filterTextActive: {
-      color: '#fff',
     },
     list: {
       padding: 16,

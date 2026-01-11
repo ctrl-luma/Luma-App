@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
@@ -379,15 +380,29 @@ export function PaymentResultScreen() {
         {/* Actions */}
         <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
           {success ? (
-            <TouchableOpacity style={styles.primaryButton} onPress={handleNewSale}>
-              <Ionicons name="add-circle" size={24} color="#fff" />
-              <Text style={styles.primaryButtonText}>New Sale</Text>
+            <TouchableOpacity onPress={handleNewSale} activeOpacity={0.9}>
+              <LinearGradient
+                colors={[colors.success, '#16a34a']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.primaryButton}
+              >
+                <Ionicons name="add-circle" size={24} color="#fff" />
+                <Text style={styles.primaryButtonText}>New Sale</Text>
+              </LinearGradient>
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity style={styles.primaryButton} onPress={handleTryAgain}>
-                <Ionicons name="refresh" size={24} color="#fff" />
-                <Text style={styles.primaryButtonText}>Try Again</Text>
+              <TouchableOpacity onPress={handleTryAgain} activeOpacity={0.9}>
+                <LinearGradient
+                  colors={[colors.primary, colors.primary700]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.primaryButton}
+                >
+                  <Ionicons name="refresh" size={24} color="#fff" />
+                  <Text style={styles.primaryButtonText}>Try Again</Text>
+                </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={handleNewSale}>
                 <Text style={styles.secondaryButtonText}>Cancel Order</Text>
@@ -603,12 +618,11 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, success: bool
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.primary,
       paddingVertical: 18,
       borderRadius: 9999,
       gap: 12,
       ...shadows.lg,
-      shadowColor: colors.primary,
+      shadowColor: success ? colors.success : colors.primary,
     },
     primaryButtonText: {
       color: '#fff',

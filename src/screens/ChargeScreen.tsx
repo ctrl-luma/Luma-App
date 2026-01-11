@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '../context/ThemeContext';
@@ -312,11 +313,6 @@ export function ChargeScreen() {
       {/* Charge Button - Fixed at Bottom */}
       <View style={styles.footer}>
         <Pressable
-          style={({ pressed }) => [
-            styles.chargeButton,
-            chargeDisabled && styles.chargeButtonDisabled,
-            pressed && !chargeDisabled && styles.chargeButtonPressed,
-          ]}
           onPress={() => {
             if (!chargeDisabled) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -325,14 +321,31 @@ export function ChargeScreen() {
           }}
           disabled={chargeDisabled}
         >
-          <Ionicons name="flash" size={22} color="#fff" />
-          <Text style={styles.chargeButtonText}>
-            {paymentsDisabled
-              ? 'Payments Not Set Up'
-              : cents < 50
-                ? 'Enter Amount'
-                : `Charge $${displayAmount}`}
-          </Text>
+          {({ pressed }) => (
+            <LinearGradient
+              colors={
+                chargeDisabled
+                  ? [colors.gray600, colors.gray700]
+                  : [colors.primary, colors.primary700]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                styles.chargeButton,
+                chargeDisabled && styles.chargeButtonDisabled,
+                pressed && !chargeDisabled && styles.chargeButtonPressed,
+              ]}
+            >
+              <Ionicons name="flash" size={22} color="#fff" />
+              <Text style={styles.chargeButtonText}>
+                {paymentsDisabled
+                  ? 'Payments Not Set Up'
+                  : cents < 50
+                    ? 'Enter Amount'
+                    : `Charge $${displayAmount}`}
+              </Text>
+            </LinearGradient>
+          )}
         </Pressable>
 
         <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
@@ -435,7 +448,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: Respon
     },
     chargeButton: {
       flexDirection: 'row',
-      backgroundColor: colors.primary,
       borderRadius: 20,
       paddingVertical: 18,
       alignItems: 'center',

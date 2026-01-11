@@ -26,6 +26,7 @@ import { CartProvider } from './src/context/CartContext';
 import { SocketProvider } from './src/context/SocketContext';
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
 import { StripeTerminalContextProvider } from './src/context/StripeTerminalContext';
+import { NetworkStatus } from './src/components/NetworkStatus';
 
 // Auth screens
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -370,6 +371,7 @@ export default function App() {
                 <StripeTerminalContextProvider>
                   <CatalogProvider>
                     <CartProvider>
+                      <NetworkStatus />
                       <AppNavigator />
                     </CartProvider>
                   </CatalogProvider>

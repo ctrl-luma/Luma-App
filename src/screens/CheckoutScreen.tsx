@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
 import { useCart, CartItem } from '../context/CartContext';
@@ -470,23 +471,34 @@ export function CheckoutScreen() {
       {/* Pay Button */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.payButton, (isProcessing || paymentsDisabled) && styles.payButtonDisabled]}
           onPress={handlePayment}
           disabled={isProcessing || paymentsDisabled}
+          activeOpacity={0.9}
         >
-          {isProcessing ? (
-            <ActivityIndicator color="#fff" />
-          ) : paymentsDisabled ? (
-            <>
-              <Ionicons name="alert-circle-outline" size={22} color="#fff" />
-              <Text style={styles.payButtonText}>Payments Not Set Up</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="card-outline" size={22} color="#fff" />
-              <Text style={styles.payButtonText}>Tap to Pay</Text>
-            </>
-          )}
+          <LinearGradient
+            colors={
+              paymentsDisabled
+                ? [colors.gray600, colors.gray700]
+                : [colors.primary, colors.primary700]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.payButton, (isProcessing || paymentsDisabled) && styles.payButtonDisabled]}
+          >
+            {isProcessing ? (
+              <ActivityIndicator color="#fff" />
+            ) : paymentsDisabled ? (
+              <>
+                <Ionicons name="alert-circle-outline" size={22} color="#fff" />
+                <Text style={styles.payButtonText}>Payments Not Set Up</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="card-outline" size={22} color="#fff" />
+                <Text style={styles.payButtonText}>Tap to Pay</Text>
+              </>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -732,7 +744,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.primary,
       paddingVertical: 18,
       borderRadius: 20,
       gap: 10,
