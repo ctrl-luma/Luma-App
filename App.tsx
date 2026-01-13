@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View, StyleSheet, Platform, Animated, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +30,7 @@ import { NetworkStatus } from './src/components/NetworkStatus';
 
 // Auth screens
 import { LoginScreen } from './src/screens/LoginScreen';
+import { SignUpScreen } from './src/screens/SignUpScreen';
 import { ForgotPasswordScreen } from './src/screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
 
@@ -46,6 +47,13 @@ import { TapToPaySettingsScreen } from './src/screens/TapToPaySettingsScreen';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { PaymentProcessingScreen } from './src/screens/PaymentProcessingScreen';
 import { PaymentResultScreen } from './src/screens/PaymentResultScreen';
+
+// Education screens
+import { TapToPayEducationScreen } from './src/screens/TapToPayEducationScreen';
+
+// Onboarding components
+import { TapToPayOnboardingModal } from './src/components/TapToPayOnboardingModal';
+import { useTapToPayEducation } from './src/hooks/useTapToPayEducation';
 
 // Keep splash screen visible while loading fonts
 SplashScreen.preventAutoHideAsync();
@@ -97,7 +105,7 @@ function HistoryStackNavigator() {
   );
 }
 
-// Custom Tab Bar Icon with animation - Icons only, no labels
+// Custom Tab Bar Icon - Clean iOS style with dot indicator
 function TabIcon({
   route,
   focused,
@@ -108,15 +116,23 @@ function TabIcon({
   color: string;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const dotOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(scaleAnim, {
-      toValue: focused ? 1.15 : 1,
-      tension: 120,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  }, [focused, scaleAnim]);
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: focused ? 1.05 : 1,
+        tension: 300,
+        friction: 20,
+        useNativeDriver: true,
+      }),
+      Animated.timing(dotOpacity, {
+        toValue: focused ? 1 : 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [focused, scaleAnim, dotOpacity]);
 
   let iconName: keyof typeof Ionicons.glyphMap;
 
@@ -131,7 +147,7 @@ function TabIcon({
       iconName = focused ? 'receipt' : 'receipt-outline';
       break;
     case 'Settings':
-      iconName = focused ? 'settings' : 'settings-outline';
+      iconName = focused ? 'cog' : 'cog-outline';
       break;
     default:
       iconName = 'ellipse';
@@ -142,15 +158,20 @@ function TabIcon({
       style={[
         styles.tabIconWrapper,
         { transform: [{ scale: scaleAnim }] },
-        focused && styles.tabIconActive,
       ]}
     >
-      <Ionicons name={iconName} size={24} color={color} />
+      <Ionicons name={iconName} size={26} color={color} />
+      <Animated.View
+        style={[
+          styles.tabDot,
+          { opacity: dotOpacity, backgroundColor: color },
+        ]}
+      />
     </Animated.View>
   );
 }
 
-// Main tab navigator with glass design
+// Main tab navigator - Clean iOS style
 function TabNavigator() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -162,8 +183,8 @@ function TabNavigator() {
         tabBarShowLabel: false,
         tabBarStyle: {
           backgroundColor: isDark ? '#111827' : '#ffffff',
-          borderTopWidth: 1,
-          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
           height: 60 + insets.bottom,
           paddingTop: 8,
           paddingBottom: insets.bottom,
@@ -199,6 +220,49 @@ function TabNavigator() {
   );
 }
 
+// Wrapper component for onboarding modal (needs to be inside NavigationContainer)
+function TapToPayOnboardingWrapper() {
+  const navigation = useNavigation<any>();
+
+  // Tap to Pay onboarding state - Apple TTPOi 3.2, 3.3
+  const {
+    shouldShowEducationPrompt,
+    markEducationSeen,
+    isLoading: educationLoading,
+  } = useTapToPayEducation();
+
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+
+  // Show onboarding modal after login if user hasn't completed education
+  useEffect(() => {
+    if (!educationLoading && shouldShowEducationPrompt) {
+      // Small delay to let the main UI render first
+      const timer = setTimeout(() => {
+        setShowOnboardingModal(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [educationLoading, shouldShowEducationPrompt]);
+
+  const handleOnboardingComplete = useCallback(() => {
+    setShowOnboardingModal(false);
+    markEducationSeen();
+  }, [markEducationSeen]);
+
+  const handleNavigateToEducation = useCallback(() => {
+    // Navigate to education screen after T&C acceptance
+    navigation.navigate('TapToPayEducation');
+  }, [navigation]);
+
+  return (
+    <TapToPayOnboardingModal
+      visible={showOnboardingModal}
+      onComplete={handleOnboardingComplete}
+      onNavigateToEducation={handleNavigateToEducation}
+    />
+  );
+}
+
 // Main authenticated navigator
 function AuthenticatedNavigator() {
   const { colors } = useTheme();
@@ -213,6 +277,9 @@ function AuthenticatedNavigator() {
   }
 
   return (
+    <>
+    {/* Tap to Pay Onboarding Modal - Apple TTPOi 3.2, 3.3, 3.5 */}
+    <TapToPayOnboardingWrapper />
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
@@ -229,6 +296,11 @@ function AuthenticatedNavigator() {
         name="TapToPaySettings"
         component={TapToPaySettingsScreen}
         options={{ presentation: 'card' }}
+      />
+      <Stack.Screen
+        name="TapToPayEducation"
+        component={TapToPayEducationScreen}
+        options={{ presentation: 'modal' }}
       />
 
       {/* Payment flow modals */}
@@ -257,6 +329,7 @@ function AuthenticatedNavigator() {
         }}
       />
     </Stack.Navigator>
+    </>
   );
 }
 
@@ -305,6 +378,7 @@ function AppNavigator() {
         ) : (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="SignUp" component={SignUpScreen} />
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </>
@@ -395,13 +469,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabIconWrapper: {
-    width: 48,
-    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    paddingTop: 4,
   },
-  tabIconActive: {
-    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+  tabDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 4,
   },
 });

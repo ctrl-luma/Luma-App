@@ -21,12 +21,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.lumapos.app',
+      entitlements: {
+        // Tap to Pay entitlement - uncomment when Apple removes development restriction
+        // 'com.apple.developer.proximity-reader.payment.acceptance': true,
+        'com.apple.developer.in-app-payments': ['merchant.com.lumapos'],
+      },
       infoPlist: {
-        NFCReaderUsageDescription: 'This app uses NFC to accept contactless payments',
+        NFCReaderUsageDescription: 'This app uses NFC to accept contactless payments via Tap to Pay',
         NSLocationWhenInUseUsageDescription: 'This app uses your location for payment processing',
         NSCameraUsageDescription: 'This app uses the camera to scan payment cards and QR codes',
         NSBluetoothAlwaysUsageDescription: 'This app uses Bluetooth to connect to card readers',
         NSBluetoothPeripheralUsageDescription: 'This app uses Bluetooth to connect to card readers',
+        NSFaceIDUsageDescription: 'This app uses Face ID to securely sign in to your account',
         ITSAppUsesNonExemptEncryption: false,
       },
     },
@@ -52,6 +58,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-build-properties',
         {
+          ios: {
+            deploymentTarget: '16.4',
+          },
           android: {
             minSdkVersion: 26,
             enableProguardInReleaseBuilds: true,
@@ -73,6 +82,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           merchantIdentifier: 'merchant.com.lumapos',
           enableGooglePay: true,
+          enableApplePay: true,
         },
       ],
     ],

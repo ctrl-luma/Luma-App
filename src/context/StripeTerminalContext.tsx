@@ -1,50 +1,216 @@
 /**
  * Stripe Terminal Context
- * Provides access to Stripe Terminal SDK for Tap to Pay functionality
+ * Provides access to Stripe Terminal SDK for Tap to Pay on iPhone functionality
  * Uses the official @stripe/stripe-terminal-react-native package
+ *
+ * Apple TTPOi Requirements Compliance:
+ * - 1.1: Device compatibility check (iPhone XS+ / A12 chip)
+ * - 1.3: iOS version check (17.6+ required, handle osVersionNotSupported)
+ * - 1.4: Terminal preparation/warming at app launch
+ * - 3.9.1: Configuration progress indicator support
  */
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, AppState, AppStateStatus } from 'react-native';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { stripeTerminalApi } from '../lib/api';
 
-// Conditionally import Terminal SDK only on native platforms
+// Check if running in Expo Go (which doesn't support native modules)
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Conditionally import Terminal SDK only on native platforms with dev builds
 let StripeTerminalProvider: any = null;
 let useStripeTerminal: any = null;
 let requestNeededAndroidPermissions: any = null;
+let terminalLoadError: string | null = null;
 
-if (Platform.OS !== 'web') {
+// Only attempt to load the native module if NOT in Expo Go and NOT on web
+if (Platform.OS !== 'web' && !isExpoGo) {
   try {
     const terminal = require('@stripe/stripe-terminal-react-native');
-    StripeTerminalProvider = terminal.StripeTerminalProvider;
-    useStripeTerminal = terminal.useStripeTerminal;
-    requestNeededAndroidPermissions = terminal.requestNeededAndroidPermissions;
-  } catch (error) {
+    // Verify the module loaded correctly by checking for required exports
+    if (terminal && terminal.StripeTerminalProvider && terminal.useStripeTerminal) {
+      StripeTerminalProvider = terminal.StripeTerminalProvider;
+      useStripeTerminal = terminal.useStripeTerminal;
+      requestNeededAndroidPermissions = terminal.requestNeededAndroidPermissions;
+    } else {
+      terminalLoadError = 'Stripe Terminal module loaded but exports are missing.';
+      console.warn('[StripeTerminal]', terminalLoadError);
+    }
+  } catch (error: any) {
+    terminalLoadError = `Stripe Terminal native module error: ${error?.message || error}`;
     console.warn('[StripeTerminal] Failed to load terminal SDK:', error);
   }
+} else if (isExpoGo) {
+  terminalLoadError = 'Stripe Terminal is not available in Expo Go. Please use a development build (eas build --profile development).';
+  console.log('[StripeTerminal] Skipping native module load - running in Expo Go');
 }
 
+// Device compatibility check for Tap to Pay on iPhone (requires iPhone XS or later / A12 chip)
+// List of compatible device model identifiers (iPhone XS and later)
+const TTP_COMPATIBLE_IPHONE_MODELS = [
+  // iPhone XS family (A12)
+  'iPhone11,2', // iPhone XS
+  'iPhone11,4', 'iPhone11,6', // iPhone XS Max
+  'iPhone11,8', // iPhone XR
+  // iPhone 11 family (A13)
+  'iPhone12,1', // iPhone 11
+  'iPhone12,3', // iPhone 11 Pro
+  'iPhone12,5', // iPhone 11 Pro Max
+  // iPhone SE 2nd gen (A13)
+  'iPhone12,8',
+  // iPhone 12 family (A14)
+  'iPhone13,1', // iPhone 12 mini
+  'iPhone13,2', // iPhone 12
+  'iPhone13,3', // iPhone 12 Pro
+  'iPhone13,4', // iPhone 12 Pro Max
+  // iPhone 13 family (A15)
+  'iPhone14,4', // iPhone 13 mini
+  'iPhone14,5', // iPhone 13
+  'iPhone14,2', // iPhone 13 Pro
+  'iPhone14,3', // iPhone 13 Pro Max
+  // iPhone SE 3rd gen (A15)
+  'iPhone14,6',
+  // iPhone 14 family (A15/A16)
+  'iPhone14,7', // iPhone 14
+  'iPhone14,8', // iPhone 14 Plus
+  'iPhone15,2', // iPhone 14 Pro
+  'iPhone15,3', // iPhone 14 Pro Max
+  // iPhone 15 family (A16/A17)
+  'iPhone15,4', // iPhone 15
+  'iPhone15,5', // iPhone 15 Plus
+  'iPhone16,1', // iPhone 15 Pro
+  'iPhone16,2', // iPhone 15 Pro Max
+  // iPhone 16 family (A18)
+  'iPhone17,1', 'iPhone17,2', 'iPhone17,3', 'iPhone17,4', 'iPhone17,5',
+];
+
+// Minimum iOS version for Tap to Pay on iPhone (16.4 per Stripe Terminal SDK)
+// Note: If Apple requires a higher version, the SDK will return osVersionNotSupported error
+const MIN_IOS_VERSION = 16.4;
+
+// Configuration progress stages
+export type ConfigurationStage =
+  | 'idle'
+  | 'checking_compatibility'
+  | 'initializing'
+  | 'fetching_location'
+  | 'discovering_reader'
+  | 'connecting_reader'
+  | 'ready'
+  | 'error';
+
 // Types
+interface DeviceCompatibility {
+  isCompatible: boolean;
+  iosVersionSupported: boolean;
+  deviceSupported: boolean;
+  iosVersion: string | null;
+  deviceModel: string | null;
+  errorMessage: string | null;
+}
+
+// Terms & Conditions acceptance status (retrieved from Apple via SDK, not stored locally)
+// Apple TTPOi Requirement: T&C status must be retrieved from Apple, not cached locally
+export interface TermsAcceptanceStatus {
+  accepted: boolean;
+  // Whether we've checked the status (to differentiate between "not accepted" and "not yet checked")
+  checked: boolean;
+  // If terms need to be accepted, this message can guide the user
+  message: string | null;
+}
+
 interface StripeTerminalContextValue {
   isInitialized: boolean;
   isConnected: boolean;
   isProcessing: boolean;
+  isWarming: boolean;
   error: string | null;
+  deviceCompatibility: DeviceCompatibility;
+  configurationStage: ConfigurationStage;
+  configurationProgress: number; // 0-100
+  termsAcceptance: TermsAcceptanceStatus;
   initializeTerminal: () => Promise<void>;
   connectReader: () => Promise<boolean>;
   processPayment: (paymentIntentId: string) => Promise<{ status: string; paymentIntent: any }>;
   cancelPayment: () => Promise<void>;
+  warmTerminal: () => Promise<void>;
+  checkDeviceCompatibility: () => DeviceCompatibility;
 }
 
 const StripeTerminalContext = createContext<StripeTerminalContextValue | undefined>(undefined);
+
+// Helper function to check device compatibility
+function checkDeviceCompatibilitySync(): DeviceCompatibility {
+  if (Platform.OS !== 'ios') {
+    // Android has different requirements (NFC support)
+    return {
+      isCompatible: true, // Android compatibility checked via NFC at runtime
+      iosVersionSupported: true,
+      deviceSupported: true,
+      iosVersion: null,
+      deviceModel: Device.modelId,
+      errorMessage: null,
+    };
+  }
+
+  const osVersion = Device.osVersion;
+  const modelId = Device.modelId;
+
+  // Parse iOS version
+  const iosVersionNum = osVersion ? parseFloat(osVersion) : 0;
+  const iosVersionSupported = iosVersionNum >= MIN_IOS_VERSION;
+
+  // Check device model
+  const deviceSupported = modelId ? TTP_COMPATIBLE_IPHONE_MODELS.some(m => modelId.startsWith(m.split(',')[0])) : false;
+
+  // Also accept if model ID starts with iPhone1[1-9] or higher (future-proofing)
+  const modelMatch = modelId?.match(/iPhone(\d+),/);
+  const modelNum = modelMatch ? parseInt(modelMatch[1], 10) : 0;
+  const isFutureModel = modelNum >= 11; // iPhone XS starts at iPhone11,x
+
+  const isDeviceSupported = deviceSupported || isFutureModel;
+
+  let errorMessage: string | null = null;
+  if (!iosVersionSupported) {
+    errorMessage = `Tap to Pay on iPhone requires iOS ${MIN_IOS_VERSION} or later. Your device is running iOS ${osVersion}.`;
+  } else if (!isDeviceSupported) {
+    errorMessage = 'Tap to Pay on iPhone requires iPhone XS or later. Your device is not supported.';
+  }
+
+  return {
+    isCompatible: iosVersionSupported && isDeviceSupported,
+    iosVersionSupported,
+    deviceSupported: isDeviceSupported,
+    iosVersion: osVersion,
+    deviceModel: modelId,
+    errorMessage,
+  };
+}
 
 // Inner component that uses the useStripeTerminal hook
 function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isWarming, setIsWarming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
+  const [deviceCompatibility, setDeviceCompatibility] = useState<DeviceCompatibility>(() => checkDeviceCompatibilitySync());
+  const [configurationStage, setConfigurationStage] = useState<ConfigurationStage>('idle');
+  const [configurationProgress, setConfigurationProgress] = useState(0);
+  // Terms & Conditions acceptance status - retrieved from Apple via SDK (not stored locally)
+  // Apple TTPOi Requirement: Always check T&C status from SDK, never cache locally
+  const [termsAcceptance, setTermsAcceptance] = useState<TermsAcceptanceStatus>({
+    accepted: false,
+    checked: false,
+    message: null,
+  });
+
+  // Track if we've already warmed the terminal
+  const hasWarmedRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
 
   // Use ref to store discovered readers (avoids closure issues with state)
   const discoveredReadersRef = useRef<any[]>([]);
@@ -87,6 +253,129 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       });
     }
   }, []);
+
+  // Check device compatibility function (exposed to context)
+  const checkDeviceCompatibility = useCallback((): DeviceCompatibility => {
+    const result = checkDeviceCompatibilitySync();
+    setDeviceCompatibility(result);
+    return result;
+  }, []);
+
+  // Warm the terminal - initialize SDK and prepare for payments (Apple TTPOi 1.4)
+  // This should be called at app launch and when returning to foreground
+  const warmTerminal = useCallback(async () => {
+    console.log('[StripeTerminal] ========== WARMING TERMINAL ==========');
+
+    // Check device compatibility first
+    const compatibility = checkDeviceCompatibilitySync();
+    setDeviceCompatibility(compatibility);
+
+    if (!compatibility.isCompatible && Platform.OS === 'ios') {
+      console.log('[StripeTerminal] Device not compatible for TTP:', compatibility.errorMessage);
+      setError(compatibility.errorMessage);
+      setConfigurationStage('error');
+      return;
+    }
+
+    if (isInitialized) {
+      console.log('[StripeTerminal] Already initialized, skipping warm');
+      return;
+    }
+
+    setIsWarming(true);
+    setConfigurationStage('checking_compatibility');
+    setConfigurationProgress(10);
+
+    try {
+      // Step 1: Initialize the SDK
+      setConfigurationStage('initializing');
+      setConfigurationProgress(30);
+      console.log('[StripeTerminal] Warming: Initializing SDK...');
+
+      const initResult = await initialize();
+
+      if (initResult.error) {
+        // Handle osVersionNotSupported error (Apple TTPOi 1.3)
+        if (initResult.error.code === 'osVersionNotSupported' ||
+            initResult.error.message?.includes('osVersionNotSupported') ||
+            initResult.error.message?.includes('OS version')) {
+          console.error('[StripeTerminal] iOS version not supported for TTP');
+          const errorMsg = `Tap to Pay on iPhone requires iOS ${MIN_IOS_VERSION} or later. Please update your device.`;
+          setError(errorMsg);
+          setDeviceCompatibility(prev => ({
+            ...prev,
+            isCompatible: false,
+            iosVersionSupported: false,
+            errorMessage: errorMsg,
+          }));
+          setConfigurationStage('error');
+          return;
+        }
+        throw new Error(initResult.error.message || initResult.error.code || 'Failed to initialize');
+      }
+
+      setIsInitialized(true);
+      setConfigurationProgress(50);
+
+      // Step 2: Fetch location in background
+      setConfigurationStage('fetching_location');
+      setConfigurationProgress(70);
+      console.log('[StripeTerminal] Warming: Fetching location...');
+
+      try {
+        const { locationId: locId } = await stripeTerminalApi.getLocation();
+        setLocationId(locId);
+        console.log('[StripeTerminal] Warming: Location cached:', locId);
+      } catch (locErr: any) {
+        console.warn('[StripeTerminal] Warming: Location fetch failed (non-fatal):', locErr.message);
+        // Don't fail warming for location errors - we can fetch later
+      }
+
+      setConfigurationStage('ready');
+      setConfigurationProgress(100);
+      console.log('[StripeTerminal] ========== WARMING COMPLETE ==========');
+
+    } catch (err: any) {
+      console.error('[StripeTerminal] Warming failed:', err.message);
+      setError(err.message || 'Failed to warm terminal');
+      setConfigurationStage('error');
+    } finally {
+      setIsWarming(false);
+    }
+  }, [initialize, isInitialized]);
+
+  // Auto-warm terminal on mount and when app comes to foreground (Apple TTPOi 1.4)
+  useEffect(() => {
+    // Initial warm on mount
+    if (!hasWarmedRef.current && deviceCompatibility.isCompatible) {
+      console.log('[StripeTerminal] Auto-warming on mount...');
+      hasWarmedRef.current = true;
+      warmTerminal().catch(err => {
+        console.error('[StripeTerminal] Auto-warm failed:', err);
+      });
+    }
+
+    // Listen for app state changes to re-warm when coming to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        console.log('[StripeTerminal] App came to foreground, checking terminal state...');
+        // Re-warm if not initialized (connection may have been lost)
+        if (!isInitialized) {
+          warmTerminal().catch(err => {
+            console.error('[StripeTerminal] Re-warm on foreground failed:', err);
+          });
+        }
+      }
+      appStateRef.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [warmTerminal, deviceCompatibility.isCompatible, isInitialized]);
 
   // Fetch terminal location on mount
   useEffect(() => {
@@ -141,7 +430,14 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   const connectReader = useCallback(async (): Promise<boolean> => {
     console.log('[StripeTerminal] ========== CONNECT READER START ==========');
     console.log('[StripeTerminal] Platform:', Platform.OS);
+    console.log('[StripeTerminal] Already connected:', isConnected);
     setError(null);
+
+    // If already connected, skip discovery and connection
+    if (isConnected) {
+      console.log('[StripeTerminal] Reader already connected, reusing connection');
+      return true;
+    }
 
     // Ensure we have a location ID (required for Tap to Pay)
     let currentLocationId = locationId;
@@ -258,6 +554,27 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
       console.log('[StripeTerminal] ========== CONNECTED SUCCESSFULLY ==========');
       console.log('[StripeTerminal] Connected reader:', connectResult.reader?.serialNumber || 'tap-to-pay');
+
+      // Apple TTPOi Requirement: Check T&C acceptance status from the reader (not cached locally)
+      // The SDK retrieves this status from Apple each time
+      const connectedReader = connectResult.reader;
+      console.log('[StripeTerminal] Reader accountOnboarded:', connectedReader?.accountOnboarded);
+      console.log('[StripeTerminal] Full reader object:', JSON.stringify(connectedReader, null, 2));
+
+      // Update T&C acceptance status based on reader's accountOnboarded property
+      // accountOnboarded is true when the merchant has accepted Apple's Tap to Pay T&C
+      if (connectedReader) {
+        const isOnboarded = connectedReader.accountOnboarded === true;
+        setTermsAcceptance({
+          accepted: isOnboarded,
+          checked: true,
+          message: isOnboarded
+            ? null
+            : 'Please accept the Tap to Pay Terms & Conditions to start accepting payments. The acceptance screen will appear when you attempt your first payment.',
+        });
+        console.log('[StripeTerminal] T&C acceptance status:', isOnboarded ? 'Accepted' : 'Not yet accepted');
+      }
+
       setIsConnected(true);
       return true;
     } catch (connectErr: any) {
@@ -267,7 +584,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       console.error('[StripeTerminal] Code:', connectErr.code);
       throw connectErr;
     }
-  }, [discoverReaders, sdkConnectReader, locationId, hookDiscoveredReaders]);
+  }, [discoverReaders, sdkConnectReader, locationId, hookDiscoveredReaders, isConnected]);
 
   const processPayment = useCallback(async (paymentIntentId: string) => {
     console.log('[StripeTerminal] ========== PROCESS PAYMENT START ==========');
@@ -346,11 +663,18 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     isInitialized,
     isConnected,
     isProcessing,
+    isWarming,
     error,
+    deviceCompatibility,
+    configurationStage,
+    configurationProgress,
+    termsAcceptance,
     initializeTerminal,
     connectReader,
     processPayment,
     cancelPayment,
+    warmTerminal,
+    checkDeviceCompatibility,
   };
 
   return (
@@ -382,13 +706,29 @@ export function StripeTerminalContextProvider({ children }: { children: React.Re
     const isWeb = Platform.OS === 'web';
     const errorMessage = isWeb
       ? 'Stripe Terminal is not available on web'
-      : 'Stripe Terminal requires a development build. Expo Go does not include native modules.';
+      : terminalLoadError || 'Stripe Terminal requires a development build. Expo Go does not include native modules.';
 
     const stubValue: StripeTerminalContextValue = {
       isInitialized: false,
       isConnected: false,
       isProcessing: false,
+      isWarming: false,
       error: errorMessage,
+      deviceCompatibility: {
+        isCompatible: false,
+        iosVersionSupported: false,
+        deviceSupported: false,
+        iosVersion: null,
+        deviceModel: null,
+        errorMessage,
+      },
+      configurationStage: 'error',
+      configurationProgress: 0,
+      termsAcceptance: {
+        accepted: false,
+        checked: false,
+        message: errorMessage,
+      },
       initializeTerminal: async () => {
         throw new Error(errorMessage);
       },
@@ -397,6 +737,17 @@ export function StripeTerminalContextProvider({ children }: { children: React.Re
         throw new Error(errorMessage);
       },
       cancelPayment: async () => {},
+      warmTerminal: async () => {
+        throw new Error(errorMessage);
+      },
+      checkDeviceCompatibility: () => ({
+        isCompatible: false,
+        iosVersionSupported: false,
+        deviceSupported: false,
+        iosVersion: null,
+        deviceModel: null,
+        errorMessage,
+      }),
     };
 
     return (

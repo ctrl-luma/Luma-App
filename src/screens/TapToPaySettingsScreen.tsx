@@ -33,7 +33,7 @@ interface CatalogSettings {
 
 export function TapToPaySettingsScreen() {
   const { colors, isDark } = useTheme();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { selectedCatalog, refreshCatalogs } = useCatalog();
 
   const [isSaving, setIsSaving] = useState(false);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
   Image,
   ScrollView,
   Linking,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -22,19 +23,100 @@ import { colors, glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
 import { config } from '../lib/config';
+import {
+  checkBiometricCapabilities,
+  isBiometricLoginEnabled,
+  getBiometricCredentials,
+  getStoredEmail,
+  storeCredentials,
+  enableBiometricLogin,
+  BiometricCapabilities,
+} from '../lib/biometricAuth';
+import { authService } from '../lib/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Key to track if user has been asked about biometric setup
+const BIOMETRIC_PROMPT_SHOWN_KEY = 'biometric_prompt_shown';
 
 export function LoginScreen() {
   const { isDark } = useTheme();
   const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation<any>();
-  const { signIn } = useAuth();
+  const { signIn, refreshAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Apple TTPOi 1.7: Biometric authentication support
+  const [biometricCapabilities, setBiometricCapabilities] = useState<BiometricCapabilities | null>(null);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [storedEmail, setStoredEmail] = useState<string | null>(null);
+
   const styles = createStyles(glassColors);
+
+  // Check biometric capabilities and stored credentials on mount
+  useEffect(() => {
+    const checkBiometric = async () => {
+      const capabilities = await checkBiometricCapabilities();
+      setBiometricCapabilities(capabilities);
+
+      if (capabilities.isAvailable) {
+        const enabled = await isBiometricLoginEnabled();
+        setBiometricEnabled(enabled);
+
+        if (enabled) {
+          const email = await getStoredEmail();
+          setStoredEmail(email);
+        }
+      }
+    };
+    checkBiometric();
+  }, []);
+
+  // Auto-trigger biometric on screen focus if enabled
+  useFocusEffect(
+    useCallback(() => {
+      const attemptBiometricLogin = async () => {
+        if (biometricEnabled && biometricCapabilities?.isAvailable) {
+          // Small delay to let the screen render first
+          await new Promise(resolve => setTimeout(resolve, 500));
+          handleBiometricLogin();
+        }
+      };
+      attemptBiometricLogin();
+    }, [biometricEnabled, biometricCapabilities])
+  );
+
+  // Handle biometric login
+  const handleBiometricLogin = async () => {
+    if (!biometricCapabilities?.isAvailable || biometricLoading) return;
+
+    setBiometricLoading(true);
+    setError(null);
+
+    try {
+      const credentials = await getBiometricCredentials();
+
+      if (!credentials) {
+        // User cancelled or no stored credentials
+        setBiometricLoading(false);
+        return;
+      }
+
+      // Use stored email/password to login
+      console.log('[Login] Biometric login with stored credentials for:', credentials.email);
+      await signIn(credentials.email, credentials.password);
+      console.log('[Login] Biometric login successful');
+    } catch (err: any) {
+      console.error('[Login] Biometric login failed:', err);
+      setError('Biometric login failed. Please use your password.');
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -45,11 +127,69 @@ export function LoginScreen() {
     setError(null);
     setLoading(true);
     try {
-      await signIn(email.trim().toLowerCase(), password);
+      const trimmedEmail = email.trim().toLowerCase();
+      await signIn(trimmedEmail, password);
+
+      // Always store credentials securely for potential biometric use
+      await storeCredentials(trimmedEmail, password);
+
+      // After successful login, prompt for biometric setup if available
+      promptForBiometricSetup();
     } catch (err: any) {
       setError(err.message || 'Invalid credentials');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Prompt user to enable biometric login after successful password login
+  const promptForBiometricSetup = async () => {
+    try {
+      // Check if biometrics are available
+      const capabilities = await checkBiometricCapabilities();
+      if (!capabilities.isAvailable) return;
+
+      // Check if already enabled
+      const alreadyEnabled = await isBiometricLoginEnabled();
+      if (alreadyEnabled) return;
+
+      // Check if we've already asked this user
+      const promptShown = await AsyncStorage.getItem(BIOMETRIC_PROMPT_SHOWN_KEY);
+      if (promptShown === 'true') return;
+
+      // Mark that we've shown the prompt (so we don't ask again if they decline)
+      await AsyncStorage.setItem(BIOMETRIC_PROMPT_SHOWN_KEY, 'true');
+
+      // Small delay to let the app transition to authenticated state
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Ask user if they want to enable biometric login
+      Alert.alert(
+        `Enable ${capabilities.biometricName}?`,
+        `Would you like to use ${capabilities.biometricName} to sign in faster next time?`,
+        [
+          {
+            text: 'Not Now',
+            style: 'cancel',
+          },
+          {
+            text: 'Enable',
+            onPress: async () => {
+              // Credentials already stored, just enable biometric
+              const success = await enableBiometricLogin();
+              if (success) {
+                Alert.alert(
+                  'Success',
+                  `${capabilities.biometricName} login is now enabled. You can manage this in Settings.`
+                );
+              }
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('[Login] Error prompting for biometric setup:', error);
+      // Silently fail - don't disrupt the login flow
     }
   };
 
@@ -58,7 +198,7 @@ export function LoginScreen() {
   };
 
   const handleCreateAccount = () => {
-    Linking.openURL(`${config.websiteUrl}/get-started`);
+    navigation.navigate('SignUp');
   };
 
   return (
@@ -164,6 +304,49 @@ export function LoginScreen() {
                     <Text style={styles.buttonText}>Sign in</Text>
                   )}
                 </TouchableOpacity>
+
+                {/* Apple TTPOi 1.7: Biometric login button */}
+                {biometricCapabilities?.isAvailable && biometricEnabled && (
+                  <>
+                    <View style={styles.dividerContainer}>
+                      <View style={styles.dividerLine} />
+                      <Text style={styles.dividerText}>or</Text>
+                      <View style={styles.dividerLine} />
+                    </View>
+
+                    <TouchableOpacity
+                      style={[styles.biometricButton, biometricLoading && styles.buttonDisabled]}
+                      onPress={handleBiometricLogin}
+                      disabled={biometricLoading}
+                      activeOpacity={0.8}
+                    >
+                      {biometricLoading ? (
+                        <ActivityIndicator color={colors.primary} size="small" />
+                      ) : (
+                        <>
+                          <Ionicons
+                            name={
+                              biometricCapabilities.biometricName === 'Face ID' || biometricCapabilities.biometricName === 'Face Unlock'
+                                ? 'scan-outline'
+                                : 'finger-print-outline'
+                            }
+                            size={24}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.biometricButtonText}>
+                            Sign in with {biometricCapabilities.biometricName}
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+
+                    {storedEmail && (
+                      <Text style={styles.storedEmailText}>
+                        Signed in as {storedEmail}
+                      </Text>
+                    )}
+                  </>
+                )}
               </View>
             </LinearGradient>
 
@@ -308,6 +491,46 @@ const createStyles = (glassColors: typeof glass.dark) => StyleSheet.create({
     fontSize: 14,
     fontFamily: fonts.semiBold,
     color: colors.primary,
+  },
+  // Apple TTPOi 1.7: Biometric login styles
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: glassColors.border,
+  },
+  dividerText: {
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.gray500,
+    paddingHorizontal: 16,
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: glassColors.background,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: glassColors.border,
+    paddingVertical: 16,
+  },
+  biometricButtonText: {
+    fontSize: 16,
+    fontFamily: fonts.semiBold,
+    color: colors.primary,
+  },
+  storedEmailText: {
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: colors.gray500,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
 

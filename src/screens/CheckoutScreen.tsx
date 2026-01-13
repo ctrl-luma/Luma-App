@@ -10,6 +10,7 @@ import {
   ScrollView,
   Image,
   Animated,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
@@ -21,10 +22,14 @@ import { useTheme } from '../context/ThemeContext';
 import { useCart, CartItem } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useAuth } from '../context/AuthContext';
+import { useTerminal } from '../context/StripeTerminalContext';
 import { stripeTerminalApi, ordersApi } from '../lib/api';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 import { PaymentsDisabledBanner } from '../components/PaymentsDisabledBanner';
+
+// Apple TTPOi 5.4: Use region-correct copy
+const TAP_TO_PAY_LABEL = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
 
 interface TipOption {
   label: string;
@@ -48,6 +53,7 @@ export function CheckoutScreen() {
   const { items, clearCart, incrementItem, decrementItem, removeItem, subtotal: cartSubtotal } = useCart();
   const { selectedCatalog, refreshCatalogs } = useCatalog();
   const { isPaymentReady, connectLoading } = useAuth();
+  const { deviceCompatibility, isInitialized: isTerminalInitialized, isWarming } = useTerminal();
 
   // Refresh catalog data when screen is focused to ensure latest settings
   useFocusEffect(
@@ -136,7 +142,40 @@ export function CheckoutScreen() {
     }
   };
 
+  // Main payment handler - shows first-use modal if needed
   const handlePayment = async () => {
+    // Apple TTPOi 5.3: Never gray out the button - show error on tap instead
+    // Check device compatibility first (Apple TTPOi 1.1, 1.3)
+    if (Platform.OS === 'ios' && !deviceCompatibility.isCompatible) {
+      Alert.alert(
+        'Device Not Supported',
+        deviceCompatibility.errorMessage || `This device does not support ${TAP_TO_PAY_LABEL}.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check if payments are set up
+    if (paymentsDisabled) {
+      Alert.alert(
+        'Payments Not Set Up',
+        'Please complete your Stripe Connect setup in the Vendor Dashboard to accept payments.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check if terminal is warming up
+    if (isWarming) {
+      Alert.alert(
+        'Preparing Terminal',
+        'Please wait while Tap to Pay is being prepared...',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Proceed with payment
     setIsProcessing(true);
 
     try {
@@ -468,34 +507,29 @@ export function CheckoutScreen() {
         </View>
       </ScrollView>
 
-      {/* Pay Button */}
+      {/* Pay Button - Apple TTPOi 5.3: Never gray out, always active */}
       <View style={styles.footer}>
         <TouchableOpacity
           onPress={handlePayment}
-          disabled={isProcessing || paymentsDisabled}
+          disabled={isProcessing} // Only disable during active processing to prevent double-taps
           activeOpacity={0.9}
         >
           <LinearGradient
-            colors={
-              paymentsDisabled
-                ? [colors.gray600, colors.gray700]
-                : [colors.primary, colors.primary700]
-            }
+            colors={[colors.primary, colors.primary700]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.payButton, (isProcessing || paymentsDisabled) && styles.payButtonDisabled]}
+            style={[styles.payButton, isProcessing && styles.payButtonDisabled]}
           >
             {isProcessing ? (
               <ActivityIndicator color="#fff" />
-            ) : paymentsDisabled ? (
-              <>
-                <Ionicons name="alert-circle-outline" size={22} color="#fff" />
-                <Text style={styles.payButtonText}>Payments Not Set Up</Text>
-              </>
             ) : (
               <>
-                <Ionicons name="card-outline" size={22} color="#fff" />
-                <Text style={styles.payButtonText}>Tap to Pay</Text>
+                {/* Apple TTPOi 5.5: Contactless payment icon (wave symbol) */}
+                <View style={styles.tapToPayIcon}>
+                  <Ionicons name="wifi" size={22} color="#fff" style={styles.tapToPayIconRotated} />
+                </View>
+                {/* Apple TTPOi 5.4: Region-correct copy */}
+                <Text style={styles.payButtonText}>{TAP_TO_PAY_LABEL}</Text>
               </>
             )}
           </LinearGradient>
@@ -759,6 +793,15 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       color: '#fff',
       fontSize: 18,
       fontWeight: '600',
+    },
+    tapToPayIcon: {
+      width: 24,
+      height: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    tapToPayIconRotated: {
+      transform: [{ rotate: '90deg' }],
     },
     // Tip section styles
     tipSection: {

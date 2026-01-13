@@ -49,3 +49,10 @@ export type {
 
 export { stripeConnectApi } from './stripe-connect';
 export type { ConnectStatus } from './stripe-connect';
+
+export { paymentLinksApi } from './payment-links';
+export type {
+  CreatePaymentLinkParams,
+  PaymentLink,
+  PaymentLinkStatus,
+} from './payment-links';

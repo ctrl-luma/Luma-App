@@ -21,7 +21,9 @@ import { useCart } from '../context/CartContext';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
-import { stripeTerminalApi } from '../lib/api';
+import { stripeTerminalApi, paymentLinksApi, PaymentLink } from '../lib/api';
+import * as Clipboard from 'expo-clipboard';
+import * as Sharing from 'expo-sharing';
 
 type RouteParams = {
   PaymentResult: {
@@ -56,6 +58,12 @@ export function PaymentResultScreen() {
   const [receiptSent, setReceiptSent] = useState(false);
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [showEmailInput, setShowEmailInput] = useState(false);
+
+  // Fallback payment link state - Apple TTPOi Regional Requirement (UK, IE, CAN)
+  const [paymentLink, setPaymentLink] = useState<PaymentLink | null>(null);
+  const [creatingLink, setCreatingLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [checkingLinkStatus, setCheckingLinkStatus] = useState(false);
 
   // Auto-send receipt if customer email was provided during checkout
   useEffect(() => {
@@ -203,6 +211,92 @@ export function PaymentResultScreen() {
 
   const handleTryAgain = () => {
     navigation.goBack();
+  };
+
+  // Create a payment link for fallback - Apple TTPOi Regional Requirement
+  const handleCreatePaymentLink = async () => {
+    setCreatingLink(true);
+    try {
+      const link = await paymentLinksApi.create({
+        amount,
+        description: `Order ${orderNumber || 'Payment'}`,
+        orderId,
+        customerEmail: customerEmail || undefined,
+      });
+      setPaymentLink(link);
+    } catch (error: any) {
+      console.error('[PaymentResult] Failed to create payment link:', error);
+      Alert.alert('Error', 'Failed to create payment link. Please try again.');
+    } finally {
+      setCreatingLink(false);
+    }
+  };
+
+  // Copy payment link to clipboard
+  const handleCopyLink = async () => {
+    if (!paymentLink) return;
+    try {
+      await Clipboard.setStringAsync(paymentLink.url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (error) {
+      console.error('[PaymentResult] Failed to copy link:', error);
+    }
+  };
+
+  // Share payment link
+  const handleShareLink = async () => {
+    if (!paymentLink) return;
+    try {
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        // Share as text since we don't have a file
+        Alert.alert(
+          'Share Payment Link',
+          paymentLink.url,
+          [
+            { text: 'Copy', onPress: handleCopyLink },
+            { text: 'OK' },
+          ]
+        );
+      } else {
+        handleCopyLink();
+      }
+    } catch (error) {
+      console.error('[PaymentResult] Failed to share link:', error);
+      handleCopyLink();
+    }
+  };
+
+  // Check if payment link was completed
+  const handleCheckLinkStatus = async () => {
+    if (!paymentLink) return;
+    setCheckingLinkStatus(true);
+    try {
+      const status = await paymentLinksApi.getStatus(paymentLink.id);
+      if (status.paid) {
+        // Payment completed via link!
+        clearCart();
+        navigation.replace('PaymentResult', {
+          success: true,
+          amount,
+          paymentIntentId: status.paymentIntentId || paymentIntentId,
+          orderId,
+          orderNumber,
+          customerEmail,
+        });
+      } else if (status.status === 'expired') {
+        Alert.alert('Link Expired', 'This payment link has expired. Please create a new one.');
+        setPaymentLink(null);
+      } else {
+        Alert.alert('Awaiting Payment', 'The customer has not completed payment yet.');
+      }
+    } catch (error: any) {
+      console.error('[PaymentResult] Failed to check link status:', error);
+      Alert.alert('Error', 'Failed to check payment status.');
+    } finally {
+      setCheckingLinkStatus(false);
+    }
   };
 
   const handleSendReceipt = async () => {
@@ -368,11 +462,99 @@ export function PaymentResultScreen() {
                 )}
               </>
             ) : (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>
-                  {errorMessage || 'The payment could not be processed. Please try again.'}
-                </Text>
-              </View>
+              <>
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>
+                    {errorMessage || 'The payment could not be processed. Please try again.'}
+                  </Text>
+                </View>
+
+                {/* Fallback Payment Link - Apple TTPOi Regional Requirement (UK, IE, CAN) */}
+                {!paymentLink ? (
+                  <View style={styles.fallbackContainer}>
+                    <View style={styles.fallbackHeader}>
+                      <Ionicons name="link-outline" size={20} color={colors.primary} />
+                      <Text style={styles.fallbackTitle}>Alternative Payment</Text>
+                    </View>
+                    <Text style={styles.fallbackDescription}>
+                      If the card can't be read contactlessly, send a payment link to the customer.
+                    </Text>
+                    <TouchableOpacity
+                      style={[styles.fallbackButton, creatingLink && styles.fallbackButtonDisabled]}
+                      onPress={handleCreatePaymentLink}
+                      disabled={creatingLink}
+                    >
+                      {creatingLink ? (
+                        <ActivityIndicator size="small" color={colors.primary} />
+                      ) : (
+                        <>
+                          <Ionicons name="send-outline" size={18} color={colors.primary} />
+                          <Text style={styles.fallbackButtonText}>Create Payment Link</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.paymentLinkContainer}>
+                    <View style={styles.paymentLinkHeader}>
+                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                      <Text style={styles.paymentLinkTitle}>Payment Link Ready</Text>
+                    </View>
+                    <Text style={styles.paymentLinkAmount}>${(amount / 100).toFixed(2)}</Text>
+
+                    {/* Link URL */}
+                    <View style={styles.linkUrlContainer}>
+                      <Text style={styles.linkUrl} numberOfLines={1} ellipsizeMode="middle">
+                        {paymentLink.url}
+                      </Text>
+                    </View>
+
+                    {/* Link Actions */}
+                    <View style={styles.linkActions}>
+                      <TouchableOpacity
+                        style={styles.linkActionButton}
+                        onPress={handleCopyLink}
+                      >
+                        <Ionicons
+                          name={linkCopied ? 'checkmark' : 'copy-outline'}
+                          size={20}
+                          color={linkCopied ? colors.success : colors.primary}
+                        />
+                        <Text style={[styles.linkActionText, linkCopied && { color: colors.success }]}>
+                          {linkCopied ? 'Copied!' : 'Copy'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.linkActionButton}
+                        onPress={handleShareLink}
+                      >
+                        <Ionicons name="share-outline" size={20} color={colors.primary} />
+                        <Text style={styles.linkActionText}>Share</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.linkActionButton, checkingLinkStatus && styles.linkActionButtonDisabled]}
+                        onPress={handleCheckLinkStatus}
+                        disabled={checkingLinkStatus}
+                      >
+                        {checkingLinkStatus ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <>
+                            <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+                            <Text style={styles.linkActionText}>Check</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+
+                    <Text style={styles.linkHint}>
+                      Share this link with the customer to complete payment
+                    </Text>
+                  </View>
+                )}
+              </>
             )}
           </Animated.View>
         </View>
@@ -608,6 +790,118 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, success: bool
       color: colors.error,
       textAlign: 'center',
       lineHeight: 22,
+    },
+    // Fallback Payment Link styles - Apple TTPOi Regional Requirement (UK, IE, CAN)
+    fallbackContainer: {
+      marginTop: 20,
+      padding: 20,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      alignSelf: 'stretch',
+    },
+    fallbackHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 8,
+    },
+    fallbackTitle: {
+      fontSize: 16,
+      fontFamily: fonts.semiBold,
+      color: colors.text,
+    },
+    fallbackDescription: {
+      fontSize: 14,
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: 20,
+      marginBottom: 16,
+    },
+    fallbackButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 14,
+      borderRadius: 14,
+      backgroundColor: colors.primary + '15',
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
+    },
+    fallbackButtonDisabled: {
+      opacity: 0.6,
+    },
+    fallbackButtonText: {
+      fontSize: 15,
+      fontFamily: fonts.medium,
+      color: colors.primary,
+    },
+    // Payment Link UI styles
+    paymentLinkContainer: {
+      marginTop: 20,
+      padding: 20,
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.success + '30',
+      alignSelf: 'stretch',
+    },
+    paymentLinkHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 8,
+    },
+    paymentLinkTitle: {
+      fontSize: 16,
+      fontFamily: fonts.semiBold,
+      color: colors.success,
+    },
+    paymentLinkAmount: {
+      fontSize: 32,
+      fontFamily: fonts.bold,
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: 16,
+    },
+    linkUrlContainer: {
+      backgroundColor: colors.background,
+      padding: 12,
+      borderRadius: 12,
+      marginBottom: 16,
+    },
+    linkUrl: {
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
+      textAlign: 'center',
+    },
+    linkActions: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      marginBottom: 12,
+    },
+    linkActionButton: {
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+    },
+    linkActionButtonDisabled: {
+      opacity: 0.6,
+    },
+    linkActionText: {
+      fontSize: 13,
+      fontFamily: fonts.medium,
+      color: colors.primary,
+    },
+    linkHint: {
+      fontSize: 12,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
+      textAlign: 'center',
     },
     footer: {
       padding: 20,

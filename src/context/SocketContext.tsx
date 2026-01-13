@@ -60,6 +60,34 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const listenersRef = useRef<Map<string, Set<EventCallback>>>(new Map());
   const [isConnected, setIsConnected] = React.useState(false);
 
+  // Verify session is still valid (called on reconnect/app foreground)
+  const verifySession = useCallback(async () => {
+    try {
+      console.log('[Socket] Verifying session is still valid...');
+      const storedVersion = await authService.getSessionVersion();
+      if (!storedVersion) {
+        console.log('[Socket] No stored session version, skipping check');
+        return;
+      }
+
+      // Call API to check current session version
+      const { user } = await authService.getProfile();
+
+      // If we get here, the token is still valid
+      // The API interceptor will handle 401s and kick us out if needed
+      console.log('[Socket] Session verified for:', user.email);
+    } catch (error: any) {
+      console.log('[Socket] Session verification failed:', error.message);
+      // If it's a 401 or session error, trigger the kicked callback
+      if (error.message?.includes('session') || error.response?.status === 401) {
+        console.log('[Socket] Session invalid, triggering kick...');
+        if (onSocketSessionKickedCallback) {
+          onSocketSessionKickedCallback({ reason: 'Session expired or logged in elsewhere' });
+        }
+      }
+    }
+  }, []);
+
   const connect = useCallback(async () => {
     if (socketRef.current?.connected) {
       console.log('[Socket] Already connected, skipping');
@@ -110,8 +138,10 @@ export function SocketProvider({ children }: SocketProviderProps) {
         console.log(`[Socket] Reconnection attempt ${attempt}...`);
       });
 
-      socketRef.current.io.on('reconnect', (attempt) => {
+      socketRef.current.io.on('reconnect', async (attempt) => {
         console.log(`[Socket] Reconnected after ${attempt} attempts`);
+        // Verify session is still valid after reconnect
+        await verifySession();
       });
 
       socketRef.current.io.on('reconnect_error', (error) => {
@@ -188,9 +218,12 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
   // Handle app state changes (reconnect when app comes to foreground)
   useEffect(() => {
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       console.log('[Socket] App state changed to:', nextAppState);
       if (nextAppState === 'active' && isAuthenticated) {
+        // Always verify session when coming back to foreground
+        await verifySession();
+
         if (!socketRef.current?.connected) {
           console.log('[Socket] App became active, reconnecting...');
           connect();
@@ -200,7 +233,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [isAuthenticated, connect]);
+  }, [isAuthenticated, connect, verifySession]);
 
   const subscribe = useCallback((event: SocketEventName, callback: EventCallback) => {
     // Add to listeners map

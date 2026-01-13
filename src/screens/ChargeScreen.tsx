@@ -26,7 +26,7 @@ import { SetupRequired } from '../components/SetupRequired';
 
 // Responsive sizing constants
 const MIN_BUTTON_SIZE = 56;
-const MAX_BUTTON_SIZE = 110; // Larger for tablets
+const MAX_BUTTON_SIZE = 130; // Larger for tablets/iPads
 const MIN_GAP = 10;
 const MAX_GAP = 28;
 
@@ -145,29 +145,29 @@ export function ChargeScreen() {
   const responsiveSizes = useMemo(() => {
     const minDimension = Math.min(screenWidth, screenHeight);
     const isTablet = minDimension >= 600;
+    const isLargeTablet = minDimension >= 768; // iPad vs iPad mini
     const isLargePhone = !isTablet && minDimension >= 380;
 
-    // Max button size varies by device type
-    const maxSize = isTablet ? MAX_BUTTON_SIZE : isLargePhone ? 76 : 64;
-    const maxGap = isTablet ? MAX_GAP : isLargePhone ? 14 : 12;
+    // Max button size varies by device type - larger for big screens
+    const maxSize = isLargeTablet ? MAX_BUTTON_SIZE : isTablet ? 105 : isLargePhone ? 88 : 72;
+    const maxGap = isLargeTablet ? MAX_GAP : isTablet ? 20 : isLargePhone ? 16 : 14;
 
     // Reserved space for fixed elements
-    const headerHeight = 70;
-    const footerHeight = 150;
-    const amountDisplayHeight = isTablet ? 110 : 80;
-    const safeAreaBuffer = isTablet ? 50 : 60;
+    const headerHeight = isTablet ? 70 : 60;
+    const footerHeight = isTablet ? 150 : 130;
+    const amountDisplayHeight = isTablet ? 110 : 70;
+    const safeAreaBuffer = isTablet ? 60 : 50;
 
     // Available height for keypad (4 rows + gaps)
     const availableHeight = screenHeight - headerHeight - footerHeight - amountDisplayHeight - safeAreaBuffer;
 
-    // Available width for 3 buttons + gaps
-    const horizontalPadding = isTablet ? 100 : 80;
+    // Available width for 3 buttons + gaps - use more screen width
+    const horizontalPadding = isLargeTablet ? 120 : isTablet ? 80 : 48;
     const availableWidth = screenWidth - horizontalPadding;
 
     // Divisors account for 4 buttons + gaps between them
-    // On tablets, gaps are larger so we need bigger divisor
-    const heightDivisor = isTablet ? 5.2 : 4.8;
-    const widthDivisor = isTablet ? 3.6 : 3.5;
+    const heightDivisor = isTablet ? 5.0 : 4.5;
+    const widthDivisor = isTablet ? 3.5 : 3.3;
     const maxButtonFromHeight = availableHeight / heightDivisor;
     const maxButtonFromWidth = availableWidth / widthDivisor;
 
@@ -180,8 +180,8 @@ export function ChargeScreen() {
     const buttonGap = MIN_GAP + (maxGap - MIN_GAP) * Math.max(0, Math.min(1, gapRatio));
 
     // Amount font sizes scale with button size
-    const amountFontSize = Math.round(buttonSize * 0.75);
-    const currencyFontSize = Math.round(buttonSize * 0.5);
+    const amountFontSize = Math.round(buttonSize * 0.72);
+    const currencyFontSize = Math.round(buttonSize * 0.48);
 
     return { buttonSize, buttonGap, amountFontSize, currencyFontSize };
   }, [screenWidth, screenHeight]);

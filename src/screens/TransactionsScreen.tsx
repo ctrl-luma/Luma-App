@@ -105,12 +105,12 @@ export function TransactionsScreen() {
   const navigation = useNavigation<any>();
   const glassColors = isDark ? glass.dark : glass.light;
   const [filter, setFilter] = useState<FilterType>('all');
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   const {
     data,
     isLoading,
     refetch,
-    isRefetching,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -198,9 +198,23 @@ export function TransactionsScreen() {
   const renderFooter = () => {
     if (!isFetchingNextPage) return null;
     return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.primary} />
-      </View>
+      <>
+        {[1, 2, 3].map((i) => (
+          <View key={i} style={styles.skeletonItem}>
+            <View style={styles.skeletonLeft}>
+              <View style={styles.skeletonDot} />
+              <View style={styles.skeletonInfo}>
+                <View style={[styles.skeletonBox, { width: 80, height: 20 }]} />
+                <View style={[styles.skeletonBox, { width: 120, height: 14, marginTop: 6 }]} />
+              </View>
+            </View>
+            <View style={styles.skeletonRight}>
+              <View style={[styles.skeletonBox, { width: 50, height: 14 }]} />
+              <View style={[styles.skeletonBox, { width: 70, height: 12, marginTop: 6 }]} />
+            </View>
+          </View>
+        ))}
+      </>
     );
   };
 
@@ -208,6 +222,12 @@ export function TransactionsScreen() {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsManualRefreshing(true);
+    await refetch();
+    setIsManualRefreshing(false);
   };
 
   return (
@@ -284,8 +304,8 @@ export function TransactionsScreen() {
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
+              refreshing={isManualRefreshing}
+              onRefresh={handleRefresh}
               tintColor={colors.primary}
             />
           }
