@@ -103,13 +103,13 @@ const EDUCATION_SLIDES: EducationSlide[] = [
     // Apple TTPOi 4.7: Fallback Payment Method education (UK, IE, CAN)
     id: 'fallback',
     title: 'Alternative Payment',
-    description: 'Some cards cannot complete contactless transactions. If this happens, you can send a payment link.',
-    icon: 'link-outline',
+    description: 'Some cards cannot complete contactless transactions. If this happens, you can enter the card details manually.',
+    icon: 'card-outline',
     tips: [
       'Ask if customer has another contactless card or digital wallet',
-      'Use the "Create Payment Link" option if card fails',
-      'Share the link via text, email, or show QR code',
-      'Payment links work with any card or payment method',
+      'Use manual card entry if contactless fails',
+      'Enter the card number, expiration, and CVV',
+      'Manual entry works with any credit or debit card',
     ],
   },
   {

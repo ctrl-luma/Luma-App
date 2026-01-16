@@ -1,13 +1,16 @@
 /**
  * Hook to track Tap to Pay education first-use state
  * Apple TTPOi Requirement 3.2: Make merchants aware that TTP is available
+ *
+ * State is user-specific - each user gets their own education tracking
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const EDUCATION_SEEN_KEY = '@luma/tap_to_pay_education_seen';
-const EDUCATION_DISMISSED_KEY = '@luma/tap_to_pay_education_dismissed';
+// Base keys - userId will be appended to make them user-specific
+const EDUCATION_SEEN_KEY_BASE = '@luma/tap_to_pay_education_seen';
+const EDUCATION_DISMISSED_KEY_BASE = '@luma/tap_to_pay_education_dismissed';
 
 interface UseTapToPayEducationReturn {
   hasSeenEducation: boolean;
@@ -19,18 +22,34 @@ interface UseTapToPayEducationReturn {
   resetEducationState: () => Promise<void>;
 }
 
-export function useTapToPayEducation(): UseTapToPayEducationReturn {
+export function useTapToPayEducation(userId?: string): UseTapToPayEducationReturn {
   const [hasSeenEducation, setHasSeenEducation] = useState(false);
   const [hasDismissedEducation, setHasDismissedEducation] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // User-specific storage keys
+  const educationSeenKey = useMemo(
+    () => userId ? `${EDUCATION_SEEN_KEY_BASE}_${userId}` : EDUCATION_SEEN_KEY_BASE,
+    [userId]
+  );
+  const educationDismissedKey = useMemo(
+    () => userId ? `${EDUCATION_DISMISSED_KEY_BASE}_${userId}` : EDUCATION_DISMISSED_KEY_BASE,
+    [userId]
+  );
+
   // Load state from AsyncStorage
   useEffect(() => {
     const loadState = async () => {
+      // Don't load until we have a userId (prevents flashing modal before user loads)
+      if (!userId) {
+        setIsLoading(true);
+        return;
+      }
+
       try {
         const [seen, dismissed] = await Promise.all([
-          AsyncStorage.getItem(EDUCATION_SEEN_KEY),
-          AsyncStorage.getItem(EDUCATION_DISMISSED_KEY),
+          AsyncStorage.getItem(educationSeenKey),
+          AsyncStorage.getItem(educationDismissedKey),
         ]);
         setHasSeenEducation(seen === 'true');
         setHasDismissedEducation(dismissed === 'true');
@@ -41,44 +60,45 @@ export function useTapToPayEducation(): UseTapToPayEducationReturn {
       }
     };
     loadState();
-  }, []);
+  }, [userId, educationSeenKey, educationDismissedKey]);
 
   // Mark education as seen (user completed the education flow)
   const markEducationSeen = useCallback(async () => {
     try {
-      await AsyncStorage.setItem(EDUCATION_SEEN_KEY, 'true');
+      await AsyncStorage.setItem(educationSeenKey, 'true');
       setHasSeenEducation(true);
     } catch (error) {
       console.warn('[TapToPayEducation] Failed to mark as seen:', error);
     }
-  }, []);
+  }, [educationSeenKey]);
 
   // Mark education as dismissed (user skipped/closed without completing)
   const markEducationDismissed = useCallback(async () => {
     try {
-      await AsyncStorage.setItem(EDUCATION_DISMISSED_KEY, 'true');
+      await AsyncStorage.setItem(educationDismissedKey, 'true');
       setHasDismissedEducation(true);
     } catch (error) {
       console.warn('[TapToPayEducation] Failed to mark as dismissed:', error);
     }
-  }, []);
+  }, [educationDismissedKey]);
 
   // Reset state (for testing/development)
   const resetEducationState = useCallback(async () => {
     try {
       await Promise.all([
-        AsyncStorage.removeItem(EDUCATION_SEEN_KEY),
-        AsyncStorage.removeItem(EDUCATION_DISMISSED_KEY),
+        AsyncStorage.removeItem(educationSeenKey),
+        AsyncStorage.removeItem(educationDismissedKey),
       ]);
       setHasSeenEducation(false);
       setHasDismissedEducation(false);
     } catch (error) {
       console.warn('[TapToPayEducation] Failed to reset state:', error);
     }
-  }, []);
+  }, [educationSeenKey, educationDismissedKey]);
 
   // Show education prompt if user hasn't seen it and hasn't dismissed it
-  const shouldShowEducationPrompt = !isLoading && !hasSeenEducation && !hasDismissedEducation;
+  // Also require userId to be present to prevent flashing
+  const shouldShowEducationPrompt = !isLoading && !!userId && !hasSeenEducation && !hasDismissedEducation;
 
   return {
     hasSeenEducation,

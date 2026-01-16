@@ -15,6 +15,8 @@ export interface CreatePaymentIntentParams {
   description?: string;
   metadata?: Record<string, string>;
   receiptEmail?: string;
+  captureMethod?: 'automatic' | 'manual'; // For manual card, use 'automatic'
+  paymentMethodType?: 'card_present' | 'card'; // 'card' for manual entry, 'card_present' for tap to pay
 }
 
 export interface PaymentIntent {
@@ -23,6 +25,7 @@ export interface PaymentIntent {
   amount: number;
   currency: string;
   status: string;
+  stripeAccountId: string;
 }
 
 export const stripeTerminalApi = {

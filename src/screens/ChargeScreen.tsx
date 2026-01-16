@@ -9,7 +9,7 @@ import {
   Animated,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,12 +17,11 @@ import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { useCatalog } from '../context/CatalogContext';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows, glow } from '../lib/shadows';
-import { PaymentsDisabledBanner } from '../components/PaymentsDisabledBanner';
-import { SetupRequired } from '../components/SetupRequired';
+import { PayoutsSetupBanner } from '../components/PayoutsSetupBanner';
+import { SetupRequiredBanner } from '../components/SetupRequiredBanner';
 
 // Responsive sizing constants
 const MIN_BUTTON_SIZE = 56;
@@ -132,9 +131,9 @@ function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: Ke
 export function ChargeScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
-  const { isPaymentReady, connectLoading } = useAuth();
+  const { isPaymentReady, connectLoading, connectStatus } = useAuth();
+  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { catalogs, isLoading: catalogsLoading } = useCatalog();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const [amount, setAmount] = useState('');
@@ -230,26 +229,23 @@ export function ChargeScreen() {
 
   const styles = createStyles(colors, glassColors, responsiveSizes);
 
-  // Check if payments are ready
-  const paymentsDisabled = !connectLoading && !isPaymentReady;
-  const noCatalogs = !catalogsLoading && catalogs.length === 0;
+  // Show setup required banner when charges aren't enabled
+  const showSetupBanner = !connectLoading && connectStatus && !connectStatus.chargesEnabled;
 
-  // Disable charge button if payments not ready, no catalogs, or amount too low
-  const chargeDisabled = cents < 50 || paymentsDisabled || noCatalogs;
+  // Show payouts banner when charges are enabled but payouts aren't (user can still accept payments)
+  const showPayoutsBanner = !connectLoading && isPaymentReady && connectStatus && !connectStatus.payoutsEnabled;
 
-  // Show setup guidance if no catalogs exist
-  if (noCatalogs) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <SetupRequired type="no-catalogs" />
-      </SafeAreaView>
-    );
-  }
+  // Disable charge button only if amount too low
+  // Per Apple TTPOi 5.3: Button must never be grayed out based on setup status
+  const chargeDisabled = cents < 50;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Payments Disabled Banner */}
-      {paymentsDisabled && <PaymentsDisabledBanner compact />}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Setup Required Banner (charges not enabled) */}
+      {showSetupBanner && <SetupRequiredBanner compact />}
+
+      {/* Payouts Setup Banner (can accept payments but no payouts yet) */}
+      {showPayoutsBanner && <PayoutsSetupBanner compact />}
 
       {/* Header */}
       <View style={styles.header}>
@@ -338,11 +334,7 @@ export function ChargeScreen() {
             >
               <Ionicons name="flash" size={22} color="#fff" />
               <Text style={styles.chargeButtonText}>
-                {paymentsDisabled
-                  ? 'Payments Not Set Up'
-                  : cents < 50
-                    ? 'Enter Amount'
-                    : `Charge $${displayAmount}`}
+                {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
               </Text>
             </LinearGradient>
           )}
@@ -352,7 +344,7 @@ export function ChargeScreen() {
           Minimum charge is $0.50
         </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

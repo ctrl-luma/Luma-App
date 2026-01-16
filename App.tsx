@@ -9,6 +9,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as SplashScreen from 'expo-splash-screen';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import {
   useFonts,
   Inter_400Regular,
@@ -27,6 +28,7 @@ import { SocketProvider } from './src/context/SocketContext';
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
 import { StripeTerminalContextProvider } from './src/context/StripeTerminalContext';
 import { NetworkStatus } from './src/components/NetworkStatus';
+import { config } from './src/lib/config';
 
 // Auth screens
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -42,6 +44,8 @@ import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { TransactionDetailScreen } from './src/screens/TransactionDetailScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TapToPaySettingsScreen } from './src/screens/TapToPaySettingsScreen';
+import { UpgradeScreen } from './src/screens/UpgradeScreen';
+import { StripeOnboardingScreen } from './src/screens/StripeOnboardingScreen';
 
 // Payment flow screens
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
@@ -223,31 +227,36 @@ function TabNavigator() {
 // Wrapper component for onboarding modal (needs to be inside NavigationContainer)
 function TapToPayOnboardingWrapper() {
   const navigation = useNavigation<any>();
+  const { user, connectStatus, connectLoading } = useAuth();
 
   // Tap to Pay onboarding state - Apple TTPOi 3.2, 3.3
+  // Pass userId to make education state user-specific
   const {
     shouldShowEducationPrompt,
     markEducationSeen,
     isLoading: educationLoading,
-  } = useTapToPayEducation();
+  } = useTapToPayEducation(user?.id);
 
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  // Track if user has completed onboarding this session
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
-  // Show onboarding modal after login if user hasn't completed education
-  useEffect(() => {
-    if (!educationLoading && shouldShowEducationPrompt) {
-      // Small delay to let the main UI render first
-      const timer = setTimeout(() => {
-        setShowOnboardingModal(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [educationLoading, shouldShowEducationPrompt]);
+  // Show modal while loading (as splash) or when onboarding is needed
+  // This prevents the flash of the home screen before the modal appears
+  const showOnboardingModal = !hasCompletedOnboarding && (educationLoading || shouldShowEducationPrompt);
 
   const handleOnboardingComplete = useCallback(() => {
-    setShowOnboardingModal(false);
+    setHasCompletedOnboarding(true);
     markEducationSeen();
-  }, [markEducationSeen]);
+
+    // After education modal, navigate to Stripe onboarding if charges not enabled
+    if (!connectLoading && connectStatus && !connectStatus.chargesEnabled) {
+      // Small delay to let the modal close first
+      setTimeout(() => {
+        // Use nested navigation since StripeOnboarding is inside the Authenticated stack
+        navigation.navigate('Authenticated', { screen: 'StripeOnboarding' });
+      }, 300);
+    }
+  }, [markEducationSeen, connectLoading, connectStatus, navigation]);
 
   const handleNavigateToEducation = useCallback(() => {
     // Navigate to education screen after T&C acceptance
@@ -257,6 +266,7 @@ function TapToPayOnboardingWrapper() {
   return (
     <TapToPayOnboardingModal
       visible={showOnboardingModal}
+      isLoading={educationLoading}
       onComplete={handleOnboardingComplete}
       onNavigateToEducation={handleNavigateToEducation}
     />
@@ -277,10 +287,10 @@ function AuthenticatedNavigator() {
   }
 
   return (
-    <>
-    {/* Tap to Pay Onboarding Modal - Apple TTPOi 3.2, 3.3, 3.5 */}
-    <TapToPayOnboardingWrapper />
-    <Stack.Navigator
+    <StripeTerminalContextProvider>
+      {/* Tap to Pay Onboarding Modal - Apple TTPOi 3.2, 3.3, 3.5 */}
+      <TapToPayOnboardingWrapper />
+      <Stack.Navigator
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.background },
@@ -300,6 +310,16 @@ function AuthenticatedNavigator() {
       <Stack.Screen
         name="TapToPayEducation"
         component={TapToPayEducationScreen}
+        options={{ presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="Upgrade"
+        component={UpgradeScreen}
+        options={{ presentation: 'card', headerShown: false }}
+      />
+      <Stack.Screen
+        name="StripeOnboarding"
+        component={StripeOnboardingScreen}
         options={{ presentation: 'modal' }}
       />
 
@@ -329,7 +349,7 @@ function AuthenticatedNavigator() {
         }}
       />
     </Stack.Navigator>
-    </>
+    </StripeTerminalContextProvider>
   );
 }
 
@@ -436,25 +456,28 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={styles.gestureRoot}>
-      <QueryProvider>
-        <SafeAreaProvider>
-          <ThemeProvider>
-            <AuthProvider>
-              <SocketProvider>
-                <SocketEventHandlers />
-                <StripeTerminalContextProvider>
+      <StripeProvider
+        publishableKey={config.stripePublishableKey}
+        merchantIdentifier="merchant.com.lumapos"
+      >
+        <QueryProvider>
+          <SafeAreaProvider>
+            <ThemeProvider>
+              <AuthProvider>
+                <SocketProvider>
+                  <SocketEventHandlers />
                   <CatalogProvider>
                     <CartProvider>
                       <NetworkStatus />
                       <AppNavigator />
                     </CartProvider>
                   </CatalogProvider>
-                </StripeTerminalContextProvider>
-              </SocketProvider>
-            </AuthProvider>
-          </ThemeProvider>
-        </SafeAreaProvider>
-      </QueryProvider>
+                </SocketProvider>
+              </AuthProvider>
+            </ThemeProvider>
+          </SafeAreaProvider>
+        </QueryProvider>
+      </StripeProvider>
     </GestureHandlerRootView>
   );
 }

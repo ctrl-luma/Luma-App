@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,10 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
-
 import { useTheme } from '../context/ThemeContext';
 import { useCart, CartItem } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
@@ -26,7 +25,8 @@ import { useTerminal } from '../context/StripeTerminalContext';
 import { stripeTerminalApi, ordersApi } from '../lib/api';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
-import { PaymentsDisabledBanner } from '../components/PaymentsDisabledBanner';
+import { PayoutsSetupBanner } from '../components/PayoutsSetupBanner';
+import { SetupRequiredBanner } from '../components/SetupRequiredBanner';
 
 // Apple TTPOi 5.4: Use region-correct copy
 const TAP_TO_PAY_LABEL = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
@@ -51,16 +51,11 @@ export function CheckoutScreen() {
   const route = useRoute<RouteProp<RouteParams, 'Checkout'>>();
   const glassColors = isDark ? glass.dark : glass.light;
   const { items, clearCart, incrementItem, decrementItem, removeItem, subtotal: cartSubtotal } = useCart();
-  const { selectedCatalog, refreshCatalogs } = useCatalog();
-  const { isPaymentReady, connectLoading } = useAuth();
+  const { selectedCatalog } = useCatalog();
+  const { isPaymentReady, connectLoading, connectStatus } = useAuth();
   const { deviceCompatibility, isInitialized: isTerminalInitialized, isWarming } = useTerminal();
 
-  // Refresh catalog data when screen is focused to ensure latest settings
-  useFocusEffect(
-    useCallback(() => {
-      refreshCatalogs();
-    }, [refreshCatalogs])
-  );
+  // Catalog data is automatically updated via socket events in CatalogContext
 
   const [customerEmail, setCustomerEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -81,8 +76,11 @@ export function CheckoutScreen() {
     }
   }, [items.length, isQuickCharge, navigation]);
 
-  // Check if payments are ready
-  const paymentsDisabled = !connectLoading && !isPaymentReady;
+  // Show setup required banner when charges aren't enabled
+  const showSetupBanner = !connectLoading && connectStatus && !connectStatus.chargesEnabled;
+
+  // Show payouts banner when charges are enabled but payouts aren't (user can still accept payments)
+  const showPayoutsBanner = !connectLoading && isPaymentReady && connectStatus && !connectStatus.payoutsEnabled;
 
   // Use catalog settings for tip, email, and tax
   const showTipScreen = selectedCatalog?.showTipScreen ?? true;
@@ -144,23 +142,15 @@ export function CheckoutScreen() {
 
   // Main payment handler - shows first-use modal if needed
   const handlePayment = async () => {
-    // Apple TTPOi 5.3: Never gray out the button - show error on tap instead
-    // Check device compatibility first (Apple TTPOi 1.1, 1.3)
-    if (Platform.OS === 'ios' && !deviceCompatibility.isCompatible) {
+    // Check if payment setup is complete
+    if (connectStatus && !connectStatus.chargesEnabled) {
       Alert.alert(
-        'Device Not Supported',
-        deviceCompatibility.errorMessage || `This device does not support ${TAP_TO_PAY_LABEL}.`,
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    // Check if payments are set up
-    if (paymentsDisabled) {
-      Alert.alert(
-        'Payments Not Set Up',
-        'Please complete your Stripe Connect setup in the Vendor Dashboard to accept payments.',
-        [{ text: 'OK' }]
+        'Payment Setup Required',
+        'You need to complete your payment setup before accepting payments.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Complete Setup', onPress: () => navigation.navigate('StripeOnboarding') },
+        ]
       );
       return;
     }
@@ -210,6 +200,22 @@ export function CheckoutScreen() {
         isQuickCharge: isQuickCharge || false,
         description: isQuickCharge ? quickChargeDescription : undefined,
       });
+
+      // Check device compatibility (Apple TTPOi 1.1, 1.3)
+      // If not compatible, show payment failed screen with option to enter card manually
+      if (Platform.OS === 'ios' && !deviceCompatibility.isCompatible) {
+        setIsProcessing(false);
+        navigation.navigate('PaymentResult', {
+          success: false,
+          amount: grandTotal,
+          paymentIntentId: '', // Will create new one for manual card entry
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+          customerEmail: receiptEmail,
+          errorMessage: deviceCompatibility.errorMessage || `This device does not support ${TAP_TO_PAY_LABEL}.`,
+        });
+        return;
+      }
 
       // 2. Create payment intent with tip included
       const paymentIntent = await stripeTerminalApi.createPaymentIntent({
@@ -276,8 +282,11 @@ export function CheckoutScreen() {
         )}
       </View>
 
-      {/* Payments Disabled Banner */}
-      {paymentsDisabled && <PaymentsDisabledBanner />}
+      {/* Setup Required Banner (charges not enabled) */}
+      {showSetupBanner && <SetupRequiredBanner />}
+
+      {/* Payouts Setup Banner (can accept payments but no payouts yet) */}
+      {showPayoutsBanner && <PayoutsSetupBanner />}
 
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.content}>
         {/* Order Summary */}
@@ -511,7 +520,7 @@ export function CheckoutScreen() {
       <View style={styles.footer}>
         <TouchableOpacity
           onPress={handlePayment}
-          disabled={isProcessing} // Only disable during active processing to prevent double-taps
+          disabled={isProcessing}
           activeOpacity={0.9}
         >
           <LinearGradient

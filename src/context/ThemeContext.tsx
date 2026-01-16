@@ -1,7 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColorScheme } from 'react-native';
+import { useColorScheme, Platform } from 'react-native';
 import { darkColors, lightColors, ThemeColors } from '../lib/colors';
+
+// Alternate app icons - import the setter function
+let setAlternateAppIcon: ((iconName: string) => Promise<void>) | null = null;
+if (Platform.OS === 'ios') {
+  try {
+    const alternateIcons = require('expo-alternate-app-icons');
+    setAlternateAppIcon = alternateIcons.setAlternateAppIcon;
+  } catch (e) {
+    console.warn('[ThemeContext] expo-alternate-app-icons not available');
+  }
+}
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -23,7 +34,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const systemColorScheme = useColorScheme();
-  const [theme, setThemeState] = useState<ThemeMode>('system');
+  const [theme, setThemeState] = useState<ThemeMode>('dark');
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Determine if we should use dark mode
@@ -50,6 +61,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     };
     loadTheme();
   }, []);
+
+  // Update app icon when theme changes (iOS only)
+  useEffect(() => {
+    if (setAlternateAppIcon && isLoaded) {
+      setAlternateAppIcon(isDark ? 'dark' : 'light').catch((e) => {
+        console.warn('[ThemeContext] Failed to set alternate app icon:', e);
+      });
+    }
+  }, [isDark, isLoaded]);
 
   // Save theme preference
   const setTheme = useCallback(async (newTheme: ThemeMode) => {

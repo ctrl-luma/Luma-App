@@ -9,7 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     slug: 'luma-app',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/icon.png',
+    icon: './assets/logo-dark.png',
     userInterfaceStyle: 'dark',
     newArchEnabled: true,
     scheme: 'luma',
@@ -21,6 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.lumapos.app',
+      icon: './assets/logo-dark.png',
       entitlements: {
         // Tap to Pay entitlement - uncomment when Apple removes development restriction
         // 'com.apple.developer.proximity-reader.payment.acceptance': true,
@@ -39,7 +40,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       package: 'com.lumapos.app',
       adaptiveIcon: {
-        foregroundImage: './assets/adaptive-icon.png',
+        foregroundImage: './assets/logo-monochrome.png',
+        monochromeImage: './assets/logo-monochrome.png',
         backgroundColor: '#000000',
       },
       edgeToEdgeEnabled: true,
@@ -55,6 +57,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     plugins: [
       'expo-font',
+      [
+        'expo-alternate-app-icons',
+        {
+          icons: {
+            dark: './assets/logo-dark.png',
+            light: './assets/logo-light.png',
+          },
+        },
+      ],
       [
         'expo-build-properties',
         {

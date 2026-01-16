@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -21,6 +21,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useTerminal } from '../context/StripeTerminalContext';
 import { billingService, SubscriptionInfo } from '../lib/api/billing';
+import { Subscription } from '../lib/api';
 import {
   checkBiometricCapabilities,
   isBiometricLoginEnabled,
@@ -40,8 +41,9 @@ import { shadows } from '../lib/shadows';
 
 export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { user, organization, signOut } = useAuth();
+  const { user, organization, subscription, signOut, connectStatus, isPaymentReady } = useAuth();
   const { selectedCatalog, clearCatalog } = useCatalog();
   const {
     deviceCompatibility,
@@ -52,12 +54,42 @@ export function SettingsScreen() {
   } = useTerminal();
   const navigation = useNavigation<any>();
 
-  // Subscription info query
+  // Fetch detailed billing info for all users - needed to check platform (Stripe vs Apple/Google)
+  // and to show appropriate manage subscription options
+  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
   const { data: subscriptionInfo, isLoading: subscriptionLoading } = useQuery<SubscriptionInfo>({
     queryKey: ['subscription-info'],
     queryFn: () => billingService.getSubscriptionInfo(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
+  });
+
+  // Check if user previously had a PAID Stripe subscription (should manage via web, not in-app purchase)
+  // Only true if:
+  // 1. platform is stripe
+  // 2. tier is pro/enterprise (not starter)
+  // 3. status indicates they completed payment (not 'incomplete' which means signup not finished)
+  // This allows fresh website signups with starter tier to still use in-app purchases
+  const hadPaidStripeSubscription = subscriptionInfo?.platform === 'stripe' &&
+    (subscriptionInfo?.tier === 'pro' || subscriptionInfo?.tier === 'enterprise') &&
+    subscriptionInfo?.status !== 'incomplete' &&
+    subscriptionInfo?.status !== 'none';
+
+  // Debug logging for subscription state
+  console.log('[SettingsScreen] Subscription Debug:', {
+    // From AuthContext
+    authSubscription: subscription,
+    authTier: subscription?.tier,
+    authStatus: subscription?.status,
+    // From billing API
+    subscriptionInfo,
+    infoTier: subscriptionInfo?.tier,
+    infoStatus: subscriptionInfo?.status,
+    infoPlatform: subscriptionInfo?.platform,
+    // Computed values
+    isPro,
+    hadPaidStripeSubscription,
+    subscriptionLoading,
   });
 
   // Biometric login state
@@ -161,9 +193,12 @@ export function SettingsScreen() {
   };
 
   const getSubscriptionStatusText = () => {
-    if (!subscriptionInfo) return 'Loading...';
+    // Use auth subscription for basic tier/status (available immediately)
+    const tier = subscription?.tier || subscriptionInfo?.tier;
+    const status = subscription?.status || subscriptionInfo?.status;
+    const cancel_at = subscriptionInfo?.cancel_at; // Only from billing API
 
-    const { tier, status, cancel_at } = subscriptionInfo;
+    if (!tier || !status) return 'Free Plan';
 
     if (tier === 'starter' || status === 'none') {
       return 'Free Plan';
@@ -216,12 +251,17 @@ export function SettingsScreen() {
   const styles = createStyles(colors, glassColors, isDark);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.contentContainer}>
         {/* Appearance Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Appearance</Text>
@@ -292,7 +332,7 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subscription</Text>
           <View style={styles.card}>
-            {/* Current Plan */}
+            {/* Current Plan - use auth subscription for immediate display */}
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -300,38 +340,40 @@ export function SettingsScreen() {
                 </View>
                 <View style={styles.labelContainer}>
                   <Text style={styles.label}>
-                    {subscriptionInfo?.current_plan?.name || 'Starter Plan'}
+                    {subscription?.tier === 'pro' ? 'Pro Plan' :
+                     subscription?.tier === 'enterprise' ? 'Enterprise Plan' :
+                     subscriptionInfo?.current_plan?.name || 'Starter Plan'}
                   </Text>
-                  {subscriptionInfo?.current_plan?.price && (
+                  {isPro && subscriptionInfo?.current_plan?.price ? (
                     <Text style={styles.sublabel}>
                       ${(subscriptionInfo.current_plan.price / 100).toFixed(2)}/month
                     </Text>
-                  )}
+                  ) : null}
                 </View>
               </View>
-              {subscriptionLoading ? (
+              {isPro && subscriptionLoading ? (
                 <ActivityIndicator size="small" color={colors.primary} />
               ) : (
                 <View style={[
                   styles.statusBadgeSuccess,
-                  subscriptionInfo?.status === 'past_due' && styles.statusBadgeError,
+                  subscription?.status === 'past_due' && styles.statusBadgeError,
                   subscriptionInfo?.cancel_at && styles.statusBadgeWarning,
                 ]}>
                   <Ionicons
                     name={
-                      subscriptionInfo?.status === 'past_due' ? 'warning' :
+                      subscription?.status === 'past_due' ? 'warning' :
                       subscriptionInfo?.cancel_at ? 'time-outline' : 'checkmark-circle'
                     }
                     size={14}
                     color={
-                      subscriptionInfo?.status === 'past_due' ? colors.error :
+                      subscription?.status === 'past_due' ? colors.error :
                       subscriptionInfo?.cancel_at ? colors.warning : colors.success
                     }
                   />
                   <Text style={[
                     styles.statusBadgeText,
                     {
-                      color: subscriptionInfo?.status === 'past_due' ? colors.error :
+                      color: subscription?.status === 'past_due' ? colors.error :
                         subscriptionInfo?.cancel_at ? colors.warning : colors.success
                     }
                   ]}>
@@ -341,11 +383,22 @@ export function SettingsScreen() {
               )}
             </View>
 
-            {/* Manage Subscription - Only show for Pro/Enterprise */}
-            {subscriptionInfo && subscriptionInfo.tier !== 'starter' && subscriptionInfo.status !== 'none' && (
+            {/* Manage Subscription - Show for Pro/Enterprise OR for users who previously had Stripe subscription */}
+            {((isPro && subscriptionInfo && subscriptionInfo.status !== 'none') || hadPaidStripeSubscription) && (
               <>
                 <View style={styles.divider} />
-                <TouchableOpacity style={styles.row} onPress={handleManageSubscription}>
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={hadPaidStripeSubscription && !isPro ? async () => {
+                    // For expired/canceled Stripe subscriptions, open vendor portal billing page
+                    const url = await createVendorDashboardUrl('/billing');
+                    if (url) {
+                      Linking.openURL(url);
+                    } else {
+                      Linking.openURL(`${config.vendorDashboardUrl}/billing`);
+                    }
+                  } : handleManageSubscription}
+                >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
                       <Ionicons name={getSubscriptionPlatformIcon() as any} size={18} color={colors.textSecondary} />
@@ -353,7 +406,7 @@ export function SettingsScreen() {
                     <View style={styles.labelContainer}>
                       <Text style={styles.label}>Manage Subscription</Text>
                       <Text style={styles.sublabel}>
-                        {subscriptionInfo.platform === 'stripe'
+                        {subscriptionInfo?.platform === 'stripe'
                           ? 'Open billing portal'
                           : `Manage via ${getSubscriptionPlatformName()}`
                         }
@@ -365,21 +418,45 @@ export function SettingsScreen() {
               </>
             )}
 
-            {/* Upgrade prompt for free users */}
-            {(!subscriptionInfo || subscriptionInfo.tier === 'starter' || subscriptionInfo.status === 'none') && (
+            {/* Upgrade prompt for free users who don't have a previous Stripe subscription */}
+            {/* Users with previous Stripe subscriptions should use the "Manage Subscription" link above */}
+            {(!subscription || subscription.tier === 'starter' || subscription.status === 'none') && !hadPaidStripeSubscription && (
               <>
                 <View style={styles.divider} />
-                <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('SignUp')}>
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => {
+                    // On native platforms (iOS/Android), navigate to in-app upgrade screen
+                    // On web, open vendor portal billing page
+                    if (Platform.OS === 'web') {
+                      createVendorDashboardUrl('/billing').then(url => {
+                        if (url) {
+                          Linking.openURL(url);
+                        } else {
+                          Linking.openURL(`${config.vendorDashboardUrl}/billing`);
+                        }
+                      });
+                    } else {
+                      navigation.navigate('Upgrade');
+                    }
+                  }}
+                >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                       <Ionicons name="rocket-outline" size={18} color={colors.primary} />
                     </View>
                     <View style={styles.labelContainer}>
                       <Text style={styles.label}>Upgrade to Pro</Text>
-                      <Text style={styles.sublabel}>Unlock all features for $29.99/mo</Text>
+                      <Text style={styles.sublabel}>
+                        {Platform.OS === 'web' ? 'View pricing and upgrade options' : 'Unlock all Pro features'}
+                      </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  <Ionicons
+                    name={Platform.OS === 'web' ? 'open-outline' : 'chevron-forward'}
+                    size={18}
+                    color={colors.textMuted}
+                  />
                 </TouchableOpacity>
               </>
             )}
@@ -390,6 +467,27 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Management</Text>
           <View style={styles.card}>
+            {/* Payment Setup - Show when charges not enabled */}
+            {connectStatus && !connectStatus.chargesEnabled && (
+              <>
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => navigation.navigate('StripeOnboarding')}
+                >
+                  <View style={styles.rowLeft}>
+                    <View style={[styles.iconContainer, { backgroundColor: colors.warning + '15' }]}>
+                      <Ionicons name="card-outline" size={18} color={colors.warning} />
+                    </View>
+                    <View style={styles.labelContainer}>
+                      <Text style={styles.label}>Complete Payment Setup</Text>
+                      <Text style={styles.sublabel}>Required to accept payments</Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+                <View style={styles.divider} />
+              </>
+            )}
             <TouchableOpacity style={styles.row} onPress={handleOpenVendorPortal}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -492,7 +590,12 @@ export function SettingsScreen() {
                 </View>
                 <Text style={styles.label}>Device Status</Text>
               </View>
-              {Platform.OS === 'ios' ? (
+              {Platform.OS === 'web' ? (
+                <View style={styles.statusBadgeMuted}>
+                  <Ionicons name="desktop-outline" size={14} color={colors.textMuted} />
+                  <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>Not Available</Text>
+                </View>
+              ) : Platform.OS === 'ios' ? (
                 deviceCompatibility.isCompatible ? (
                   <View style={styles.statusBadgeSuccess}>
                     <Ionicons name="checkmark-circle" size={14} color={colors.success} />
@@ -522,7 +625,12 @@ export function SettingsScreen() {
                 </View>
                 <Text style={styles.label}>Terminal Status</Text>
               </View>
-              {isWarming ? (
+              {Platform.OS === 'web' ? (
+                <View style={styles.statusBadgeMuted}>
+                  <Ionicons name="close-circle-outline" size={14} color={colors.textMuted} />
+                  <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>N/A</Text>
+                </View>
+              ) : isWarming ? (
                 <View style={styles.statusBadgeWarning}>
                   <ActivityIndicator size="small" color={colors.warning} />
                   <Text style={[styles.statusBadgeText, { color: colors.warning }]}>
@@ -542,8 +650,18 @@ export function SettingsScreen() {
               )}
             </View>
 
+            {/* Web platform info box */}
+            {Platform.OS === 'web' && (
+              <View style={styles.infoBox}>
+                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+                <Text style={styles.infoBoxText}>
+                  {TAP_TO_PAY_NAME} requires a physical iPhone or Android device with NFC capability. Use the mobile app to accept contactless payments.
+                </Text>
+              </View>
+            )}
+
             {/* Configuration Progress Bar - Apple TTPOi 3.9.1 */}
-            {isWarming && (
+            {Platform.OS !== 'web' && isWarming && (
               <View style={styles.progressSection}>
                 <View style={styles.progressBarBackground}>
                   <View style={[styles.progressBarFill, { width: `${configurationProgress}%`, backgroundColor: colors.primary }]} />
@@ -561,14 +679,14 @@ export function SettingsScreen() {
             )}
 
             {/* Error message when device not compatible or terminal not ready */}
-            {(!deviceCompatibility.isCompatible && deviceCompatibility.errorMessage) && (
+            {Platform.OS !== 'web' && (!deviceCompatibility.isCompatible && deviceCompatibility.errorMessage) && (
               <View style={styles.errorBox}>
                 <Ionicons name="warning-outline" size={18} color={colors.error} />
                 <Text style={styles.errorBoxText}>{deviceCompatibility.errorMessage}</Text>
               </View>
             )}
 
-            {(!isInitialized && !isWarming && deviceCompatibility.isCompatible) && (
+            {Platform.OS !== 'web' && (!isInitialized && !isWarming && deviceCompatibility.isCompatible) && (
               <View style={styles.warningBox}>
                 <Ionicons name="information-circle-outline" size={18} color={colors.warning} />
                 <Text style={styles.warningBoxText}>
@@ -615,41 +733,6 @@ export function SettingsScreen() {
 
             <View style={styles.divider} />
 
-            {/* Apple Tap to Pay Terms - Apple TTPOi 3.3 */}
-            {Platform.OS === 'ios' && (
-              <>
-                <TouchableOpacity
-                  style={styles.row}
-                  onPress={() => Linking.openURL('https://support.apple.com/en-us/HT213049')}
-                >
-                  <View style={styles.rowLeft}>
-                    <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
-                      <Ionicons name="logo-apple" size={18} color={colors.textSecondary} />
-                    </View>
-                    <Text style={styles.label}>Apple Tap to Pay Support</Text>
-                  </View>
-                  <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
-
-                <View style={styles.divider} />
-
-                <TouchableOpacity
-                  style={styles.row}
-                  onPress={() => Linking.openURL('https://www.apple.com/legal/privacy/en-ww/tap-to-pay/')}
-                >
-                  <View style={styles.rowLeft}>
-                    <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
-                      <Ionicons name="shield-checkmark-outline" size={18} color={colors.textSecondary} />
-                    </View>
-                    <Text style={styles.label}>Apple Privacy Policy</Text>
-                  </View>
-                  <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
-
-                <View style={styles.divider} />
-              </>
-            )}
-
             {/* Contact Luma Support */}
             <TouchableOpacity
               style={styles.row}
@@ -678,8 +761,9 @@ export function SettingsScreen() {
         <View style={styles.footer}>
           <Text style={styles.version}>Luma v{Constants.expoConfig?.version || '1.0.0'}</Text>
         </View>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -706,6 +790,14 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     content: {
       flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      alignItems: 'center',
+    },
+    contentContainer: {
+      width: '100%',
+      maxWidth: 600,
     },
     section: {
       paddingHorizontal: 16,
@@ -905,6 +997,22 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontSize: 13,
       fontFamily: fonts.regular,
       color: colors.warning,
+      lineHeight: 18,
+    },
+    infoBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      padding: 16,
+      backgroundColor: colors.primary + '10',
+      borderTopWidth: 1,
+      borderTopColor: colors.primary + '20',
+    },
+    infoBoxText: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      color: colors.primary,
       lineHeight: 18,
     },
     // Configuration progress styles - Apple TTPOi 3.9.1

@@ -15,7 +15,7 @@ import {
   useWindowDimensions,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -28,6 +28,7 @@ import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { productsApi, Product, categoriesApi, Category, CatalogLayoutType } from '../lib/api';
 import { openVendorDashboard } from '../lib/auth-handoff';
 import { SetupRequired } from '../components/SetupRequired';
+import { TapToPayOnboardingModal } from '../components/TapToPayOnboardingModal';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 
@@ -210,8 +211,9 @@ export function MenuScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading, user, completeOnboarding } = useAuth();
   const { selectedCatalog, catalogs, isLoading: catalogsLoading } = useCatalog();
   const { addItem, getItemQuantity, itemCount, subtotal } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -219,6 +221,26 @@ export function MenuScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
   const { width: screenWidth } = useWindowDimensions();
+
+  // Show onboarding modal for new users who haven't completed onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if we should show onboarding on initial render
+  React.useEffect(() => {
+    if (user && user.onboardingCompleted === false && !authLoading) {
+      setShowOnboarding(true);
+    }
+  }, [user, authLoading]);
+
+  const handleOnboardingComplete = useCallback(async () => {
+    setShowOnboarding(false);
+    await completeOnboarding();
+  }, [completeOnboarding]);
+
+  const handleNavigateToEducation = useCallback(() => {
+    // Navigate to Tap to Pay settings for education
+    navigation.navigate('TapToPaySettings');
+  }, [navigation]);
 
   const {
     data: products,
@@ -229,12 +251,14 @@ export function MenuScreen() {
     queryKey: ['products', selectedCatalog?.id],
     queryFn: () => productsApi.list(selectedCatalog!.id),
     enabled: !!selectedCatalog,
+    staleTime: Infinity, // Never auto-refetch - updates via socket events or pull-to-refresh
   });
 
   const { data: categories } = useQuery({
     queryKey: ['categories', selectedCatalog?.id],
     queryFn: () => categoriesApi.list(selectedCatalog!.id),
     enabled: !!selectedCatalog,
+    staleTime: Infinity, // Never auto-refetch - updates via socket events or pull-to-refresh
   });
 
   // Listen for real-time updates to products and categories
@@ -356,11 +380,11 @@ export function MenuScreen() {
             <Text style={styles.listName} numberOfLines={2}>
               {item.name}
             </Text>
-            {item.description && (
+            {item.description ? (
               <Text style={styles.listDescription} numberOfLines={2}>
                 {item.description}
               </Text>
-            )}
+            ) : null}
             <Text style={styles.listPrice}>
               ${(item.price / 100).toFixed(2)}
             </Text>
@@ -401,11 +425,11 @@ export function MenuScreen() {
               <Text style={styles.largeName} numberOfLines={2}>
                 {item.name}
               </Text>
-              {item.description && (
+              {item.description ? (
                 <Text style={styles.largeDescription} numberOfLines={2}>
                   {item.description}
                 </Text>
-              )}
+              ) : null}
             </View>
             <View style={styles.largePriceRow}>
               <Text style={styles.largePrice}>
@@ -494,7 +518,7 @@ export function MenuScreen() {
   // Show skeleton loading while auth or catalogs are being fetched
   if (authLoading || catalogsLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Skeleton Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -519,39 +543,39 @@ export function MenuScreen() {
             <View key={i} style={[styles.skeletonBox, { width: (screenWidth - GRID_PADDING * 2 - GRID_GAP) / 2, height: 200, borderRadius: 20 }]} />
           ))}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   // Show setup guidance if no catalogs exist
   if (catalogs.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <SetupRequired type="no-catalogs" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!selectedCatalog) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
           <Text style={styles.errorText}>No catalog selected</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (productsLoading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Header with catalog name */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
-            {selectedCatalog.location && (
+            {selectedCatalog.location ? (
               <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
-            )}
+            ) : null}
           </View>
           <View style={[styles.skeletonBox, { width: 48, height: 48, borderRadius: 16 }]} />
         </View>
@@ -571,12 +595,12 @@ export function MenuScreen() {
             <View key={i} style={[styles.skeletonBox, { width: (screenWidth - GRID_PADDING * 2 - GRID_GAP) / 2, height: 200, borderRadius: 20 }]} />
           ))}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header with glass effect */}
       <View style={styles.header}>
         {isSearching ? (
@@ -614,9 +638,9 @@ export function MenuScreen() {
           <>
             <View style={styles.headerLeft}>
               <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
-              {selectedCatalog.location && (
+              {selectedCatalog.location ? (
                 <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
-              )}
+              ) : null}
             </View>
             <View style={styles.headerButtons}>
               <TouchableOpacity
@@ -687,7 +711,7 @@ export function MenuScreen() {
       )}
 
       {/* Search Results Count */}
-      {searchQuery.trim() && (
+      {searchQuery.trim() ? (
         <View style={styles.searchResultsBar}>
           <Text style={styles.searchResultsText}>
             {filteredProducts.length === 0
@@ -698,7 +722,7 @@ export function MenuScreen() {
             {'"'}
           </Text>
         </View>
-      )}
+      ) : null}
 
       {/* Products Grid/List */}
       {filteredProducts.length === 0 ? (
@@ -757,7 +781,14 @@ export function MenuScreen() {
           }
         />
       )}
-    </SafeAreaView>
+
+      {/* Tap to Pay Onboarding Modal - shown once per account */}
+      <TapToPayOnboardingModal
+        visible={showOnboarding}
+        onComplete={handleOnboardingComplete}
+        onNavigateToEducation={handleNavigateToEducation}
+      />
+    </View>
   );
 }
 

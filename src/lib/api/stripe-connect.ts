@@ -11,6 +11,11 @@ export interface ConnectStatus {
   externalAccountBankName: string | null;
 }
 
+export interface OnboardingLink {
+  onboardingUrl: string;
+}
+
 export const stripeConnectApi = {
   getStatus: () => apiClient.get<ConnectStatus>('/stripe/connect/status'),
+  getOnboardingLink: () => apiClient.post<OnboardingLink>('/stripe/connect/onboarding-link', {}),
 };

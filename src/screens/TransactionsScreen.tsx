@@ -10,13 +10,14 @@ import {
   Animated,
   Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
+import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { transactionsApi, Transaction } from '../lib/api';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
@@ -103,9 +104,20 @@ export function TransactionsScreen() {
   const { colors, isDark } = useTheme();
   const { selectedCatalog } = useCatalog();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const glassColors = isDark ? glass.dark : glass.light;
   const [filter, setFilter] = useState<FilterType>('all');
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+
+  // Auto-refresh transactions when payment events occur
+  const handlePaymentEvent = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['transactions'] });
+  }, [queryClient]);
+
+  useSocketEvent(SocketEvents.ORDER_COMPLETED, handlePaymentEvent);
+  useSocketEvent(SocketEvents.PAYMENT_RECEIVED, handlePaymentEvent);
+  useSocketEvent(SocketEvents.ORDER_REFUNDED, handlePaymentEvent);
 
   const {
     data,
@@ -231,7 +243,7 @@ export function TransactionsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Transactions</Text>
       </View>
@@ -301,7 +313,7 @@ export function TransactionsScreen() {
           data={transactions}
           renderItem={renderTransaction}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { flexGrow: 1 }]}
           refreshControl={
             <RefreshControl
               refreshing={isManualRefreshing}
@@ -314,7 +326,7 @@ export function TransactionsScreen() {
           ListFooterComponent={renderFooter}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

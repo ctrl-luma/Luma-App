@@ -3,14 +3,8 @@ import { io, Socket } from 'socket.io-client';
 import { AppState, AppStateStatus } from 'react-native';
 import { config } from '../lib/config';
 import { authService } from '../lib/api';
+import { triggerSessionKicked } from '../lib/session-callbacks';
 import { useAuth } from './AuthContext';
-
-// Callback for handling session kicked via socket
-let onSocketSessionKickedCallback: ((data: any) => void) | null = null;
-
-export function setOnSocketSessionKicked(callback: (data: any) => void) {
-  onSocketSessionKickedCallback = callback;
-}
 
 // Track if we're currently refreshing tokens to avoid multiple refreshes
 let isRefreshingForSocket = false;
@@ -37,6 +31,11 @@ export const SocketEvents = {
   // Transaction events
   TRANSACTION_CREATED: 'transaction:created',
   TRANSACTION_UPDATED: 'transaction:updated',
+  // Order events (from webhook handlers)
+  ORDER_COMPLETED: 'order:completed',
+  ORDER_FAILED: 'order:failed',
+  PAYMENT_RECEIVED: 'payment:received',
+  ORDER_REFUNDED: 'order:refunded',
 } as const;
 
 type SocketEventName = typeof SocketEvents[keyof typeof SocketEvents];
@@ -81,8 +80,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
       // If it's a 401 or session error, trigger the kicked callback
       if (error.message?.includes('session') || error.response?.status === 401) {
         console.log('[Socket] Session invalid, triggering kick...');
-        if (onSocketSessionKickedCallback) {
-          onSocketSessionKickedCallback({ reason: 'Session expired or logged in elsewhere' });
+        if (triggerSessionKicked) {
+          triggerSessionKicked({ reason: 'Session expired or logged in elsewhere' });
         }
       }
     }
@@ -128,8 +127,8 @@ export function SocketProvider({ children }: SocketProviderProps) {
       // Listen for session kicked event (user logged in on another device)
       socketRef.current.on(SocketEvents.SESSION_KICKED, (data: any) => {
         console.log('[Socket] Received SESSION_KICKED event:', data);
-        if (onSocketSessionKickedCallback) {
-          onSocketSessionKickedCallback(data);
+        if (triggerSessionKicked) {
+          triggerSessionKicked(data);
         }
       });
 

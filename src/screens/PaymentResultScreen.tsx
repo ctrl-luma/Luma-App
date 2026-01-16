@@ -10,20 +10,22 @@ import {
   Alert,
   ActivityIndicator,
   useWindowDimensions,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CardField, useConfirmPayment, CardFieldInput, initStripe } from '@stripe/stripe-react-native';
+import { config } from '../lib/config';
 
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
-import { stripeTerminalApi, paymentLinksApi, PaymentLink } from '../lib/api';
-import * as Clipboard from 'expo-clipboard';
-import * as Sharing from 'expo-sharing';
+import { stripeTerminalApi, ordersApi } from '../lib/api';
 
 type RouteParams = {
   PaymentResult: {
@@ -34,6 +36,7 @@ type RouteParams = {
     orderNumber?: string;
     customerEmail?: string;
     errorMessage?: string;
+    skipToCardEntry?: boolean; // Go directly to card entry page
   };
 };
 
@@ -45,7 +48,7 @@ export function PaymentResultScreen() {
   const { clearCart } = useCart();
   const { width: screenWidth } = useWindowDimensions();
 
-  const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage } = route.params;
+  const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage, skipToCardEntry } = route.params;
 
   // Dynamic font sizes based on screen width (accounting for 24px padding on each side)
   const amountText = `$${(amount / 100).toFixed(2)}`;
@@ -59,11 +62,13 @@ export function PaymentResultScreen() {
   const [sendingReceipt, setSendingReceipt] = useState(false);
   const [showEmailInput, setShowEmailInput] = useState(false);
 
-  // Fallback payment link state - Apple TTPOi Regional Requirement (UK, IE, CAN)
-  const [paymentLink, setPaymentLink] = useState<PaymentLink | null>(null);
-  const [creatingLink, setCreatingLink] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
-  const [checkingLinkStatus, setCheckingLinkStatus] = useState(false);
+  // Manual card entry state - fallback when Tap to Pay fails
+  const [showCardEntry, setShowCardEntry] = useState(false);
+  const [cardDetails, setCardDetails] = useState<CardFieldInput.Details | null>(null);
+  const [processingCard, setProcessingCard] = useState(false);
+
+  // Stripe hook for confirming card payments
+  const { confirmPayment } = useConfirmPayment();
 
   // Auto-send receipt if customer email was provided during checkout
   useEffect(() => {
@@ -213,89 +218,89 @@ export function PaymentResultScreen() {
     navigation.goBack();
   };
 
-  // Create a payment link for fallback - Apple TTPOi Regional Requirement
-  const handleCreatePaymentLink = async () => {
-    setCreatingLink(true);
+  // Handle manual card payment - fallback when Tap to Pay fails
+  // Note: Manual card entry has higher Stripe fees (2.9% + 30¢) vs Tap to Pay (2.7% + 5¢)
+  const handleManualCardPayment = async () => {
+    if (!cardDetails?.complete) {
+      Alert.alert('Card Required', 'Please enter your card details.');
+      return;
+    }
+
+    setProcessingCard(true);
+
     try {
-      const link = await paymentLinksApi.create({
-        amount,
+      // Create a new payment intent for card payment (direct charge on connected account)
+      const paymentIntent = await stripeTerminalApi.createPaymentIntent({
+        amount: amount / 100, // API expects dollars
         description: `Order ${orderNumber || 'Payment'}`,
-        orderId,
-        customerEmail: customerEmail || undefined,
+        metadata: {
+          orderId: orderId || '',
+          orderNumber: orderNumber || '',
+        },
+        receiptEmail: customerEmail || undefined,
+        captureMethod: 'automatic',
+        paymentMethodType: 'card',
       });
-      setPaymentLink(link);
-    } catch (error: any) {
-      console.error('[PaymentResult] Failed to create payment link:', error);
-      Alert.alert('Error', 'Failed to create payment link. Please try again.');
-    } finally {
-      setCreatingLink(false);
-    }
-  };
 
-  // Copy payment link to clipboard
-  const handleCopyLink = async () => {
-    if (!paymentLink) return;
-    try {
-      await Clipboard.setStringAsync(paymentLink.url);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    } catch (error) {
-      console.error('[PaymentResult] Failed to copy link:', error);
-    }
-  };
+      // Link to existing order if we have one
+      if (orderId) {
+        await ordersApi.linkPaymentIntent(orderId, paymentIntent.id);
+      }
 
-  // Share payment link
-  const handleShareLink = async () => {
-    if (!paymentLink) return;
-    try {
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        // Share as text since we don't have a file
-        Alert.alert(
-          'Share Payment Link',
-          paymentLink.url,
-          [
-            { text: 'Copy', onPress: handleCopyLink },
-            { text: 'OK' },
-          ]
+      // Initialize Stripe with the connected account ID for direct charges
+      // This ensures the payment is processed on the vendor's connected account
+      await initStripe({
+        publishableKey: config.stripePublishableKey,
+        merchantIdentifier: 'merchant.com.lumapos',
+        stripeAccountId: paymentIntent.stripeAccountId,
+      });
+
+      // Confirm payment with card details
+      const { error, paymentIntent: confirmedIntent } = await confirmPayment(paymentIntent.clientSecret, {
+        paymentMethodType: 'Card',
+        paymentMethodData: {
+          billingDetails: {
+            email: customerEmail || undefined,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('[ManualCard] Payment failed:', error);
+        Alert.alert('Payment Failed', error.message || 'Your payment could not be processed.');
+        return;
+      }
+
+      if (confirmedIntent?.status === 'Succeeded') {
+        // Success! Reset navigation to show fresh success screen
+        clearCart();
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 1,
+            routes: [
+              { name: 'MainTabs' },
+              {
+                name: 'PaymentResult',
+                params: {
+                  success: true,
+                  amount,
+                  paymentIntentId: paymentIntent.id,
+                  orderId,
+                  orderNumber,
+                  customerEmail,
+                },
+              },
+            ],
+          })
         );
       } else {
-        handleCopyLink();
-      }
-    } catch (error) {
-      console.error('[PaymentResult] Failed to share link:', error);
-      handleCopyLink();
-    }
-  };
-
-  // Check if payment link was completed
-  const handleCheckLinkStatus = async () => {
-    if (!paymentLink) return;
-    setCheckingLinkStatus(true);
-    try {
-      const status = await paymentLinksApi.getStatus(paymentLink.id);
-      if (status.paid) {
-        // Payment completed via link!
-        clearCart();
-        navigation.replace('PaymentResult', {
-          success: true,
-          amount,
-          paymentIntentId: status.paymentIntentId || paymentIntentId,
-          orderId,
-          orderNumber,
-          customerEmail,
-        });
-      } else if (status.status === 'expired') {
-        Alert.alert('Link Expired', 'This payment link has expired. Please create a new one.');
-        setPaymentLink(null);
-      } else {
-        Alert.alert('Awaiting Payment', 'The customer has not completed payment yet.');
+        Alert.alert('Payment Incomplete', 'The payment was not completed. Please try again.');
       }
     } catch (error: any) {
-      console.error('[PaymentResult] Failed to check link status:', error);
-      Alert.alert('Error', 'Failed to check payment status.');
+      console.error('[ManualCard] Payment error:', error);
+      Alert.alert('Payment Error', error.message || 'Failed to process payment. Please try again.');
     } finally {
-      setCheckingLinkStatus(false);
+      setProcessingCard(false);
     }
   };
 
@@ -330,10 +335,112 @@ export function PaymentResultScreen() {
 
   const confettiColors = [colors.primary, colors.success, '#FFD700', '#FF6B6B', '#4ECDC4'];
 
+  // Clean card entry page - shown when user needs to enter card manually
+  if (showCardEntry) {
+    return (
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.container}>
+          <SafeAreaView style={styles.safeArea}>
+            {/* Header */}
+            <View style={styles.cardPageHeader}>
+              <TouchableOpacity
+                style={styles.cardPageBackButton}
+                onPress={() => setShowCardEntry(false)}
+              >
+                <Ionicons name="arrow-back" size={24} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.cardPageTitle}>Card Payment</Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            <View style={styles.cardPageContent}>
+              {/* Amount Display */}
+              <View style={styles.cardPageAmountContainer}>
+                <Text style={styles.cardPageAmountLabel}>Amount to Pay</Text>
+                <Text style={styles.cardPageAmount}>${(amount / 100).toFixed(2)}</Text>
+                {orderNumber && (
+                  <Text style={styles.cardPageOrderNumber}>Order #{orderNumber}</Text>
+                )}
+              </View>
+
+              {/* Fee Warning */}
+              <View style={styles.feeWarningContainer}>
+                <Ionicons name="information-circle" size={16} color={colors.warning} />
+                <Text style={styles.feeWarningText}>
+                  Manual card entry costs 0.2% + 15¢ more per transaction than Tap to Pay, plus standard tiered processing fees apply.
+                </Text>
+              </View>
+
+              {/* Card Field */}
+              <View style={styles.cardPageFormContainer}>
+                <CardField
+                  postalCodeEnabled={false}
+                  placeholders={{
+                    number: '4242 4242 4242 4242',
+                    expiration: 'MM/YY',
+                    cvc: 'CVC',
+                  }}
+                  cardStyle={{
+                    backgroundColor: isDark ? '#1f2937' : '#f9fafb',
+                    textColor: isDark ? '#ffffff' : '#111827',
+                    placeholderColor: isDark ? '#6b7280' : '#9ca3af',
+                    borderColor: isDark ? '#374151' : '#e5e7eb',
+                    borderWidth: 1,
+                    borderRadius: 12,
+                    fontSize: 20,
+                    cursorColor: colors.primary,
+                    textErrorColor: colors.error,
+                  }}
+                  style={styles.cardField}
+                  onCardChange={(details) => setCardDetails(details)}
+                />
+
+                <View style={styles.cardSecurityNote}>
+                  <Ionicons name="shield-checkmark" size={14} color={colors.success} />
+                  <Text style={styles.cardSecurityText}>
+                    Card info is encrypted and sent directly to Stripe
+                  </Text>
+                </View>
+              </View>
+
+              {/* Pay Button - moved inside content area */}
+              <TouchableOpacity
+                onPress={handleManualCardPayment}
+                disabled={!cardDetails?.complete || processingCard}
+                activeOpacity={0.9}
+                style={styles.cardPagePayButtonContainer}
+              >
+                <LinearGradient
+                  colors={[colors.primary, colors.primary700]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[
+                    styles.cardPagePayButton,
+                    (!cardDetails?.complete || processingCard) && styles.cardPagePayButtonDisabled,
+                  ]}
+                >
+                  {processingCard ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <Ionicons name="lock-closed" size={20} color="#fff" />
+                      <Text style={styles.cardPagePayButtonText}>Pay ${(amount / 100).toFixed(2)}</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </SafeAreaView>
+        </View>
+      </TouchableWithoutFeedback>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      {/* Background Gradient */}
-      {success && (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        {/* Background Gradient */}
+        {success && (
         <View style={styles.backgroundGradients}>
           <View style={[styles.gradientOrb, styles.gradientOrb1]} />
           <View style={[styles.gradientOrb, styles.gradientOrb2]} />
@@ -469,91 +576,23 @@ export function PaymentResultScreen() {
                   </Text>
                 </View>
 
-                {/* Fallback Payment Link - Apple TTPOi Regional Requirement (UK, IE, CAN) */}
-                {!paymentLink ? (
-                  <View style={styles.fallbackContainer}>
-                    <View style={styles.fallbackHeader}>
-                      <Ionicons name="link-outline" size={20} color={colors.primary} />
-                      <Text style={styles.fallbackTitle}>Alternative Payment</Text>
-                    </View>
-                    <Text style={styles.fallbackDescription}>
-                      If the card can't be read contactlessly, send a payment link to the customer.
-                    </Text>
-                    <TouchableOpacity
-                      style={[styles.fallbackButton, creatingLink && styles.fallbackButtonDisabled]}
-                      onPress={handleCreatePaymentLink}
-                      disabled={creatingLink}
-                    >
-                      {creatingLink ? (
-                        <ActivityIndicator size="small" color={colors.primary} />
-                      ) : (
-                        <>
-                          <Ionicons name="send-outline" size={18} color={colors.primary} />
-                          <Text style={styles.fallbackButtonText}>Create Payment Link</Text>
-                        </>
-                      )}
-                    </TouchableOpacity>
+                {/* Manual Card Entry Option */}
+                <View style={styles.fallbackContainer}>
+                  <View style={styles.fallbackHeader}>
+                    <Ionicons name="card-outline" size={20} color={colors.primary} />
+                    <Text style={styles.fallbackTitle}>Alternative Payment</Text>
                   </View>
-                ) : (
-                  <View style={styles.paymentLinkContainer}>
-                    <View style={styles.paymentLinkHeader}>
-                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                      <Text style={styles.paymentLinkTitle}>Payment Link Ready</Text>
-                    </View>
-                    <Text style={styles.paymentLinkAmount}>${(amount / 100).toFixed(2)}</Text>
-
-                    {/* Link URL */}
-                    <View style={styles.linkUrlContainer}>
-                      <Text style={styles.linkUrl} numberOfLines={1} ellipsizeMode="middle">
-                        {paymentLink.url}
-                      </Text>
-                    </View>
-
-                    {/* Link Actions */}
-                    <View style={styles.linkActions}>
-                      <TouchableOpacity
-                        style={styles.linkActionButton}
-                        onPress={handleCopyLink}
-                      >
-                        <Ionicons
-                          name={linkCopied ? 'checkmark' : 'copy-outline'}
-                          size={20}
-                          color={linkCopied ? colors.success : colors.primary}
-                        />
-                        <Text style={[styles.linkActionText, linkCopied && { color: colors.success }]}>
-                          {linkCopied ? 'Copied!' : 'Copy'}
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={styles.linkActionButton}
-                        onPress={handleShareLink}
-                      >
-                        <Ionicons name="share-outline" size={20} color={colors.primary} />
-                        <Text style={styles.linkActionText}>Share</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[styles.linkActionButton, checkingLinkStatus && styles.linkActionButtonDisabled]}
-                        onPress={handleCheckLinkStatus}
-                        disabled={checkingLinkStatus}
-                      >
-                        {checkingLinkStatus ? (
-                          <ActivityIndicator size="small" color={colors.primary} />
-                        ) : (
-                          <>
-                            <Ionicons name="refresh-outline" size={20} color={colors.primary} />
-                            <Text style={styles.linkActionText}>Check</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-
-                    <Text style={styles.linkHint}>
-                      Share this link with the customer to complete payment
-                    </Text>
-                  </View>
-                )}
+                  <Text style={styles.fallbackDescription}>
+                    Enter the card details manually instead.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.fallbackButton}
+                    onPress={() => setShowCardEntry(true)}
+                  >
+                    <Ionicons name="keypad-outline" size={18} color={colors.primary} />
+                    <Text style={styles.fallbackButtonText}>Enter Card Manually</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
           </Animated.View>
@@ -593,7 +632,8 @@ export function PaymentResultScreen() {
           )}
         </Animated.View>
       </SafeAreaView>
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -838,70 +878,174 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, success: bool
       fontFamily: fonts.medium,
       color: colors.primary,
     },
-    // Payment Link UI styles
-    paymentLinkContainer: {
+    // Manual Card Entry styles
+    cardEntryContainer: {
       marginTop: 20,
       padding: 20,
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 20,
       borderWidth: 1,
-      borderColor: colors.success + '30',
+      borderColor: colors.primary + '30',
       alignSelf: 'stretch',
     },
-    paymentLinkHeader: {
+    cardEntryHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 10,
       marginBottom: 8,
     },
-    paymentLinkTitle: {
+    cardEntryTitle: {
       fontSize: 16,
       fontFamily: fonts.semiBold,
-      color: colors.success,
+      color: colors.primary,
     },
-    paymentLinkAmount: {
+    cardEntryAmount: {
       fontSize: 32,
       fontFamily: fonts.bold,
       color: colors.text,
       textAlign: 'center',
       marginBottom: 16,
     },
-    linkUrlContainer: {
-      backgroundColor: colors.background,
-      padding: 12,
-      borderRadius: 12,
-      marginBottom: 16,
-    },
-    linkUrl: {
-      fontSize: 13,
-      fontFamily: fonts.regular,
-      color: colors.textMuted,
-      textAlign: 'center',
-    },
-    linkActions: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
+    cardField: {
+      height: 50,
       marginBottom: 12,
     },
-    linkActionButton: {
+    cardSecurityNote: {
+      flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 6,
-      paddingVertical: 10,
-      paddingHorizontal: 16,
+      marginBottom: 16,
     },
-    linkActionButtonDisabled: {
-      opacity: 0.6,
-    },
-    linkActionText: {
-      fontSize: 13,
-      fontFamily: fonts.medium,
-      color: colors.primary,
-    },
-    linkHint: {
+    cardSecurityText: {
       fontSize: 12,
       fontFamily: fonts.regular,
       color: colors.textMuted,
-      textAlign: 'center',
+    },
+    cardPayButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 16,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      ...shadows.md,
+    },
+    cardPayButtonDisabled: {
+      opacity: 0.5,
+    },
+    cardPayButtonText: {
+      fontSize: 17,
+      fontFamily: fonts.semiBold,
+      color: '#fff',
+    },
+    cardCancelButton: {
+      alignItems: 'center',
+      paddingVertical: 14,
+      marginTop: 12,
+    },
+    cardCancelText: {
+      fontSize: 15,
+      fontFamily: fonts.medium,
+      color: colors.textMuted,
+    },
+    // Clean card payment page styles
+    cardPageHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: glassColors.borderSubtle,
+    },
+    cardPageBackButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 12,
+      backgroundColor: glassColors.backgroundElevated,
+    },
+    cardPageTitle: {
+      fontSize: 18,
+      fontFamily: fonts.semiBold,
+      color: colors.text,
+    },
+    cardPageContent: {
+      paddingHorizontal: 24,
+      paddingTop: 32,
+    },
+    cardPageAmountContainer: {
+      alignItems: 'center',
+      marginBottom: 32,
+    },
+    cardPageAmountLabel: {
+      fontSize: 14,
+      fontFamily: fonts.medium,
+      color: colors.textMuted,
+      textTransform: 'uppercase',
+      letterSpacing: 1,
+      marginBottom: 8,
+    },
+    cardPageAmount: {
+      fontSize: 48,
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    cardPageOrderNumber: {
+      fontSize: 14,
+      fontFamily: fonts.medium,
+      color: colors.textMuted,
+      marginTop: 8,
+    },
+    feeWarningContainer: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: colors.warningBg || colors.warning + '15',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.warning + '30',
+      marginBottom: 20,
+    },
+    feeWarningText: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      color: colors.warning,
+      lineHeight: 18,
+    },
+    cardPageFormContainer: {
+      marginBottom: 24,
+    },
+    cardField: {
+      height: 60,
+      marginBottom: 16,
+    },
+    cardPagePayButtonContainer: {
+      marginTop: 8,
+    },
+    cardPagePayButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+      paddingVertical: 18,
+      borderRadius: 9999,
+      ...shadows.lg,
+      shadowColor: colors.primary,
+    },
+    cardPagePayButtonDisabled: {
+      opacity: 0.5,
+    },
+    cardPagePayButtonText: {
+      fontSize: 18,
+      fontFamily: fonts.semiBold,
+      color: '#fff',
     },
     footer: {
       padding: 20,

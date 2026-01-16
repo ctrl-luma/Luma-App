@@ -2,24 +2,27 @@
  * In-App Purchase Service
  * Handles subscriptions for iOS (StoreKit) and Android (Google Play Billing)
  * Uses react-native-iap for cross-platform support
+ *
+ * Note: IAP is not available on web - this module provides a stub for web builds
  */
 
 import { Platform } from 'react-native';
-import {
-  initConnection,
-  endConnection,
-  getSubscriptions,
-  requestSubscription,
-  getAvailablePurchases,
-  finishTransaction,
-  purchaseUpdatedListener,
-  purchaseErrorListener,
-  type SubscriptionPurchase,
-  type ProductPurchase,
-  type PurchaseError,
-  type Subscription,
-} from 'react-native-iap';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from './config';
+import { getStorageKey } from './api/auth';
+
+// Conditionally import react-native-iap only on native platforms
+let RNIap: any = null;
+let iapLoadError: string | null = null;
+
+if (Platform.OS !== 'web') {
+  try {
+    RNIap = require('react-native-iap');
+  } catch (error: any) {
+    iapLoadError = `Failed to load react-native-iap: ${error?.message || error}`;
+    console.warn('[IAP]', iapLoadError);
+  }
+}
 
 // Product IDs - must match App Store Connect and Google Play Console
 export const SUBSCRIPTION_SKUS = Platform.select({
@@ -70,10 +73,32 @@ class IAPService {
   private onPurchaseComplete: ((result: PurchaseResult) => void) | null = null;
 
   /**
+   * Check if IAP is available on this platform
+   */
+  isAvailable(): boolean {
+    return Platform.OS !== 'web' && RNIap !== null;
+  }
+
+  /**
+   * Get error message if IAP is not available
+   */
+  getUnavailableReason(): string | null {
+    if (Platform.OS === 'web') {
+      return 'In-app purchases are not available on web';
+    }
+    return iapLoadError;
+  }
+
+  /**
    * Initialize the IAP connection
    * Must be called before any other IAP methods
    */
   async initialize(): Promise<boolean> {
+    if (!this.isAvailable()) {
+      console.log('[IAP] Not available:', this.getUnavailableReason());
+      return false;
+    }
+
     if (this.isInitialized) {
       console.log('[IAP] Already initialized');
       return true;
@@ -81,7 +106,7 @@ class IAPService {
 
     try {
       console.log('[IAP] Initializing connection...');
-      const result = await initConnection();
+      const result = await RNIap.initConnection();
       console.log('[IAP] Connection result:', result);
 
       // Set up purchase listeners
@@ -100,9 +125,11 @@ class IAPService {
    * Set up listeners for purchase events
    */
   private setupPurchaseListeners() {
+    if (!RNIap) return;
+
     // Listen for successful purchases
-    this.purchaseUpdateSubscription = purchaseUpdatedListener(
-      async (purchase: SubscriptionPurchase | ProductPurchase) => {
+    this.purchaseUpdateSubscription = RNIap.purchaseUpdatedListener(
+      async (purchase: any) => {
         console.log('[IAP] Purchase updated:', purchase.productId);
 
         try {
@@ -111,7 +138,7 @@ class IAPService {
 
           if (validation.valid) {
             // Finish the transaction
-            await finishTransaction({ purchase, isConsumable: false });
+            await RNIap.finishTransaction({ purchase, isConsumable: false });
             console.log('[IAP] Transaction finished successfully');
 
             if (this.onPurchaseComplete) {
@@ -120,8 +147,8 @@ class IAPService {
                 transactionId: purchase.transactionId,
                 productId: purchase.productId,
                 receipt: Platform.OS === 'ios'
-                  ? (purchase as any).transactionReceipt
-                  : (purchase as any).purchaseToken,
+                  ? purchase.transactionReceipt
+                  : purchase.purchaseToken,
               });
             }
           } else {
@@ -146,8 +173,8 @@ class IAPService {
     );
 
     // Listen for purchase errors
-    this.purchaseErrorSubscription = purchaseErrorListener(
-      (error: PurchaseError) => {
+    this.purchaseErrorSubscription = RNIap.purchaseErrorListener(
+      (error: any) => {
         console.error('[IAP] Purchase error:', error);
 
         if (this.onPurchaseComplete) {
@@ -172,6 +199,8 @@ class IAPService {
    * Clean up IAP connection
    */
   async cleanup(): Promise<void> {
+    if (!this.isAvailable()) return;
+
     console.log('[IAP] Cleaning up...');
 
     if (this.purchaseUpdateSubscription) {
@@ -185,7 +214,7 @@ class IAPService {
     }
 
     try {
-      await endConnection();
+      await RNIap.endConnection();
       this.isInitialized = false;
       console.log('[IAP] Cleanup complete');
     } catch (error) {
@@ -197,29 +226,34 @@ class IAPService {
    * Get available subscription products
    */
   async getProducts(): Promise<SubscriptionProduct[]> {
+    if (!this.isAvailable()) {
+      console.log('[IAP] Not available, returning empty products');
+      return [];
+    }
+
     if (!this.isInitialized) {
       await this.initialize();
     }
 
     try {
       console.log('[IAP] Fetching products:', SUBSCRIPTION_SKUS);
-      const subscriptions = await getSubscriptions({ skus: SUBSCRIPTION_SKUS! });
+      const subscriptions = await RNIap.getSubscriptions({ skus: SUBSCRIPTION_SKUS! });
       console.log('[IAP] Products fetched:', subscriptions.length);
 
-      return subscriptions.map((sub: Subscription) => ({
+      return subscriptions.map((sub: any) => ({
         productId: sub.productId,
         title: sub.title,
         description: sub.description,
         price: sub.price,
         localizedPrice: sub.localizedPrice,
         currency: sub.currency,
-        introductoryPrice: (sub as any).introductoryPrice,
-        introductoryPricePaymentMode: (sub as any).introductoryPricePaymentModeIOS,
-        introductoryPriceNumberOfPeriods: (sub as any).introductoryPriceNumberOfPeriodsIOS,
-        introductoryPriceSubscriptionPeriod: (sub as any).introductoryPriceSubscriptionPeriodIOS,
-        subscriptionPeriodNumberIOS: (sub as any).subscriptionPeriodNumberIOS,
-        subscriptionPeriodUnitIOS: (sub as any).subscriptionPeriodUnitIOS,
-        freeTrialPeriodAndroid: (sub as any).freeTrialPeriodAndroid,
+        introductoryPrice: sub.introductoryPrice,
+        introductoryPricePaymentMode: sub.introductoryPricePaymentModeIOS,
+        introductoryPriceNumberOfPeriods: sub.introductoryPriceNumberOfPeriodsIOS,
+        introductoryPriceSubscriptionPeriod: sub.introductoryPriceSubscriptionPeriodIOS,
+        subscriptionPeriodNumberIOS: sub.subscriptionPeriodNumberIOS,
+        subscriptionPeriodUnitIOS: sub.subscriptionPeriodUnitIOS,
+        freeTrialPeriodAndroid: sub.freeTrialPeriodAndroid,
       }));
     } catch (error: any) {
       console.error('[IAP] Error fetching products:', error);
@@ -234,6 +268,14 @@ class IAPService {
     productId: string,
     onComplete: (result: PurchaseResult) => void
   ): Promise<void> {
+    if (!this.isAvailable()) {
+      onComplete({
+        success: false,
+        error: this.getUnavailableReason() || 'IAP not available',
+      });
+      return;
+    }
+
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -244,15 +286,15 @@ class IAPService {
       console.log('[IAP] Requesting subscription:', productId);
 
       if (Platform.OS === 'ios') {
-        await requestSubscription({ sku: productId });
+        await RNIap.requestSubscription({ sku: productId });
       } else {
         // Android requires offer token for subscriptions
-        const subscriptions = await getSubscriptions({ skus: [productId] });
+        const subscriptions = await RNIap.getSubscriptions({ skus: [productId] });
         if (subscriptions.length > 0) {
           const subscription = subscriptions[0] as any;
           const offerToken = subscription.subscriptionOfferDetails?.[0]?.offerToken;
 
-          await requestSubscription({
+          await RNIap.requestSubscription({
             sku: productId,
             ...(offerToken && {
               subscriptionOffers: [{ sku: productId, offerToken }],
@@ -275,13 +317,17 @@ class IAPService {
    * Restore previous purchases
    */
   async restorePurchases(): Promise<SubscriptionStatus> {
+    if (!this.isAvailable()) {
+      return { isActive: false };
+    }
+
     if (!this.isInitialized) {
       await this.initialize();
     }
 
     try {
       console.log('[IAP] Restoring purchases...');
-      const purchases = await getAvailablePurchases();
+      const purchases = await RNIap.getAvailablePurchases();
       console.log('[IAP] Found purchases:', purchases.length);
 
       // Find active subscription
@@ -313,7 +359,7 @@ class IAPService {
    * Validate receipt with backend
    */
   private async validateReceipt(
-    purchase: SubscriptionPurchase | ProductPurchase
+    purchase: any
   ): Promise<{
     valid: boolean;
     isActive?: boolean;
@@ -323,13 +369,21 @@ class IAPService {
   }> {
     try {
       const receipt = Platform.OS === 'ios'
-        ? (purchase as any).transactionReceipt
-        : (purchase as any).purchaseToken;
+        ? purchase.transactionReceipt
+        : purchase.purchaseToken;
+
+      // Get auth token for authenticated request
+      const accessToken = await AsyncStorage.getItem(getStorageKey('accessToken'));
+      if (!accessToken) {
+        console.error('[IAP] No access token available for receipt validation');
+        return { valid: false };
+      }
 
       const response = await fetch(`${config.apiUrl}/billing/validate-receipt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           platform: Platform.OS,
@@ -363,27 +417,40 @@ class IAPService {
    */
   async checkSubscriptionStatus(): Promise<SubscriptionStatus> {
     try {
-      // First check with backend
-      const response = await fetch(`${config.apiUrl}/billing/subscription-status`, {
+      // Get auth token for authenticated request
+      const accessToken = await AsyncStorage.getItem(getStorageKey('accessToken'));
+      if (!accessToken) {
+        console.log('[IAP] No access token, cannot check subscription status');
+        return { isActive: false };
+      }
+
+      // Check with backend
+      const response = await fetch(`${config.apiUrl}/billing/subscription-info`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
       if (response.ok) {
         const data = await response.json();
+        const isActive = data.status === 'active' || data.status === 'trialing';
         return {
-          isActive: data.isActive,
-          productId: data.productId,
-          expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
-          isTrialPeriod: data.isTrialPeriod,
-          autoRenewing: data.autoRenewing,
+          isActive,
+          productId: data.tier === 'pro' ? 'lumaproplan' : undefined,
+          expiresAt: data.current_period_end ? new Date(data.current_period_end) : undefined,
+          isTrialPeriod: data.status === 'trialing',
+          autoRenewing: !data.cancel_at,
         };
       }
 
-      // Fallback to restore purchases
-      return await this.restorePurchases();
+      // Fallback to restore purchases (only on native)
+      if (this.isAvailable()) {
+        return await this.restorePurchases();
+      }
+
+      return { isActive: false };
     } catch (error) {
       console.error('[IAP] Error checking subscription status:', error);
       return { isActive: false };

@@ -16,6 +16,7 @@ export interface User {
   emailAlerts?: boolean;
   marketingEmails?: boolean;
   weeklyReports?: boolean;
+  onboardingCompleted?: boolean;
 }
 
 export interface Organization {
@@ -46,11 +47,17 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface Subscription {
+  tier: 'starter' | 'pro' | 'enterprise';
+  status: 'active' | 'past_due' | 'canceled' | 'trialing' | 'none';
+}
+
 export interface LoginResponse {
   user: User;
   organization: Organization;
   tokens: AuthTokens;
   sessionVersion: number; // For single session enforcement
+  subscription?: Subscription; // Subscription info returned from login
 }
 
 class AuthService {
@@ -59,6 +66,7 @@ class AuthService {
   private static readonly USER_KEY = 'user';
   private static readonly ORGANIZATION_KEY = 'organization';
   private static readonly SESSION_VERSION_KEY = 'sessionVersion';
+  private static readonly SUBSCRIPTION_KEY = 'subscription';
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     // Include source: 'app' so the backend knows this is a mobile app login
@@ -231,6 +239,12 @@ class AuthService {
     });
   }
 
+  async checkPassword(password: string): Promise<{ valid: boolean; errors: string[] }> {
+    return apiClient.post<{ valid: boolean; errors: string[] }>('/auth/check-password', {
+      password,
+    });
+  }
+
   async getProfile(): Promise<{ user: User; organization: Organization }> {
     // Fetch user data from /auth/me
     const user = await apiClient.get<User>('/auth/me');
@@ -239,6 +253,10 @@ class AuthService {
     const organization = await organizationsService.getById(user.organizationId);
 
     return { user, organization };
+  }
+
+  async completeOnboarding(): Promise<{ onboardingCompleted: boolean }> {
+    return apiClient.post<{ onboardingCompleted: boolean }>('/auth/complete-onboarding', {});
   }
 
   async isAuthenticated(): Promise<boolean> {
@@ -284,13 +302,35 @@ class AuthService {
     await AsyncStorage.setItem(AuthService.ORGANIZATION_KEY, JSON.stringify(organization));
   }
 
+  async getSubscription(): Promise<Subscription | null> {
+    const subStr = await AsyncStorage.getItem(AuthService.SUBSCRIPTION_KEY);
+    if (!subStr) return null;
+
+    try {
+      return JSON.parse(subStr);
+    } catch {
+      return null;
+    }
+  }
+
+  async saveSubscription(subscription: Subscription): Promise<void> {
+    await AsyncStorage.setItem(AuthService.SUBSCRIPTION_KEY, JSON.stringify(subscription));
+  }
+
   private async saveAuthData(response: LoginResponse): Promise<void> {
-    await Promise.all([
+    const promises: Promise<void>[] = [
       this.saveTokens(response.tokens),
       this.saveUser(response.user),
       this.saveOrganization(response.organization),
       this.saveSessionVersion(response.sessionVersion),
-    ]);
+    ];
+
+    // Save subscription if included in response
+    if (response.subscription) {
+      promises.push(this.saveSubscription(response.subscription));
+    }
+
+    await Promise.all(promises);
   }
 
   async getSessionVersion(): Promise<number | null> {
@@ -316,6 +356,7 @@ class AuthService {
       AuthService.USER_KEY,
       AuthService.ORGANIZATION_KEY,
       AuthService.SESSION_VERSION_KEY,
+      AuthService.SUBSCRIPTION_KEY,
     ]);
   }
 }

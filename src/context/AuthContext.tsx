@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
-import { authService, User, Organization, stripeConnectApi, ConnectStatus } from '../lib/api';
+import { authService, User, Organization, Subscription, stripeConnectApi, ConnectStatus } from '../lib/api';
 import { setOnSessionKicked } from '../lib/api/client';
-import { setOnSocketSessionKicked } from './SocketContext';
+import { setOnSocketSessionKicked } from '../lib/session-callbacks';
 
 interface AuthState {
   user: User | null;
   organization: Organization | null;
+  subscription: Subscription | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   connectStatus: ConnectStatus | null;
@@ -19,6 +20,7 @@ interface AuthContextType extends AuthState {
   signOut: () => Promise<void>;
   refreshAuth: () => Promise<void>;
   refreshConnectStatus: () => Promise<void>;
+  completeOnboarding: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>({
     user: null,
     organization: null,
+    subscription: null,
     isLoading: true,
     isAuthenticated: false,
     connectStatus: null,
@@ -58,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({
       user: null,
       organization: null,
+      subscription: null,
       isLoading: false,
       isAuthenticated: false,
       connectStatus: null,
@@ -92,10 +96,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      // Try to get cached user/org
+      // Try to get cached user/org/subscription
       const user = await authService.getUser();
       const organization = await authService.getOrganization();
-      console.log('[AuthContext] loadCachedAuth: cached user =', user?.email, ', org =', organization?.name);
+      const subscription = await authService.getSubscription();
+      console.log('[AuthContext] loadCachedAuth: cached user =', user?.email, ', org =', organization?.name, ', subscription =', subscription?.tier);
 
       if (user && organization) {
         // We have cached data, show it immediately
@@ -104,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           user,
           organization,
+          subscription,
           isLoading: false,
           isAuthenticated: true,
         }));
@@ -156,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setState({
             user: null,
             organization: null,
+            subscription: null,
             isLoading: false,
             isAuthenticated: false,
             connectStatus: null,
@@ -193,6 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       user: response.user,
       organization: response.organization,
+      subscription: response.subscription || null,
       isLoading: false,
       isAuthenticated: true,
       connectLoading: true, // Reset to loading state for connect status
@@ -209,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({
       user: null,
       organization: null,
+      subscription: null,
       isLoading: false,
       isAuthenticated: false,
       connectStatus: null,
@@ -226,7 +235,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setState(prev => ({ ...prev, connectLoading: true }));
       const status = await stripeConnectApi.getStatus();
-      const isReady = status.chargesEnabled && status.payoutsEnabled;
+      // Only require chargesEnabled for Tap to Pay - payoutsEnabled is needed for receiving money
+      // but users can still accept payments before completing full onboarding (bank account setup)
+      const isReady = status.chargesEnabled;
       setState(prev => ({
         ...prev,
         connectStatus: status,
@@ -244,6 +255,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Mark onboarding as complete
+  const completeOnboarding = useCallback(async () => {
+    try {
+      await authService.completeOnboarding();
+      // Update local user state
+      setState(prev => ({
+        ...prev,
+        user: prev.user ? { ...prev.user, onboardingCompleted: true } : null,
+      }));
+      // Update cached user data
+      if (state.user) {
+        await authService.saveUser({ ...state.user, onboardingCompleted: true });
+      }
+    } catch (error) {
+      console.error('Failed to complete onboarding:', error);
+      // Don't throw - onboarding completion is not critical
+    }
+  }, [state.user]);
+
   // Fetch Connect status when authenticated
   useEffect(() => {
     if (state.isAuthenticated && !state.isLoading) {
@@ -252,7 +282,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [state.isAuthenticated, state.isLoading, refreshConnectStatus]);
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, refreshAuth, refreshConnectStatus }}>
+    <AuthContext.Provider value={{ ...state, signIn, signOut, refreshAuth, refreshConnectStatus, completeOnboarding }}>
       {children}
     </AuthContext.Provider>
   );

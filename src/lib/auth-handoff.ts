@@ -33,7 +33,8 @@ export async function createVendorDashboardUrl(redirectPath?: string): Promise<s
     });
 
     if (user) {
-      params.append('user', encodeURIComponent(JSON.stringify(user)));
+      // Note: Don't use encodeURIComponent here - URLSearchParams handles encoding
+      params.append('user', JSON.stringify(user));
     }
 
     // Add redirect path if provided

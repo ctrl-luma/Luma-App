@@ -11,8 +11,9 @@ import {
   Alert,
   Animated,
   Keyboard,
+  Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -102,6 +103,7 @@ const PLANS = {
 
 export function SignUpScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation<any>();
   const { signIn } = useAuth();
@@ -125,6 +127,7 @@ export function SignUpScreen() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [iapProduct, setIapProduct] = useState<SubscriptionProduct | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -238,8 +241,23 @@ export function SignUpScreen() {
 
       if (!formData.password) {
         newErrors.password = 'Password is required';
-      } else if (formData.password.length < 8) {
-        newErrors.password = 'Password must be at least 8 characters';
+      } else {
+        // Check password against server-side policy
+        try {
+          setIsCheckingPassword(true);
+          const passwordResult = await authService.checkPassword(formData.password);
+          if (!passwordResult.valid) {
+            newErrors.password = passwordResult.errors.join('. ');
+          }
+        } catch (error) {
+          console.error('[SignUp] Password check error:', error);
+          // Fall back to basic validation if API fails
+          if (formData.password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters';
+          }
+        } finally {
+          setIsCheckingPassword(false);
+        }
       }
 
       if (!formData.confirmPassword) {
@@ -357,21 +375,11 @@ export function SignUpScreen() {
           setIsLoading(true);
           try {
             await createAccount('pro', result.receipt);
-            setCurrentStep('confirmation');
-
-            // Auto sign in after 2 seconds
-            setTimeout(async () => {
-              try {
-                await signIn(formData.email.trim().toLowerCase(), formData.password);
-              } catch (error) {
-                console.error('Auto sign-in failed:', error);
-                navigation.replace('Login');
-              }
-            }, 2000);
+            // Sign in directly - no confirmation screen
+            await signIn(formData.email.trim().toLowerCase(), formData.password);
           } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to create account after purchase. Please contact support.');
-          } finally {
             setIsLoading(false);
+            Alert.alert('Error', error.message || 'Failed to create account after purchase. Please contact support.');
           }
         } else {
           if (result.error !== 'Purchase cancelled') {
@@ -400,18 +408,8 @@ export function SignUpScreen() {
       // Starter plan - create account directly
       await createAccount('starter');
 
-      // Move to confirmation step
-      setCurrentStep('confirmation');
-
-      // Auto sign in after 2 seconds
-      setTimeout(async () => {
-        try {
-          await signIn(formData.email.trim().toLowerCase(), formData.password);
-        } catch (error) {
-          console.error('Auto sign-in failed:', error);
-          navigation.replace('Login');
-        }
-      }, 2000);
+      // Sign in directly - no confirmation screen
+      await signIn(formData.email.trim().toLowerCase(), formData.password);
 
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -424,7 +422,12 @@ export function SignUpScreen() {
   // Render account step
   const renderAccountStep = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Create your account</Text>
+      <View style={styles.stepTitleRow}>
+        <View style={styles.stepTitleIcon}>
+          <Ionicons name="person-add-outline" size={20} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>Create your account</Text>
+      </View>
       <Text style={styles.stepSubtitle}>
         Enter your email and create a password to get started
       </Text>
@@ -443,7 +446,9 @@ export function SignUpScreen() {
             autoComplete="email"
             error={errors.email}
             rightIcon={isCheckingEmail ? (
-              <ActivityIndicator size="small" color={colors.primary} />
+              <View style={styles.inputSpinner}>
+                <ActivityIndicator size="small" color={colors.primary} />
+              </View>
             ) : undefined}
           />
           {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
@@ -507,7 +512,12 @@ export function SignUpScreen() {
   // Render business step
   const renderBusinessStep = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Tell us about your business</Text>
+      <View style={styles.stepTitleRow}>
+        <View style={styles.stepTitleIcon}>
+          <Ionicons name="storefront-outline" size={20} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>Tell us about your business</Text>
+      </View>
       <Text style={styles.stepSubtitle}>
         This information helps us customize your experience
       </Text>
@@ -563,7 +573,10 @@ export function SignUpScreen() {
               styles.selectButton,
               errors.businessType && styles.selectButtonError,
             ]}
-            onPress={() => setShowBusinessTypePicker(true)}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowBusinessTypePicker(true);
+            }}
           >
             <Ionicons name="briefcase-outline" size={20} color={appColors.gray400} />
             <Text style={[
@@ -592,6 +605,7 @@ export function SignUpScreen() {
         <TouchableOpacity
           style={styles.checkboxRow}
           onPress={() => updateField('acceptTerms', !formData.acceptTerms)}
+          activeOpacity={0.7}
         >
           <View style={[
             styles.checkbox,
@@ -604,9 +618,27 @@ export function SignUpScreen() {
           </View>
           <Text style={styles.checkboxLabel}>
             I agree to the{' '}
-            <Text style={styles.link}>Terms of Service</Text>
+            <Text
+              style={styles.link}
+              onPress={(e) => {
+                e.stopPropagation();
+                Linking.openURL(`${config.websiteUrl}/terms`);
+              }}
+              suppressHighlighting
+            >
+              Terms of Service
+            </Text>
             {' '}and{' '}
-            <Text style={styles.link}>Privacy Policy</Text>
+            <Text
+              style={styles.link}
+              onPress={(e) => {
+                e.stopPropagation();
+                Linking.openURL(`${config.websiteUrl}/privacy`);
+              }}
+              suppressHighlighting
+            >
+              Privacy Policy
+            </Text>
           </Text>
         </TouchableOpacity>
         {errors.acceptTerms && <Text style={styles.errorText}>{errors.acceptTerms}</Text>}
@@ -660,7 +692,12 @@ export function SignUpScreen() {
   // Render plan step
   const renderPlanStep = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Choose your plan</Text>
+      <View style={styles.stepTitleRow}>
+        <View style={styles.stepTitleIcon}>
+          <Ionicons name="rocket-outline" size={20} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>Choose your plan</Text>
+      </View>
       <Text style={styles.stepSubtitle}>
         Start free or unlock all features with Pro
       </Text>
@@ -761,8 +798,19 @@ export function SignUpScreen() {
   // Render confirmation step
   const renderConfirmationStep = () => (
     <View style={styles.confirmationContent}>
-      <View style={styles.successIcon}>
-        <Ionicons name="checkmark-circle" size={80} color={colors.success} />
+      {/* Success Icon with glow */}
+      <View style={styles.successIconWrapper}>
+        <View style={styles.successIconGlow} />
+        <View style={styles.successIconOuter}>
+          <LinearGradient
+            colors={[colors.success, '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.successIconGradient}
+          >
+            <Ionicons name="checkmark" size={40} color="#fff" />
+          </LinearGradient>
+        </View>
       </View>
 
       <Text style={styles.confirmationTitle}>Welcome to Luma!</Text>
@@ -772,18 +820,41 @@ export function SignUpScreen() {
 
       <View style={styles.confirmationChecklist}>
         <View style={styles.checklistItem}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+          <View style={styles.checklistIconWrapper}>
+            <Ionicons name="checkmark" size={14} color={colors.success} />
+          </View>
           <Text style={styles.checklistText}>Account created</Text>
         </View>
         <View style={styles.checklistItem}>
-          <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+          <View style={styles.checklistIconWrapper}>
+            <Ionicons name="checkmark" size={14} color={colors.success} />
+          </View>
           <Text style={styles.checklistText}>
             {formData.selectedPlan === 'pro' ? 'Pro plan activated' : 'Starter plan activated'}
           </Text>
         </View>
         <View style={styles.checklistItem}>
-          <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />
+          <View style={[styles.checklistIconWrapper, styles.checklistIconLoading]}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
           <Text style={styles.checklistText}>Signing you in...</Text>
+        </View>
+      </View>
+
+      {/* Next Steps */}
+      <View style={styles.nextStepsContainer}>
+        <Text style={styles.nextStepsTitle}>Next Step</Text>
+        <View style={styles.nextStepsCard}>
+          <View style={styles.nextStepsIconContainer}>
+            <Ionicons name="wallet-outline" size={22} color={colors.primary} />
+          </View>
+          <View style={styles.nextStepsContent}>
+            <Text style={styles.nextStepsHeading}>Link Your Bank Account</Text>
+            <Text style={styles.nextStepsDescription}>
+              Visit the Vendor Portal to connect your bank account and start accepting payments.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </View>
       </View>
     </View>
@@ -800,6 +871,13 @@ export function SignUpScreen() {
     }
   };
 
+  // Step indicator config
+  const stepConfig = [
+    { key: 'account', icon: 'mail-outline', label: 'Account' },
+    { key: 'business', icon: 'briefcase-outline', label: 'Business' },
+    { key: 'plan', icon: 'rocket-outline', label: 'Plan' },
+  ];
+
   return (
     <LinearGradient
       colors={['#030712', '#0c1a2d', '#030712']}
@@ -808,17 +886,52 @@ export function SignUpScreen() {
       end={{ x: 0.5, y: 1 }}
       style={styles.gradient}
     >
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {/* Header */}
         <View style={styles.header}>
           {currentStep !== 'confirmation' ? (
             <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+              <View style={styles.backButtonInner}>
+                <Ionicons name="chevron-back" size={20} color={colors.text} />
+              </View>
             </TouchableOpacity>
           ) : (
             <View style={styles.backButton} />
           )}
-          <Text style={styles.stepLabel}>{getStepLabel()}</Text>
+
+          {/* Step Indicators */}
+          {currentStep !== 'confirmation' ? (
+            <View style={styles.stepIndicators}>
+              {stepConfig.map((step, index) => {
+                const isActive = steps.indexOf(currentStep) >= index;
+                const isCurrent = currentStep === step.key;
+                return (
+                  <View key={step.key} style={styles.stepIndicatorWrapper}>
+                    <View style={[
+                      styles.stepIndicator,
+                      isActive && styles.stepIndicatorActive,
+                      isCurrent && styles.stepIndicatorCurrent,
+                    ]}>
+                      <Ionicons
+                        name={step.icon as any}
+                        size={16}
+                        color={isActive ? '#fff' : colors.textMuted}
+                      />
+                    </View>
+                    {index < stepConfig.length - 1 && (
+                      <View style={[
+                        styles.stepConnector,
+                        isActive && styles.stepConnectorActive,
+                      ]} />
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Text style={styles.stepLabel}>Complete</Text>
+          )}
+
           <View style={styles.backButton} />
         </View>
 
@@ -864,7 +977,7 @@ export function SignUpScreen() {
             <TouchableOpacity
               style={[styles.nextButton, (isLoading || isPurchasing) && styles.buttonDisabled]}
               onPress={handleNext}
-              disabled={isLoading || isCheckingEmail || isPurchasing}
+              disabled={isLoading || isCheckingEmail || isCheckingPassword || isPurchasing}
               activeOpacity={0.8}
             >
               <LinearGradient
@@ -905,7 +1018,7 @@ export function SignUpScreen() {
             )}
           </View>
         )}
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }
@@ -923,7 +1036,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: 16,
-      paddingVertical: 12,
+      paddingVertical: 16,
     },
     backButton: {
       width: 40,
@@ -931,17 +1044,65 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       alignItems: 'center',
       justifyContent: 'center',
     },
+    backButtonInner: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: glassColors.backgroundElevated,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepIndicators: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    stepIndicatorWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    stepIndicator: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: glassColors.backgroundElevated,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepIndicatorActive: {
+      backgroundColor: colors.primary + '30',
+      borderColor: colors.primary + '50',
+    },
+    stepIndicatorCurrent: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+      ...shadows.sm,
+      shadowColor: colors.primary,
+      shadowOpacity: 0.4,
+    },
+    stepConnector: {
+      width: 24,
+      height: 2,
+      backgroundColor: glassColors.border,
+      marginHorizontal: 4,
+    },
+    stepConnectorActive: {
+      backgroundColor: colors.primary + '50',
+    },
     stepLabel: {
       fontSize: 14,
-      fontFamily: fonts.medium,
+      fontFamily: fonts.semiBold,
       color: colors.textSecondary,
     },
     progressContainer: {
       paddingHorizontal: 20,
-      paddingBottom: 16,
+      paddingBottom: 20,
     },
     progressTrack: {
-      height: 4,
+      height: 3,
       backgroundColor: glassColors.border,
       borderRadius: 2,
       overflow: 'hidden',
@@ -961,18 +1122,33 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     stepContent: {
       flex: 1,
     },
-    stepTitle: {
-      fontSize: 28,
-      fontFamily: fonts.bold,
-      color: colors.text,
+    stepTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
       marginBottom: 8,
     },
+    stepTitleIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepTitle: {
+      fontSize: 24,
+      fontFamily: fonts.bold,
+      color: colors.text,
+      flex: 1,
+    },
     stepSubtitle: {
-      fontSize: 16,
+      fontSize: 15,
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: 32,
-      lineHeight: 24,
+      marginBottom: 28,
+      lineHeight: 22,
+      marginLeft: 52,
     },
     form: {
       gap: 20,
@@ -997,6 +1173,11 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       position: 'absolute',
       right: 12,
       padding: 8,
+    },
+    inputSpinner: {
+      position: 'absolute',
+      right: 16,
+      padding: 4,
     },
     row: {
       flexDirection: 'row',
@@ -1026,7 +1207,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     checkboxRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       gap: 12,
     },
     checkbox: {
@@ -1067,7 +1248,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     pickerContent: {
-      backgroundColor: glassColors.backgroundElevated,
+      backgroundColor: isDark ? '#1f2937' : '#ffffff',
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       maxHeight: '60%',
@@ -1246,8 +1427,33 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       justifyContent: 'center',
       paddingVertical: 40,
     },
-    successIcon: {
-      marginBottom: 24,
+    successIconWrapper: {
+      position: 'relative',
+      marginBottom: 28,
+    },
+    successIconGlow: {
+      position: 'absolute',
+      top: -10,
+      left: -10,
+      right: -10,
+      bottom: -10,
+      borderRadius: 50,
+      backgroundColor: colors.success,
+      opacity: 0.15,
+    },
+    successIconOuter: {
+      width: 80,
+      height: 80,
+      borderRadius: 24,
+      overflow: 'hidden',
+      ...shadows.lg,
+      shadowColor: colors.success,
+      shadowOpacity: 0.4,
+    },
+    successIconGradient: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     confirmationTitle: {
       fontSize: 28,
@@ -1266,19 +1472,78 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     confirmationChecklist: {
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 20,
+      borderWidth: 1,
+      borderColor: glassColors.border,
       padding: 20,
       width: '100%',
-      gap: 16,
+      gap: 14,
     },
     checklistItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 12,
+      gap: 14,
+    },
+    checklistIconWrapper: {
+      width: 28,
+      height: 28,
+      borderRadius: 8,
+      backgroundColor: colors.success + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checklistIconLoading: {
+      backgroundColor: colors.primary + '15',
     },
     checklistText: {
       fontSize: 16,
       fontFamily: fonts.medium,
       color: colors.text,
+    },
+    // Next Steps styles
+    nextStepsContainer: {
+      width: '100%',
+      marginTop: 24,
+    },
+    nextStepsTitle: {
+      fontSize: 14,
+      fontFamily: fonts.semiBold,
+      color: colors.textSecondary,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 12,
+    },
+    nextStepsCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      padding: 16,
+      gap: 14,
+    },
+    nextStepsIconContainer: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    nextStepsContent: {
+      flex: 1,
+    },
+    nextStepsHeading: {
+      fontSize: 16,
+      fontFamily: fonts.semiBold,
+      color: colors.text,
+      marginBottom: 4,
+    },
+    nextStepsDescription: {
+      fontSize: 14,
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: 20,
     },
     // Footer styles
     footer: {

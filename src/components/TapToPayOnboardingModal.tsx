@@ -18,24 +18,27 @@ import {
   TouchableOpacity,
   Modal,
   Platform,
-  Linking,
   ActivityIndicator,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 
 import { useTheme } from '../context/ThemeContext';
 import { useTerminal, ConfigurationStage } from '../context/StripeTerminalContext';
-import { glass } from '../lib/colors';
-import { shadows } from '../lib/shadows';
+import { glass, gradients } from '../lib/colors';
+import { shadows, glow } from '../lib/shadows';
+import { radius, spacing } from '../lib/spacing';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Apple TTPOi 5.4: Region-correct copy
 const TAP_TO_PAY_NAME = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
 
 interface TapToPayOnboardingModalProps {
   visible: boolean;
+  isLoading?: boolean;
   onComplete: () => void;
   onNavigateToEducation: () => void;
 }
@@ -54,6 +57,7 @@ const STAGE_MESSAGES: Record<ConfigurationStage, string> = {
 
 export function TapToPayOnboardingModal({
   visible,
+  isLoading = false,
   onComplete,
   onNavigateToEducation,
 }: TapToPayOnboardingModalProps) {
@@ -72,12 +76,68 @@ export function TapToPayOnboardingModal({
   const [isEnabling, setIsEnabling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [setupComplete, setSetupComplete] = useState(false);
+  const [showDeviceError, setShowDeviceError] = useState(false);
+
+  // Animations - start at 1 to prevent flash when transitioning from loading state
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const iconPulseAnim = useRef(new Animated.Value(1)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const glassColors = isDark ? glass.dark : glass.light;
-  const styles = createStyles(colors, glassColors, isDark);
+
+  // Entrance animation
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Start icon pulse animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(iconPulseAnim, {
+            toValue: 1.05,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(iconPulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }
+  }, [visible]);
+
+  // Animate progress bar
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: configurationProgress,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [configurationProgress]);
 
   // Handle enable button press - triggers T&C acceptance flow
   const handleEnable = async () => {
+    // Check device compatibility first
+    if (!deviceCompatibility.isCompatible) {
+      setShowDeviceError(true);
+      return;
+    }
+
     setIsEnabling(true);
     setError(null);
 
@@ -108,65 +168,135 @@ export function TapToPayOnboardingModal({
     }
   };
 
-  // Device not compatible - show different UI
-  if (!deviceCompatibility.isCompatible && Platform.OS === 'ios') {
+  const styles = createStyles(colors, glassColors, isDark);
+
+  // Loading state - show solid background as splash while determining if onboarding is needed
+  if (isLoading) {
     return (
-      <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-        <BlurView intensity={80} style={styles.overlay}>
-          <View style={styles.container}>
+      <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </Modal>
+    );
+  }
+
+  // Web platform - Tap to Pay not available
+  if (Platform.OS === 'web') {
+    return (
+      <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+          {/* Solid background to hide content behind modal */}
+          <View style={StyleSheet.absoluteFill} />
+          <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
             <View style={styles.card}>
-              <View style={[styles.iconContainer, styles.iconError]}>
-                <Ionicons name="phone-portrait-outline" size={40} color={colors.error} />
+              <View style={styles.topGradient}>
+                <LinearGradient
+                  colors={isDark ? gradients.glassDark : gradients.glassLight}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
               </View>
-              <Text style={styles.title}>Device Not Supported</Text>
+              <View style={[styles.iconContainer, styles.iconMuted]}>
+                <Ionicons name="desktop-outline" size={32} color={colors.textMuted} />
+              </View>
+              <Text style={styles.title}>Not Available on Web</Text>
               <Text style={styles.description}>
-                {deviceCompatibility.errorMessage ||
-                  `${TAP_TO_PAY_NAME} requires iPhone XS or later with iOS 16.4+.`}
+                Tap to Pay requires a physical device with NFC capability. Use the mobile app to accept contactless payments.
               </Text>
-              <TouchableOpacity style={styles.dismissButton} onPress={onComplete}>
-                <Text style={styles.dismissButtonText}>Continue Without Tap to Pay</Text>
+              <TouchableOpacity style={styles.secondaryButton} onPress={onComplete} activeOpacity={0.8}>
+                <Text style={styles.secondaryButtonText}>Continue</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </BlurView>
+          </Animated.View>
+        </Animated.View>
       </Modal>
     );
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <BlurView intensity={80} style={styles.overlay}>
-        <View style={styles.container}>
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+      <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+        {/* Solid black background to hide content behind modal during onboarding */}
+        <View style={StyleSheet.absoluteFill} />
+        <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }]}>
           <View style={styles.card}>
-            {/* Success State */}
-            {setupComplete ? (
+            {/* Top gradient border */}
+            <View style={styles.topGradient}>
+              <LinearGradient
+                colors={[colors.primary, colors.primary700]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+
+            {/* Device Not Supported State - shown after user tries to enable */}
+            {showDeviceError ? (
+              <>
+                <View style={[styles.iconContainer, styles.iconError]}>
+                  <Ionicons name="phone-portrait-outline" size={32} color={colors.error} />
+                </View>
+                <Text style={styles.title}>Device Not Supported</Text>
+                <Text style={styles.description}>
+                  {deviceCompatibility.errorMessage || (Platform.OS === 'ios'
+                    ? `${TAP_TO_PAY_NAME} requires iPhone XS or later with iOS 16.4+.`
+                    : `${TAP_TO_PAY_NAME} requires an Android device with NFC capability.`)}
+                </Text>
+                <TouchableOpacity style={styles.secondaryButton} onPress={onComplete} activeOpacity={0.8}>
+                  <Text style={styles.secondaryButtonText}>Continue</Text>
+                </TouchableOpacity>
+              </>
+            ) : setupComplete ? (
+              /* Success State */
               <>
                 <View style={[styles.iconContainer, styles.iconSuccess]}>
-                  <Ionicons name="checkmark-circle" size={48} color={colors.success} />
+                  <Ionicons name="checkmark-circle" size={40} color={colors.success} />
                 </View>
-                <Text style={styles.title}>{TAP_TO_PAY_NAME} Enabled!</Text>
+                <Text style={styles.title}>You're All Set!</Text>
                 <Text style={styles.description}>
-                  You're all set to accept contactless payments.
+                  {TAP_TO_PAY_NAME} is now enabled. Let's show you how it works.
                 </Text>
-                <View style={styles.loadingContainer}>
+                <View style={styles.loadingRow}>
                   <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={styles.loadingText}>Loading tutorial...</Text>
+                  <Text style={styles.loadingText}>Opening tutorial...</Text>
                 </View>
               </>
             ) : isEnabling ? (
               /* Configuration Progress State - Apple TTPOi 3.9.1 */
               <>
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressCircle}>
+                <View style={styles.progressIconContainer}>
+                  <View style={styles.progressRing}>
                     <ActivityIndicator size="large" color={colors.primary} />
                   </View>
-                  <Text style={styles.progressPercent}>{Math.round(configurationProgress)}%</Text>
                 </View>
+
+                <Text style={styles.progressPercent}>{Math.round(configurationProgress)}%</Text>
+
                 {/* Progress bar */}
                 <View style={styles.progressBarContainer}>
-                  <View style={[styles.progressBarFill, { width: `${configurationProgress}%` }]} />
+                  <Animated.View
+                    style={[
+                      styles.progressBarFill,
+                      {
+                        width: progressAnim.interpolate({
+                          inputRange: [0, 100],
+                          outputRange: ['0%', '100%'],
+                        }),
+                      },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[colors.primary, colors.primary500]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </Animated.View>
                 </View>
-                <Text style={styles.title}>Setting Up {TAP_TO_PAY_NAME}</Text>
+
+                <Text style={styles.title}>Setting Up</Text>
                 <Text style={styles.stageText}>
                   {STAGE_MESSAGES[configurationStage] || 'Please wait...'}
                 </Text>
@@ -179,59 +309,46 @@ export function TapToPayOnboardingModal({
             ) : (
               /* Initial Awareness State */
               <>
-                {/* Icon */}
-                <View style={styles.iconContainer}>
+                {/* Animated Icon */}
+                <Animated.View style={[styles.iconContainer, { transform: [{ scale: iconPulseAnim }] }]}>
                   <LinearGradient
                     colors={[colors.primary, colors.primary700]}
                     style={styles.iconGradient}
                   >
-                    <View style={styles.iconInner}>
-                      <Ionicons name="wifi" size={32} color="#fff" style={styles.wifiIcon} />
-                    </View>
+                    <Ionicons name="wifi" size={28} color="#fff" style={styles.nfcIcon} />
                   </LinearGradient>
-                </View>
+                </Animated.View>
 
                 {/* Title */}
                 <Text style={styles.title}>Enable {TAP_TO_PAY_NAME}</Text>
 
                 {/* Description */}
                 <Text style={styles.description}>
-                  Accept contactless payments directly on your device. No additional hardware needed.
+                  Turn your device into a payment terminal. Accept contactless cards and digital wallets instantly.
                 </Text>
 
                 {/* Features list */}
                 <View style={styles.featuresList}>
-                  <View style={styles.featureRow}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <Text style={styles.featureText}>Quick and secure payments</Text>
-                  </View>
-                  <View style={styles.featureRow}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <Text style={styles.featureText}>Works with cards and digital wallets</Text>
-                  </View>
-                  <View style={styles.featureRow}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <Text style={styles.featureText}>No card reader required</Text>
-                  </View>
+                  {[
+                    { icon: 'shield-checkmark', text: 'Secure & encrypted payments' },
+                    { icon: 'card', text: 'All major cards & wallets' },
+                    { icon: 'flash', text: 'No extra hardware needed' },
+                  ].map((feature, index) => (
+                    <View key={index} style={styles.featureRow}>
+                      <View style={styles.featureIconBg}>
+                        <Ionicons name={feature.icon as any} size={16} color={colors.primary} />
+                      </View>
+                      <Text style={styles.featureText}>{feature.text}</Text>
+                    </View>
+                  ))}
                 </View>
 
                 {/* Error message */}
                 {(error || terminalError) && (
                   <View style={styles.errorContainer}>
-                    <Ionicons name="warning-outline" size={18} color={colors.error} />
+                    <Ionicons name="alert-circle" size={18} color={colors.error} />
                     <Text style={styles.errorText}>{error || terminalError}</Text>
                   </View>
-                )}
-
-                {/* Apple Terms Link - Apple TTPOi 3.3 */}
-                {Platform.OS === 'ios' && (
-                  <TouchableOpacity
-                    style={styles.termsLink}
-                    onPress={() => Linking.openURL('https://www.apple.com/legal/privacy/en-ww/tap-to-pay/')}
-                  >
-                    <Ionicons name="shield-checkmark-outline" size={14} color={colors.textMuted} />
-                    <Text style={styles.termsLinkText}>Apple Tap to Pay Privacy Policy</Text>
-                  </TouchableOpacity>
                 )}
 
                 {/* Enable Button - Apple TTPOi 3.5: Clear action to trigger T&C acceptance */}
@@ -243,19 +360,19 @@ export function TapToPayOnboardingModal({
                     style={styles.enableButton}
                   >
                     <Ionicons name="flash" size={20} color="#fff" />
-                    <Text style={styles.enableButtonText}>Enable {TAP_TO_PAY_NAME}</Text>
+                    <Text style={styles.enableButtonText}>Get Started</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
                 {/* Skip option - minimal visibility but available */}
-                <TouchableOpacity style={styles.skipLink} onPress={onComplete}>
-                  <Text style={styles.skipLinkText}>Set up later in Settings</Text>
+                <TouchableOpacity style={styles.skipLink} onPress={onComplete} activeOpacity={0.7}>
+                  <Text style={styles.skipLinkText}>Set up later</Text>
                 </TouchableOpacity>
               </>
             )}
           </View>
-        </View>
-      </BlurView>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -264,116 +381,128 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
   StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: colors.background, // Solid background to hide content during onboarding
     },
     container: {
-      width: '90%',
-      maxWidth: 400,
+      width: Math.min(SCREEN_WIDTH - 48, 380),
     },
     card: {
-      backgroundColor: isDark ? '#1f2937' : '#ffffff',
-      borderRadius: 24,
-      padding: 24,
+      backgroundColor: isDark ? colors.gray900 : '#ffffff',
+      borderRadius: radius.xxl,
+      padding: spacing.xl,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+      overflow: 'hidden',
       ...shadows.xl,
     },
+    topGradient: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 3,
+      borderTopLeftRadius: radius.xxl,
+      borderTopRightRadius: radius.xxl,
+      overflow: 'hidden',
+    },
     iconContainer: {
-      marginBottom: 20,
+      marginTop: spacing.sm,
+      marginBottom: spacing.lg,
     },
     iconGradient: {
-      width: 80,
-      height: 80,
-      borderRadius: 24,
+      width: 72,
+      height: 72,
+      borderRadius: radius.xl,
       alignItems: 'center',
       justifyContent: 'center',
-      ...shadows.md,
+      ...shadows.lg,
     },
-    iconInner: {
-      width: 50,
-      height: 50,
-      alignItems: 'center',
-      justifyContent: 'center',
+    nfcIcon: {
+      transform: [{ rotate: '90deg' }],
     },
     iconSuccess: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.success + '20',
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.success + '15',
       alignItems: 'center',
       justifyContent: 'center',
     },
     iconError: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.error + '20',
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.error + '15',
       alignItems: 'center',
       justifyContent: 'center',
     },
-    wifiIcon: {
-      transform: [{ rotate: '90deg' }],
+    iconMuted: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.textMuted + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     title: {
       fontSize: 22,
       fontWeight: '700',
       color: colors.text,
       textAlign: 'center',
-      marginBottom: 12,
+      marginBottom: spacing.sm,
+      letterSpacing: -0.3,
     },
     description: {
       fontSize: 15,
       color: colors.textSecondary,
       textAlign: 'center',
       lineHeight: 22,
-      marginBottom: 20,
+      marginBottom: spacing.lg,
+      paddingHorizontal: spacing.xs,
     },
     featuresList: {
       width: '100%',
-      backgroundColor: isDark ? '#111827' : '#f3f4f6',
-      borderRadius: 16,
-      padding: 16,
-      marginBottom: 16,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      marginBottom: spacing.lg,
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
     },
     featureRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingVertical: 8,
+      gap: spacing.md,
+      paddingVertical: spacing.sm,
+    },
+    featureIconBg: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.sm,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     featureText: {
       fontSize: 14,
       color: colors.text,
       flex: 1,
-    },
-    termsLink: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      marginBottom: 20,
-    },
-    termsLinkText: {
-      fontSize: 12,
-      color: colors.textMuted,
-      textDecorationLine: 'underline',
+      fontWeight: '500',
     },
     enableButtonWrapper: {
       width: '100%',
+      ...glow(colors.primary, 'subtle'),
     },
     enableButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 10,
+      gap: spacing.sm,
       paddingVertical: 16,
-      borderRadius: 16,
-      ...shadows.sm,
+      borderRadius: radius.lg,
     },
     enableButtonText: {
       fontSize: 17,
@@ -381,55 +510,67 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       color: '#fff',
     },
     skipLink: {
-      marginTop: 16,
-      paddingVertical: 8,
+      marginTop: spacing.lg,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.lg,
     },
     skipLinkText: {
       fontSize: 14,
       color: colors.textMuted,
+      fontWeight: '500',
+    },
+    secondaryButton: {
+      paddingVertical: 14,
+      paddingHorizontal: spacing.xl,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
+      borderRadius: radius.lg,
+      marginTop: spacing.sm,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+    },
+    secondaryButtonText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
     },
     // Progress state styles
-    progressContainer: {
-      alignItems: 'center',
-      marginBottom: 16,
+    progressIconContainer: {
+      marginTop: spacing.sm,
+      marginBottom: spacing.md,
     },
-    progressCircle: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: colors.primary + '15',
+    progressRing: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.primary + '10',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 12,
     },
     progressPercent: {
-      fontSize: 24,
+      fontSize: 28,
       fontWeight: '700',
       color: colors.text,
+      marginBottom: spacing.md,
+      letterSpacing: -0.5,
     },
     progressBarContainer: {
       width: '100%',
       height: 6,
-      backgroundColor: isDark ? '#374151' : '#e5e7eb',
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
       borderRadius: 3,
-      marginBottom: 20,
+      marginBottom: spacing.lg,
       overflow: 'hidden',
     },
     progressBarFill: {
       height: '100%',
-      backgroundColor: colors.primary,
       borderRadius: 3,
-    },
-    progressText: {
-      fontSize: 18,
-      fontWeight: '600',
-      color: colors.text,
+      overflow: 'hidden',
     },
     stageText: {
-      fontSize: 15,
+      fontSize: 14,
       color: colors.textSecondary,
       textAlign: 'center',
-      marginBottom: 8,
+      marginBottom: spacing.xs,
     },
     hintText: {
       fontSize: 13,
@@ -438,11 +579,11 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontStyle: 'italic',
     },
     // Loading state
-    loadingContainer: {
+    loadingRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      marginTop: 8,
+      gap: spacing.sm,
+      marginTop: spacing.sm,
     },
     loadingText: {
       fontSize: 14,
@@ -452,29 +593,19 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     errorContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 8,
-      backgroundColor: colors.error + '15',
-      padding: 12,
-      borderRadius: 12,
-      marginBottom: 16,
+      gap: spacing.sm,
+      backgroundColor: colors.error + '10',
+      padding: spacing.md,
+      borderRadius: radius.md,
+      marginBottom: spacing.lg,
       width: '100%',
+      borderWidth: 1,
+      borderColor: colors.error + '20',
     },
     errorText: {
       flex: 1,
       fontSize: 13,
       color: colors.error,
-    },
-    // Dismiss button for incompatible devices
-    dismissButton: {
-      paddingVertical: 16,
-      paddingHorizontal: 24,
-      backgroundColor: isDark ? '#111827' : '#f3f4f6',
-      borderRadius: 16,
-      marginTop: 8,
-    },
-    dismissButtonText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: colors.textSecondary,
+      lineHeight: 18,
     },
   });

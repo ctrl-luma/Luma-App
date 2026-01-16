@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Catalog, catalogsApi } from '../lib/api';
 import { useAuth } from './AuthContext';
@@ -130,14 +130,19 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
     }
   }, []);
 
+  // Use ref to avoid dependency on selectedCatalog which changes and causes re-subscriptions
+  const selectedCatalogRef = useRef<Catalog | null>(null);
+  selectedCatalogRef.current = selectedCatalog;
+
   const refreshCatalogs = useCallback(async () => {
     try {
       const fetchedCatalogs = await catalogsApi.list();
       setCatalogs(fetchedCatalogs);
 
-      // Update selected catalog if it was updated
-      if (selectedCatalog) {
-        const updated = fetchedCatalogs.find(c => c.id === selectedCatalog.id);
+      // Update selected catalog if it was updated (use ref to avoid dependency cycle)
+      const currentSelected = selectedCatalogRef.current;
+      if (currentSelected) {
+        const updated = fetchedCatalogs.find(c => c.id === currentSelected.id);
         if (updated) {
           setSelectedCatalogState(updated);
           await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(updated));
@@ -146,7 +151,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
     } catch (error) {
       console.error('Failed to refresh catalogs:', error);
     }
-  }, [selectedCatalog]);
+  }, []);
 
   // Listen for socket events to refresh catalogs in real-time
   const handleCatalogUpdate = useCallback((data?: { catalogId?: string }) => {
@@ -163,8 +168,9 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
         const fetchedCatalogs = await catalogsApi.list();
         setCatalogs(fetchedCatalogs);
 
-        // If the deleted catalog was selected, auto-select the first remaining one
-        if (data?.catalogId && selectedCatalog?.id === data.catalogId) {
+        // If the deleted catalog was selected, auto-select the first remaining one (use ref)
+        const currentSelected = selectedCatalogRef.current;
+        if (data?.catalogId && currentSelected?.id === data.catalogId) {
           if (fetchedCatalogs.length > 0) {
             setSelectedCatalogState(fetchedCatalogs[0]);
             await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(fetchedCatalogs[0]));
@@ -177,7 +183,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
         console.error('Failed to handle catalog deletion:', error);
       }
     }
-  }, [isAuthenticated, selectedCatalog]);
+  }, [isAuthenticated]);
 
   useSocketEvent(SocketEvents.CATALOG_UPDATED, handleCatalogUpdate);
   useSocketEvent(SocketEvents.CATALOG_CREATED, handleCatalogUpdate);

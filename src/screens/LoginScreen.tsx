@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +40,7 @@ const BIOMETRIC_PROMPT_SHOWN_KEY = 'biometric_prompt_shown';
 
 export function LoginScreen() {
   const { isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation<any>();
   const { signIn, refreshAuth } = useAuth();
@@ -209,7 +210,7 @@ export function LoginScreen() {
       end={{ x: 0.5, y: 1 }}
       style={styles.gradient}
     >
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
@@ -222,7 +223,7 @@ export function LoginScreen() {
             {/* Header */}
             <View style={styles.header}>
               <Image
-                source={require('../../assets/icon.png')}
+                source={require('../../assets/adaptive-icon.png')}
                 style={styles.logo}
               />
               <Text style={styles.title}>Sign In</Text>
@@ -354,12 +355,12 @@ export function LoginScreen() {
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
               <TouchableOpacity onPress={handleCreateAccount}>
-                <Text style={styles.footerLink}>Get started</Text>
+                <Text style={styles.footerLink}>Create One</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </LinearGradient>
   );
 }

@@ -8,6 +8,7 @@ export type {
   AuthTokens,
   LoginCredentials,
   LoginResponse,
+  Subscription,
 } from './auth';
 
 export { catalogsApi } from './catalogs';
