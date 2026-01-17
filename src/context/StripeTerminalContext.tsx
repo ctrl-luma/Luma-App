@@ -15,6 +15,7 @@ import { Platform, Alert, AppState, AppStateStatus } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { stripeTerminalApi } from '../lib/api';
+import { useAuth } from './AuthContext';
 
 // Check if running in Expo Go (which doesn't support native modules)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -191,6 +192,10 @@ function checkDeviceCompatibilitySync(): DeviceCompatibility {
 
 // Inner component that uses the useStripeTerminal hook
 function StripeTerminalInner({ children }: { children: React.ReactNode }) {
+  // Get Stripe Connect status to check if payments are enabled
+  const { connectStatus, isPaymentReady } = useAuth();
+  const chargesEnabled = connectStatus?.chargesEnabled ?? false;
+
   const [isInitialized, setIsInitialized] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -345,7 +350,14 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   }, [initialize, isInitialized]);
 
   // Auto-warm terminal on mount and when app comes to foreground (Apple TTPOi 1.4)
+  // Only warm if Stripe Connect is set up (chargesEnabled)
   useEffect(() => {
+    // Skip warming if Stripe Connect isn't set up yet
+    if (!chargesEnabled) {
+      console.log('[StripeTerminal] Skipping auto-warm - Stripe Connect not set up (chargesEnabled=false)');
+      return;
+    }
+
     // Initial warm on mount
     if (!hasWarmedRef.current && deviceCompatibility.isCompatible) {
       console.log('[StripeTerminal] Auto-warming on mount...');
@@ -363,7 +375,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       ) {
         console.log('[StripeTerminal] App came to foreground, checking terminal state...');
         // Re-warm if not initialized (connection may have been lost)
-        if (!isInitialized) {
+        if (!isInitialized && chargesEnabled) {
           warmTerminal().catch(err => {
             console.error('[StripeTerminal] Re-warm on foreground failed:', err);
           });
@@ -375,10 +387,16 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [warmTerminal, deviceCompatibility.isCompatible, isInitialized]);
+  }, [warmTerminal, deviceCompatibility.isCompatible, isInitialized, chargesEnabled]);
 
-  // Fetch terminal location on mount
+  // Fetch terminal location on mount (only if Stripe Connect is set up)
   useEffect(() => {
+    // Skip if Stripe Connect isn't set up
+    if (!chargesEnabled) {
+      console.log('[StripeTerminal] Skipping location fetch - Stripe Connect not set up');
+      return;
+    }
+
     const fetchLocation = async () => {
       try {
         console.log('[StripeTerminal] Fetching terminal location...');
@@ -391,7 +409,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       }
     };
     fetchLocation();
-  }, []);
+  }, [chargesEnabled]);
 
   const initializeTerminal = useCallback(async () => {
     console.log('[StripeTerminal] ========== INITIALIZE START ==========');
@@ -528,62 +546,91 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
 
     // Connect to the Tap to Pay reader with the location ID
-    console.log('[StripeTerminal] ========== CONNECTING TO READER ==========');
-    console.log('[StripeTerminal] Reader:', readers[0].serialNumber || readers[0].id || 'unknown');
-    console.log('[StripeTerminal] Location ID:', currentLocationId);
+    // Retry logic for "No such location" error (can happen with newly created locations)
+    const MAX_CONNECT_RETRIES = 3;
+    const RETRY_DELAY_MS = 2000;
 
-    try {
-      console.log('[StripeTerminal] Calling sdkConnectReader()...');
-      const connectResult = await sdkConnectReader({
-        reader: readers[0],
-        locationId: currentLocationId,
-      }, 'tapToPay');
+    for (let attempt = 1; attempt <= MAX_CONNECT_RETRIES; attempt++) {
+      console.log('[StripeTerminal] ========== CONNECTING TO READER ==========');
+      console.log('[StripeTerminal] Reader:', readers[0].serialNumber || readers[0].id || 'unknown');
+      console.log('[StripeTerminal] Location ID:', currentLocationId);
+      console.log('[StripeTerminal] Attempt:', attempt, 'of', MAX_CONNECT_RETRIES);
 
-      console.log('[StripeTerminal] sdkConnectReader() returned');
-      console.log('[StripeTerminal] Connect result:', JSON.stringify(connectResult, null, 2));
+      try {
+        console.log('[StripeTerminal] Calling sdkConnectReader()...');
+        const connectResult = await sdkConnectReader({
+          reader: readers[0],
+          locationId: currentLocationId,
+        }, 'tapToPay');
 
-      if (connectResult.error) {
-        console.error('[StripeTerminal] Connect error:', connectResult.error);
-        console.error('[StripeTerminal] Error code:', connectResult.error.code);
-        console.error('[StripeTerminal] Error message:', connectResult.error.message);
-        const errMsg = `Connect: ${connectResult.error.message || connectResult.error.code || 'Unknown error'}`;
-        setError(errMsg);
-        setIsConnected(false);
-        throw new Error(errMsg);
+        console.log('[StripeTerminal] sdkConnectReader() returned');
+        console.log('[StripeTerminal] Connect result:', JSON.stringify(connectResult, null, 2));
+
+        if (connectResult.error) {
+          console.error('[StripeTerminal] Connect error:', connectResult.error);
+          console.error('[StripeTerminal] Error code:', connectResult.error.code);
+          console.error('[StripeTerminal] Error message:', connectResult.error.message);
+
+          // Check if this is a "No such location" error - can happen with newly created locations
+          const isLocationNotFoundError = connectResult.error.message?.includes('No such location');
+
+          if (isLocationNotFoundError && attempt < MAX_CONNECT_RETRIES) {
+            console.log(`[StripeTerminal] Location not found, retrying in ${RETRY_DELAY_MS}ms...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            continue; // Retry
+          }
+
+          const errMsg = `Connect: ${connectResult.error.message || connectResult.error.code || 'Unknown error'}`;
+          setError(errMsg);
+          setIsConnected(false);
+          throw new Error(errMsg);
+        }
+
+        console.log('[StripeTerminal] ========== CONNECTED SUCCESSFULLY ==========');
+        console.log('[StripeTerminal] Connected reader:', connectResult.reader?.serialNumber || 'tap-to-pay');
+
+        // Apple TTPOi Requirement: Check T&C acceptance status from the reader (not cached locally)
+        // The SDK retrieves this status from Apple each time
+        const connectedReader = connectResult.reader;
+        console.log('[StripeTerminal] Reader accountOnboarded:', connectedReader?.accountOnboarded);
+        console.log('[StripeTerminal] Full reader object:', JSON.stringify(connectedReader, null, 2));
+
+        // Update T&C acceptance status based on reader's accountOnboarded property
+        // accountOnboarded is true when the merchant has accepted Apple's Tap to Pay T&C
+        if (connectedReader) {
+          const isOnboarded = connectedReader.accountOnboarded === true;
+          setTermsAcceptance({
+            accepted: isOnboarded,
+            checked: true,
+            message: isOnboarded
+              ? null
+              : 'Please accept the Tap to Pay Terms & Conditions to start accepting payments. The acceptance screen will appear when you attempt your first payment.',
+          });
+          console.log('[StripeTerminal] T&C acceptance status:', isOnboarded ? 'Accepted' : 'Not yet accepted');
+        }
+
+        setIsConnected(true);
+        return true;
+      } catch (connectErr: any) {
+        console.error('[StripeTerminal] ========== CONNECTION EXCEPTION ==========');
+        console.error('[StripeTerminal] Exception:', connectErr);
+        console.error('[StripeTerminal] Message:', connectErr.message);
+        console.error('[StripeTerminal] Code:', connectErr.code);
+
+        // Check if this is a "No such location" error - retry if we haven't exhausted attempts
+        const isLocationNotFoundError = connectErr.message?.includes('No such location');
+        if (isLocationNotFoundError && attempt < MAX_CONNECT_RETRIES) {
+          console.log(`[StripeTerminal] Location not found (exception), retrying in ${RETRY_DELAY_MS}ms...`);
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+          continue; // Retry
+        }
+
+        throw connectErr;
       }
-
-      console.log('[StripeTerminal] ========== CONNECTED SUCCESSFULLY ==========');
-      console.log('[StripeTerminal] Connected reader:', connectResult.reader?.serialNumber || 'tap-to-pay');
-
-      // Apple TTPOi Requirement: Check T&C acceptance status from the reader (not cached locally)
-      // The SDK retrieves this status from Apple each time
-      const connectedReader = connectResult.reader;
-      console.log('[StripeTerminal] Reader accountOnboarded:', connectedReader?.accountOnboarded);
-      console.log('[StripeTerminal] Full reader object:', JSON.stringify(connectedReader, null, 2));
-
-      // Update T&C acceptance status based on reader's accountOnboarded property
-      // accountOnboarded is true when the merchant has accepted Apple's Tap to Pay T&C
-      if (connectedReader) {
-        const isOnboarded = connectedReader.accountOnboarded === true;
-        setTermsAcceptance({
-          accepted: isOnboarded,
-          checked: true,
-          message: isOnboarded
-            ? null
-            : 'Please accept the Tap to Pay Terms & Conditions to start accepting payments. The acceptance screen will appear when you attempt your first payment.',
-        });
-        console.log('[StripeTerminal] T&C acceptance status:', isOnboarded ? 'Accepted' : 'Not yet accepted');
-      }
-
-      setIsConnected(true);
-      return true;
-    } catch (connectErr: any) {
-      console.error('[StripeTerminal] ========== CONNECTION EXCEPTION ==========');
-      console.error('[StripeTerminal] Exception:', connectErr);
-      console.error('[StripeTerminal] Message:', connectErr.message);
-      console.error('[StripeTerminal] Code:', connectErr.code);
-      throw connectErr;
     }
+
+    // This should never be reached, but TypeScript needs it
+    throw new Error('Failed to connect after all retries');
   }, [discoverReaders, sdkConnectReader, locationId, hookDiscoveredReaders, isConnected]);
 
   const processPayment = useCallback(async (paymentIntentId: string) => {
@@ -693,7 +740,27 @@ async function fetchConnectionToken(): Promise<string> {
     return secret;
   } catch (error: any) {
     console.error('[StripeTerminal] Failed to get connection token:', error);
-    throw error;
+
+    // Check for common error conditions and provide clearer messages
+    const errorMessage = error?.message?.toLowerCase() || '';
+    const statusCode = error?.statusCode;
+
+    // If the error suggests Connect account isn't set up
+    if (
+      errorMessage.includes('connect') ||
+      errorMessage.includes('account') ||
+      errorMessage.includes('charges_enabled') ||
+      errorMessage.includes('not found') ||
+      statusCode === 400 ||
+      statusCode === 403
+    ) {
+      throw new Error(
+        'Payment processing is not set up yet. Please complete Stripe Connect onboarding in Settings to accept payments.'
+      );
+    }
+
+    // Re-throw with original or improved message
+    throw new Error(error?.message || 'Failed to connect to payment service. Please try again.');
   }
 }
 

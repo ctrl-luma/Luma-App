@@ -8,13 +8,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { stripeConnectApi } from '../lib/api';
 
+type StripeOnboardingParams = {
+  returnTo?: 'education' | 'settings' | 'home';
+};
+
 export function StripeOnboardingScreen() {
+  const route = useRoute<RouteProp<{ params: StripeOnboardingParams }, 'params'>>();
+  const returnTo = route.params?.returnTo;
   const { colors } = useTheme();
   const navigation = useNavigation<any>();
   const { refreshConnectStatus } = useAuth();
@@ -49,14 +55,24 @@ export function StripeOnboardingScreen() {
   const handleClose = () => {
     // Refresh connect status when closing
     refreshConnectStatus();
-    // Check if we can go back, otherwise navigate to main tabs
-    if (navigation.canGoBack()) {
+
+    // Route based on returnTo parameter
+    if (returnTo === 'education') {
+      // Coming from initial onboarding - go to Tap to Pay education
+      navigation.replace('TapToPayEducation');
+    } else if (returnTo === 'settings') {
+      // Coming from Settings - go back to Settings
       navigation.goBack();
     } else {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainTabs' }],
-      });
+      // Default: go back or to main tabs
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs' }],
+        });
+      }
     }
   };
 

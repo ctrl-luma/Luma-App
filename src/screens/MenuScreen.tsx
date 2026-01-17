@@ -28,7 +28,6 @@ import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { productsApi, Product, categoriesApi, Category, CatalogLayoutType } from '../lib/api';
 import { openVendorDashboard } from '../lib/auth-handoff';
 import { SetupRequired } from '../components/SetupRequired';
-import { TapToPayOnboardingModal } from '../components/TapToPayOnboardingModal';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 
@@ -222,25 +221,15 @@ export function MenuScreen() {
   const searchInputRef = useRef<TextInput>(null);
   const { width: screenWidth } = useWindowDimensions();
 
-  // Show onboarding modal for new users who haven't completed onboarding
-  const [showOnboarding, setShowOnboarding] = useState(false);
-
-  // Check if we should show onboarding on initial render
+  // Navigate new users to education screen (which now includes Enable step)
   React.useEffect(() => {
     if (user && user.onboardingCompleted === false && !authLoading) {
-      setShowOnboarding(true);
+      // Mark onboarding as complete immediately to prevent re-triggering
+      completeOnboarding();
+      // Navigate to education screen with the Enable step
+      navigation.navigate('TapToPayEducation' as never);
     }
-  }, [user, authLoading]);
-
-  const handleOnboardingComplete = useCallback(async () => {
-    setShowOnboarding(false);
-    await completeOnboarding();
-  }, [completeOnboarding]);
-
-  const handleNavigateToEducation = useCallback(() => {
-    // Navigate to Tap to Pay settings for education
-    navigation.navigate('TapToPaySettings');
-  }, [navigation]);
+  }, [user, authLoading, completeOnboarding, navigation]);
 
   const {
     data: products,
@@ -782,12 +771,6 @@ export function MenuScreen() {
         />
       )}
 
-      {/* Tap to Pay Onboarding Modal - shown once per account */}
-      <TapToPayOnboardingModal
-        visible={showOnboarding}
-        onComplete={handleOnboardingComplete}
-        onNavigateToEducation={handleNavigateToEducation}
-      />
     </View>
   );
 }

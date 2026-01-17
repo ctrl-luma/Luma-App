@@ -16,6 +16,8 @@ export const SocketEvents = {
   ORGANIZATION_UPDATED: 'organization:updated',
   // Session events
   SESSION_KICKED: 'session:kicked', // Emitted when user logs in on another device
+  // Subscription events
+  SUBSCRIPTION_UPDATED: 'subscription:updated',
   // Catalog events
   CATALOG_UPDATED: 'catalog:updated',
   CATALOG_CREATED: 'catalog:created',

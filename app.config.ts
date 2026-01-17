@@ -7,7 +7,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...config,
     name: ENV === 'production' ? 'Luma' : `Luma (${ENV})`,
     slug: 'luma-app',
-    version: '1.0.0',
+    version: '1.0.1',
     orientation: 'portrait',
     icon: './assets/logo-dark.png',
     userInterfaceStyle: 'dark',
@@ -40,8 +40,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       package: 'com.lumapos.app',
       adaptiveIcon: {
-        foregroundImage: './assets/logo-monochrome.png',
-        monochromeImage: './assets/logo-monochrome.png',
+        foregroundImage: './assets/adaptive-icon-foreground.png',
+        monochromeImage: './assets/adaptive-icon-foreground.png',
         backgroundColor: '#000000',
       },
       edgeToEdgeEnabled: true,

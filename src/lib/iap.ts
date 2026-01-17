@@ -9,15 +9,19 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from './config';
-import { getStorageKey } from './api/auth';
+
+// Storage key for access token (must match auth.ts)
+const ACCESS_TOKEN_KEY = 'accessToken';
 
 // Conditionally import react-native-iap only on native platforms
+// v14 uses Nitro Modules with OpenIAP API
 let RNIap: any = null;
 let iapLoadError: string | null = null;
 
 if (Platform.OS !== 'web') {
   try {
     RNIap = require('react-native-iap');
+    console.log('[IAP] Module loaded, available functions:', Object.keys(RNIap || {}));
   } catch (error: any) {
     iapLoadError = `Failed to load react-native-iap: ${error?.message || error}`;
     console.warn('[IAP]', iapLoadError);
@@ -130,7 +134,11 @@ class IAPService {
     // Listen for successful purchases
     this.purchaseUpdateSubscription = RNIap.purchaseUpdatedListener(
       async (purchase: any) => {
-        console.log('[IAP] Purchase updated:', purchase.productId);
+        // v14 may use 'id' instead of 'productId'
+        const productId = purchase.productId || purchase.id;
+        const transactionId = purchase.transactionId || purchase.id;
+        console.log('[IAP] Purchase updated:', productId);
+        console.log('[IAP] Purchase object:', JSON.stringify(purchase));
 
         try {
           // Validate receipt with backend
@@ -144,8 +152,8 @@ class IAPService {
             if (this.onPurchaseComplete) {
               this.onPurchaseComplete({
                 success: true,
-                transactionId: purchase.transactionId,
-                productId: purchase.productId,
+                transactionId,
+                productId,
                 receipt: Platform.OS === 'ios'
                   ? purchase.transactionReceipt
                   : purchase.purchaseToken,
@@ -237,15 +245,20 @@ class IAPService {
 
     try {
       console.log('[IAP] Fetching products:', SUBSCRIPTION_SKUS);
-      const subscriptions = await RNIap.getSubscriptions({ skus: SUBSCRIPTION_SKUS! });
-      console.log('[IAP] Products fetched:', subscriptions.length);
+      // v14 API: use fetchProducts with type: 'subs' for subscriptions
+      const subscriptions = await RNIap.fetchProducts({ skus: SUBSCRIPTION_SKUS!, type: 'subs' });
+      console.log('[IAP] Products fetched:', subscriptions.length, subscriptions);
 
+      // v14 API uses different property names:
+      // - 'id' instead of 'productId'
+      // - 'displayPrice' instead of 'localizedPrice'
+      // - 'displayName' instead of 'title' (on Android)
       return subscriptions.map((sub: any) => ({
-        productId: sub.productId,
-        title: sub.title,
+        productId: sub.id || sub.productId,
+        title: sub.title || sub.displayName,
         description: sub.description,
         price: sub.price,
-        localizedPrice: sub.localizedPrice,
+        localizedPrice: sub.displayPrice || sub.localizedPrice,
         currency: sub.currency,
         introductoryPrice: sub.introductoryPrice,
         introductoryPricePaymentMode: sub.introductoryPricePaymentModeIOS,
@@ -286,19 +299,49 @@ class IAPService {
       console.log('[IAP] Requesting subscription:', productId);
 
       if (Platform.OS === 'ios') {
-        await RNIap.requestSubscription({ sku: productId });
+        // iOS: use requestPurchase with request.apple wrapper
+        console.log('[IAP] iOS: requesting subscription purchase');
+        await RNIap.requestPurchase({
+          request: {
+            apple: {
+              sku: productId,
+            },
+          },
+          type: 'subs',
+        });
       } else {
         // Android requires offer token for subscriptions
-        const subscriptions = await RNIap.getSubscriptions({ skus: [productId] });
+        // Fetch products to get offer details
+        const subscriptions = await RNIap.fetchProducts({ skus: [productId], type: 'subs' });
+        console.log('[IAP] Android subscriptions fetched:', subscriptions.length);
+
         if (subscriptions.length > 0) {
           const subscription = subscriptions[0] as any;
-          const offerToken = subscription.subscriptionOfferDetails?.[0]?.offerToken;
+          // Get offer details from subscriptionOfferDetailsAndroid
+          const offerDetails = subscription.subscriptionOfferDetailsAndroid;
 
-          await RNIap.requestSubscription({
+          // Build subscription offers array
+          const subscriptionOffers = offerDetails?.map((offer: any) => ({
             sku: productId,
-            ...(offerToken && {
-              subscriptionOffers: [{ sku: productId, offerToken }],
-            }),
+            offerToken: offer.offerToken,
+          })) || [];
+
+          console.log('[IAP] Subscription offers:', JSON.stringify(subscriptionOffers));
+
+          if (subscriptionOffers.length === 0) {
+            throw new Error('No offer token available for subscription');
+          }
+
+          // Android: use requestPurchase with request.google wrapper and type: 'subs'
+          console.log('[IAP] Android: requesting subscription purchase');
+          await RNIap.requestPurchase({
+            request: {
+              google: {
+                skus: [productId],
+                subscriptionOffers,
+              },
+            },
+            type: 'subs',
           });
         } else {
           throw new Error('Subscription not found');
@@ -332,14 +375,16 @@ class IAPService {
 
       // Find active subscription
       for (const purchase of purchases) {
-        if (SUBSCRIPTION_SKUS!.includes(purchase.productId)) {
+        // v14 may use 'id' instead of 'productId'
+        const productId = purchase.productId || purchase.id;
+        if (SUBSCRIPTION_SKUS!.includes(productId)) {
           // Validate with backend
           const validation = await this.validateReceipt(purchase);
 
           if (validation.valid && validation.isActive) {
             return {
               isActive: true,
-              productId: purchase.productId,
+              productId,
               expiresAt: validation.expiresAt,
               isTrialPeriod: validation.isTrialPeriod,
               autoRenewing: validation.autoRenewing,
@@ -368,15 +413,23 @@ class IAPService {
     autoRenewing?: boolean;
   }> {
     try {
+      // v14 may use different property names
+      const productId = purchase.productId || purchase.id;
+      const transactionId = purchase.transactionId || purchase.id;
       const receipt = Platform.OS === 'ios'
         ? purchase.transactionReceipt
         : purchase.purchaseToken;
 
+      console.log('[IAP] Validating receipt for:', productId);
+
       // Get auth token for authenticated request
-      const accessToken = await AsyncStorage.getItem(getStorageKey('accessToken'));
+      const accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
       if (!accessToken) {
-        console.error('[IAP] No access token available for receipt validation');
-        return { valid: false };
+        // No auth token - this is likely a signup flow where the user isn't logged in yet.
+        // Skip client-side validation and return valid: true so the purchase can proceed.
+        // The signup endpoint will validate the receipt when creating the account.
+        console.log('[IAP] No access token - skipping client validation (signup flow)');
+        return { valid: true };
       }
 
       const response = await fetch(`${config.apiUrl}/billing/validate-receipt`, {
@@ -387,9 +440,9 @@ class IAPService {
         },
         body: JSON.stringify({
           platform: Platform.OS,
-          productId: purchase.productId,
+          productId,
           receipt,
-          transactionId: purchase.transactionId,
+          transactionId,
         }),
       });
 
@@ -418,7 +471,7 @@ class IAPService {
   async checkSubscriptionStatus(): Promise<SubscriptionStatus> {
     try {
       // Get auth token for authenticated request
-      const accessToken = await AsyncStorage.getItem(getStorageKey('accessToken'));
+      const accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
       if (!accessToken) {
         console.log('[IAP] No access token, cannot check subscription status');
         return { isActive: false };

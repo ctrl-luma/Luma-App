@@ -9,7 +9,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as SplashScreen from 'expo-splash-screen';
-import { StripeProvider } from '@stripe/stripe-react-native';
+
+// Stripe React Native only works on native platforms
+const StripeProvider = Platform.OS === 'web'
+  ? ({ children }: { children: React.ReactNode }) => <>{children}</>
+  : require('@stripe/stripe-react-native').StripeProvider;
 import {
   useFonts,
   Inter_400Regular,
@@ -56,7 +60,7 @@ import { PaymentResultScreen } from './src/screens/PaymentResultScreen';
 import { TapToPayEducationScreen } from './src/screens/TapToPayEducationScreen';
 
 // Onboarding components
-import { TapToPayOnboardingModal } from './src/components/TapToPayOnboardingModal';
+import { SetupPaymentsModal } from './src/components/SetupPaymentsModal';
 import { useTapToPayEducation } from './src/hooks/useTapToPayEducation';
 
 // Keep splash screen visible while loading fonts
@@ -175,6 +179,18 @@ function TabIcon({
   );
 }
 
+// Main tab navigator wrapper - includes onboarding modal
+function TabNavigatorWithOnboarding() {
+  return (
+    <View style={{ flex: 1 }}>
+      {/* Tap to Pay Onboarding Modal - Apple TTPOi 3.2, 3.3, 3.5 */}
+      {/* Rendered here so it has access to the correct navigation context */}
+      <TapToPayOnboardingWrapper />
+      <TabNavigator />
+    </View>
+  );
+}
+
 // Main tab navigator - Clean iOS style
 function TabNavigator() {
   const { colors, isDark } = useTheme();
@@ -224,7 +240,8 @@ function TabNavigator() {
   );
 }
 
-// Wrapper component for onboarding modal (needs to be inside NavigationContainer)
+// Wrapper component for onboarding modals (needs to be inside NavigationContainer)
+// Flow: Stripe Connect setup FIRST, then Tap to Pay education (which now includes Enable step)
 function TapToPayOnboardingWrapper() {
   const navigation = useNavigation<any>();
   const { user, connectStatus, connectLoading } = useAuth();
@@ -240,37 +257,68 @@ function TapToPayOnboardingWrapper() {
   // Track if user has completed onboarding this session
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
 
-  // Show modal while loading (as splash) or when onboarding is needed
-  // This prevents the flash of the home screen before the modal appears
-  const showOnboardingModal = !hasCompletedOnboarding && (educationLoading || shouldShowEducationPrompt);
+  // Determine if Connect is set up
+  const isConnectSetUp = connectStatus?.chargesEnabled === true;
 
-  const handleOnboardingComplete = useCallback(() => {
+  // Loading state: still loading education state or connect status
+  const isLoading = educationLoading || connectLoading;
+
+  // Only show modals if user hasn't completed onboarding AND should be prompted
+  const shouldShowAnyModal = !hasCompletedOnboarding && !isLoading && shouldShowEducationPrompt;
+
+  // Show Setup Payments modal if Connect is NOT set up (takes priority)
+  const showSetupPaymentsModal = shouldShowAnyModal && !isConnectSetUp;
+
+  // Navigate directly to education screen if Connect IS set up
+  // The education screen now includes the Enable step as the first slide
+  const shouldNavigateToEducation = shouldShowAnyModal && isConnectSetUp;
+
+  // Handle Setup Payments modal - user clicked "Continue"
+  const handleSetupPayments = useCallback(() => {
+    // Mark as complete first to hide the modal
     setHasCompletedOnboarding(true);
     markEducationSeen();
 
-    // After education modal, navigate to Stripe onboarding if charges not enabled
-    if (!connectLoading && connectStatus && !connectStatus.chargesEnabled) {
-      // Small delay to let the modal close first
-      setTimeout(() => {
-        // Use nested navigation since StripeOnboarding is inside the Authenticated stack
-        navigation.navigate('Authenticated', { screen: 'StripeOnboarding' });
-      }, 300);
+    // Navigate to Stripe Connect onboarding after a brief delay
+    // This ensures the modal dismisses cleanly before navigation
+    // returnTo: 'education' will take them to Tap to Pay education after
+    requestAnimationFrame(() => {
+      navigation.navigate('StripeOnboarding', { returnTo: 'education' });
+    });
+  }, [markEducationSeen, navigation]);
+
+  // Navigate to education screen when Connect is already set up
+  useEffect(() => {
+    if (shouldNavigateToEducation) {
+      setHasCompletedOnboarding(true);
+      markEducationSeen();
+      navigation.navigate('TapToPayEducation');
     }
-  }, [markEducationSeen, connectLoading, connectStatus, navigation]);
+  }, [shouldNavigateToEducation, markEducationSeen, navigation]);
 
-  const handleNavigateToEducation = useCallback(() => {
-    // Navigate to education screen after T&C acceptance
-    navigation.navigate('TapToPayEducation');
-  }, [navigation]);
+  // Show loading indicator while determining state
+  if (!hasCompletedOnboarding && isLoading) {
+    return (
+      <SetupPaymentsModal
+        visible={true}
+        isLoading={true}
+        onSetup={() => {}}
+      />
+    );
+  }
 
-  return (
-    <TapToPayOnboardingModal
-      visible={showOnboardingModal}
-      isLoading={educationLoading}
-      onComplete={handleOnboardingComplete}
-      onNavigateToEducation={handleNavigateToEducation}
-    />
-  );
+  // Show Setup Payments modal if Connect isn't set up
+  if (showSetupPaymentsModal) {
+    return (
+      <SetupPaymentsModal
+        visible={true}
+        onSetup={handleSetupPayments}
+      />
+    );
+  }
+
+  // No modal needed - either already completed or navigated to education
+  return null;
 }
 
 // Main authenticated navigator
@@ -288,15 +336,14 @@ function AuthenticatedNavigator() {
 
   return (
     <StripeTerminalContextProvider>
-      {/* Tap to Pay Onboarding Modal - Apple TTPOi 3.2, 3.3, 3.5 */}
-      <TapToPayOnboardingWrapper />
       <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
-      }}
-    >
-      <Stack.Screen name="MainTabs" component={TabNavigator} />
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        {/* MainTabs includes TapToPayOnboardingWrapper for correct navigation context */}
+        <Stack.Screen name="MainTabs" component={TabNavigatorWithOnboarding} />
       <Stack.Screen
         name="CatalogSelect"
         component={CatalogSelectScreen}

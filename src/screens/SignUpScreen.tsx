@@ -23,6 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/Input';
 import { authService } from '../lib/api';
 import { iapService, SUBSCRIPTION_SKUS, SubscriptionProduct } from '../lib/iap';
+import { storeCredentials } from '../lib/biometricAuth';
 import { colors as appColors, glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -133,6 +134,9 @@ export function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
+
+  // Combined loading state for disabling form fields
+  const isFormDisabled = isLoading || isCheckingEmail || isCheckingPassword || isPurchasing;
 
   // Steps configuration
   const steps: Step[] = ['account', 'business', 'plan', 'confirmation'];
@@ -299,7 +303,20 @@ export function SignUpScreen() {
     if (currentStep === 'account') {
       setCurrentStep('business');
     } else if (currentStep === 'business') {
-      setCurrentStep('plan');
+      // Create the account BEFORE showing plan selection
+      // This ensures we don't have orphaned payments if account creation fails
+      setIsLoading(true);
+      try {
+        console.log('[SignUp] Creating account before plan selection...');
+        await createAccount('starter');
+        console.log('[SignUp] Account created successfully, proceeding to plan selection');
+        setCurrentStep('plan');
+      } catch (error: any) {
+        console.error('[SignUp] Account creation failed:', error);
+        Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     } else if (currentStep === 'plan') {
       await handleSignUp();
     }
@@ -317,7 +334,22 @@ export function SignUpScreen() {
   };
 
   // Create account via API
-  const createAccount = async (tier: 'starter' | 'pro', purchaseReceipt?: string): Promise<boolean> => {
+  const createAccount = async (
+    tier: 'starter' | 'pro',
+    iapData?: { receipt: string; transactionId?: string; productId?: string }
+  ): Promise<boolean> => {
+    console.log('[SignUp] ========== CREATE ACCOUNT ==========');
+    console.log('[SignUp] Tier:', tier);
+    console.log('[SignUp] Has IAP data:', !!iapData);
+
+    if (iapData) {
+      console.log('[SignUp] IAP Platform:', Platform.OS);
+      console.log('[SignUp] IAP Product ID:', iapData.productId);
+      console.log('[SignUp] IAP Transaction ID:', iapData.transactionId);
+      console.log('[SignUp] IAP Receipt length:', iapData.receipt?.length || 0);
+      console.log('[SignUp] IAP Receipt preview:', iapData.receipt?.substring(0, 50) + '...');
+    }
+
     const signupData = {
       email: formData.email.trim().toLowerCase(),
       password: formData.password,
@@ -328,8 +360,25 @@ export function SignUpScreen() {
       acceptTerms: formData.acceptTerms,
       acceptPrivacy: formData.acceptTerms,
       subscriptionTier: tier,
-      ...(purchaseReceipt && { iapReceipt: purchaseReceipt }),
+      // IAP data for mobile app purchases
+      ...(iapData && {
+        iapPlatform: Platform.OS as 'ios' | 'android',
+        iapReceipt: iapData.receipt,
+        iapTransactionId: iapData.transactionId,
+        iapProductId: iapData.productId,
+      }),
     };
+
+    console.log('[SignUp] Sending signup request with data:', {
+      email: signupData.email,
+      tier: signupData.subscriptionTier,
+      hasIapPlatform: !!signupData.iapPlatform,
+      iapPlatform: signupData.iapPlatform,
+      hasIapReceipt: !!signupData.iapReceipt,
+      iapReceiptLength: signupData.iapReceipt?.length || 0,
+      iapTransactionId: signupData.iapTransactionId,
+      iapProductId: signupData.iapProductId,
+    });
 
     const response = await fetch(`${config.apiUrl}/auth/signup`, {
       method: 'POST',
@@ -339,14 +388,21 @@ export function SignUpScreen() {
 
     const data = await response.json();
 
+    console.log('[SignUp] Signup response status:', response.status);
+    console.log('[SignUp] Signup response:', JSON.stringify(data, null, 2));
+
     if (!response.ok) {
+      console.error('[SignUp] Signup failed:', data.message || data.error);
       throw new Error(data.message || 'Failed to create account');
     }
 
+    console.log('[SignUp] ========== ACCOUNT CREATED SUCCESSFULLY ==========');
     return true;
   };
 
   // Handle Pro plan purchase with IAP
+  // Note: Account is already created at this point (as starter tier)
+  // The Google webhook will update the subscription to pro when purchase is confirmed
   const handleProPurchase = async () => {
     if (!iapProduct) {
       Alert.alert(
@@ -365,21 +421,54 @@ export function SignUpScreen() {
     setIsPurchasing(true);
 
     try {
+      console.log('[SignUp] ========== STARTING IAP PURCHASE ==========');
+      console.log('[SignUp] Product ID:', iapProduct.productId);
+      console.log('[SignUp] Account already created, webhook will update subscription');
+
       await iapService.purchaseSubscription(iapProduct.productId, async (result) => {
         setIsPurchasing(false);
 
-        if (result.success) {
-          console.log('[SignUp] IAP purchase successful:', result.transactionId);
+        console.log('[SignUp] IAP purchase callback received');
+        console.log('[SignUp] Result success:', result.success);
+        console.log('[SignUp] Result transactionId:', result.transactionId);
+        console.log('[SignUp] Result productId:', result.productId);
 
-          // Now create the account with the purchase receipt
+        if (result.success) {
+          console.log('[SignUp] ========== IAP PURCHASE SUCCESSFUL ==========');
+          console.log('[SignUp] Transaction ID:', result.transactionId);
+          console.log('[SignUp] Product ID:', result.productId);
+          console.log('[SignUp] Receipt/PurchaseToken:', result.receipt?.substring(0, 30) + '...');
+
+          // Sign in first, then link the purchase token
           setIsLoading(true);
           try {
-            await createAccount('pro', result.receipt);
-            // Sign in directly - no confirmation screen
-            await signIn(formData.email.trim().toLowerCase(), formData.password);
+            const email = formData.email.trim().toLowerCase();
+            await signIn(email, formData.password);
+
+            // Store credentials for biometric login (replaces any previous account's credentials)
+            await storeCredentials(email, formData.password);
+
+            // Now link the IAP purchase so webhook can find the subscription
+            // On Android, the receipt is the purchaseToken
+            // On iOS, we use the transactionId
+            const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+            console.log('[SignUp] Linking IAP purchase to subscription...');
+
+            try {
+              await authService.linkIapPurchase({
+                platform,
+                purchaseToken: result.receipt || result.transactionId || '',
+                transactionId: result.transactionId,
+                productId: result.productId,
+              });
+              console.log('[SignUp] IAP purchase linked successfully');
+            } catch (linkError: any) {
+              // Don't fail the signup if linking fails - webhook might still work
+              console.error('[SignUp] Failed to link IAP purchase (non-fatal):', linkError.message);
+            }
           } catch (error: any) {
             setIsLoading(false);
-            Alert.alert('Error', error.message || 'Failed to create account after purchase. Please contact support.');
+            Alert.alert('Error', error.message || 'Failed to sign in. Please try logging in manually.');
           }
         } else {
           if (result.error !== 'Purchase cancelled') {
@@ -394,26 +483,29 @@ export function SignUpScreen() {
     }
   };
 
-  // Handle sign up
+  // Handle sign up (called from plan step)
+  // Note: Account is already created at this point (created after business step)
   const handleSignUp = async () => {
     setIsLoading(true);
     try {
       if (formData.selectedPlan === 'pro') {
         setIsLoading(false);
-        // Start IAP purchase flow
+        // Start IAP purchase flow - webhook will update subscription
         await handleProPurchase();
         return;
       }
 
-      // Starter plan - create account directly
-      await createAccount('starter');
+      // Starter plan - account already created, just sign in
+      console.log('[SignUp] Starter plan selected, signing in...');
+      const email = formData.email.trim().toLowerCase();
+      await signIn(email, formData.password);
 
-      // Sign in directly - no confirmation screen
-      await signIn(formData.email.trim().toLowerCase(), formData.password);
+      // Store credentials for biometric login (replaces any previous account's credentials)
+      await storeCredentials(email, formData.password);
 
     } catch (error: any) {
       console.error('Sign up error:', error);
-      Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
+      Alert.alert('Error', error.message || 'Failed to sign in. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -444,6 +536,7 @@ export function SignUpScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
+            editable={!isFormDisabled}
             error={errors.email}
             rightIcon={isCheckingEmail ? (
               <View style={styles.inputSpinner}>
@@ -463,6 +556,7 @@ export function SignUpScreen() {
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
             autoComplete="password-new"
+            editable={!isFormDisabled}
             error={errors.password}
             rightIcon={
               <TouchableOpacity
@@ -489,6 +583,7 @@ export function SignUpScreen() {
             placeholder="Re-enter your password"
             secureTextEntry={!showConfirmPassword}
             autoComplete="password-new"
+            editable={!isFormDisabled}
             error={errors.confirmPassword}
             rightIcon={
               <TouchableOpacity
@@ -533,6 +628,7 @@ export function SignUpScreen() {
               placeholder="John"
               autoCapitalize="words"
               autoComplete="given-name"
+              editable={!isFormDisabled}
               error={errors.firstName}
             />
             {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
@@ -546,6 +642,7 @@ export function SignUpScreen() {
               placeholder="Doe"
               autoCapitalize="words"
               autoComplete="family-name"
+              editable={!isFormDisabled}
               error={errors.lastName}
             />
             {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
@@ -561,6 +658,7 @@ export function SignUpScreen() {
             placeholder="The Rolling Bar Co."
             autoCapitalize="words"
             autoComplete="organization"
+            editable={!isFormDisabled}
             error={errors.businessName}
           />
           {errors.businessName && <Text style={styles.errorText}>{errors.businessName}</Text>}
@@ -572,11 +670,13 @@ export function SignUpScreen() {
             style={[
               styles.selectButton,
               errors.businessType && styles.selectButtonError,
+              isFormDisabled && styles.selectButtonDisabled,
             ]}
             onPress={() => {
               Keyboard.dismiss();
               setShowBusinessTypePicker(true);
             }}
+            disabled={isFormDisabled}
           >
             <Ionicons name="briefcase-outline" size={20} color={appColors.gray400} />
             <Text style={[
@@ -599,13 +699,15 @@ export function SignUpScreen() {
             placeholder="(555) 123-4567"
             keyboardType="phone-pad"
             autoComplete="tel"
+            editable={!isFormDisabled}
           />
         </View>
 
         <TouchableOpacity
-          style={styles.checkboxRow}
+          style={[styles.checkboxRow, isFormDisabled && styles.checkboxRowDisabled]}
           onPress={() => updateField('acceptTerms', !formData.acceptTerms)}
           activeOpacity={0.7}
+          disabled={isFormDisabled}
         >
           <View style={[
             styles.checkbox,
@@ -708,8 +810,10 @@ export function SignUpScreen() {
           style={[
             styles.planCard,
             formData.selectedPlan === 'starter' && styles.planCardSelected,
+            isFormDisabled && styles.planCardDisabled,
           ]}
           onPress={() => updateField('selectedPlan', 'starter')}
+          disabled={isFormDisabled}
         >
           <View style={styles.planHeader}>
             <Text style={styles.planName}>{PLANS.starter.name}</Text>
@@ -753,8 +857,10 @@ export function SignUpScreen() {
             styles.planCard,
             styles.planCardPro,
             formData.selectedPlan === 'pro' && styles.planCardSelected,
+            isFormDisabled && styles.planCardDisabled,
           ]}
           onPress={() => updateField('selectedPlan', 'pro')}
+          disabled={isFormDisabled}
         >
           <View style={styles.popularBadge}>
             <Text style={styles.popularBadgeText}>Most Popular</Text>
@@ -1196,6 +1302,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     selectButtonError: {
       borderColor: colors.error,
     },
+    selectButtonDisabled: {
+      opacity: 0.5,
+    },
     selectButtonText: {
       flex: 1,
       fontSize: 16,
@@ -1209,6 +1318,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
+    },
+    checkboxRowDisabled: {
+      opacity: 0.5,
     },
     checkbox: {
       width: 22,
@@ -1307,6 +1419,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     planCardSelected: {
       borderColor: colors.primary,
       backgroundColor: colors.primary + '08',
+    },
+    planCardDisabled: {
+      opacity: 0.5,
     },
     popularBadge: {
       position: 'absolute',

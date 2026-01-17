@@ -1,6 +1,8 @@
 /**
  * Tap to Pay Education Screen
  * Apple TTPOi Requirements:
+ * - 3.5: Clear action to trigger T&C acceptance (Enable button)
+ * - 3.9.1: Configuration progress indicator
  * - 4.1: Provide easily accessible help documentation
  * - 4.2: Link to Stripe's help resources
  * - 4.3: Educate on keeping phone screen facing up during payment
@@ -19,7 +21,7 @@ import {
   Dimensions,
   Linking,
   Platform,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -27,9 +29,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
+import { useTerminal, ConfigurationStage } from '../context/StripeTerminalContext';
 import { glass } from '../lib/colors';
-import { shadows } from '../lib/shadows';
+import { shadows, glow } from '../lib/shadows';
+import { spacing, radius } from '../lib/spacing';
 import { config } from '../lib/config';
+
+// Apple TTPOi 5.4: Region-correct copy
+const TAP_TO_PAY_NAME = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
+
+// Configuration stage messages for progress indicator (Apple TTPOi 3.9.1)
+const STAGE_MESSAGES: Record<ConfigurationStage, string> = {
+  idle: 'Preparing...',
+  checking_compatibility: 'Checking device compatibility...',
+  initializing: 'Initializing payment terminal...',
+  fetching_location: 'Fetching location...',
+  discovering_reader: 'Discovering reader...',
+  connecting_reader: 'Connecting to reader...',
+  ready: 'Ready to accept payments!',
+  error: 'Setup failed',
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -143,8 +162,69 @@ export function TapToPayEducationScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Terminal context for enabling Tap to Pay
+  const {
+    deviceCompatibility,
+    configurationStage,
+    configurationProgress,
+    connectReader,
+    initializeTerminal,
+    isInitialized,
+    isConnected,
+    error: terminalError,
+  } = useTerminal();
+
   const [currentSlide, setCurrentSlide] = useState(0);
-  const styles = createStyles(colors, glassColors);
+  const [isEnabling, setIsEnabling] = useState(false);
+  const [enableError, setEnableError] = useState<string | null>(null);
+  const [isEnabled, setIsEnabled] = useState(false);
+
+  const styles = createStyles(colors, glassColors, isDark);
+
+  // Check if device is not compatible
+  const isDeviceIncompatible = !deviceCompatibility.isCompatible;
+
+  // Handle enable button press - triggers T&C acceptance flow (Apple TTPOi 3.5)
+  const handleEnable = async () => {
+    // Check device compatibility first
+    if (isDeviceIncompatible) {
+      setEnableError(
+        deviceCompatibility.errorMessage ||
+        (Platform.OS === 'ios'
+          ? `${TAP_TO_PAY_NAME} requires iPhone XS or later with iOS 16.4+.`
+          : `${TAP_TO_PAY_NAME} requires an Android device with NFC capability.`)
+      );
+      return;
+    }
+
+    setIsEnabling(true);
+    setEnableError(null);
+
+    try {
+      // Initialize terminal if not already done
+      if (!isInitialized) {
+        await initializeTerminal();
+      }
+
+      // Connect reader - this triggers Apple's T&C acceptance screen
+      const connected = await connectReader();
+
+      if (connected) {
+        setIsEnabled(true);
+        // Auto-advance to next slide after brief success display
+        setTimeout(() => {
+          goToSlide(1);
+        }, 1000);
+      } else {
+        setEnableError('Failed to connect. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('[TapToPayEducation] Enable failed:', err);
+      setEnableError(err.message || 'Failed to enable Tap to Pay');
+    } finally {
+      setIsEnabling(false);
+    }
+  };
 
   const handleScroll = (event: any) => {
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
@@ -156,7 +236,13 @@ export function TapToPayEducationScreen() {
   };
 
   const handleNext = () => {
-    if (currentSlide < EDUCATION_SLIDES.length - 1) {
+    // On enable slide, trigger enable flow
+    if (currentSlide === 0 && !isEnabled && !isConnected) {
+      handleEnable();
+      return;
+    }
+
+    if (currentSlide < EDUCATION_SLIDES.length) {
       goToSlide(currentSlide + 1);
     } else {
       navigation.goBack();
@@ -167,6 +253,11 @@ export function TapToPayEducationScreen() {
     navigation.goBack();
   };
 
+  // Total slides = 1 (enable) + education slides
+  const totalSlides = EDUCATION_SLIDES.length + 1;
+  const isOnEnableSlide = currentSlide === 0;
+  const isLastSlide = currentSlide === totalSlides - 1;
+
   const openStripeHelp = () => {
     Linking.openURL('https://support.stripe.com/');
   };
@@ -175,8 +266,18 @@ export function TapToPayEducationScreen() {
     Linking.openURL(config.vendorDashboardUrl);
   };
 
-  const currentSlideData = EDUCATION_SLIDES[currentSlide];
-  const isLastSlide = currentSlide === EDUCATION_SLIDES.length - 1;
+  // Determine button text based on current state
+  const getButtonText = () => {
+    if (isOnEnableSlide) {
+      if (isEnabling) return 'Enabling...';
+      if (isEnabled || isConnected) return 'Continue';
+      return `Enable ${TAP_TO_PAY_NAME}`;
+    }
+    return isLastSlide ? 'Got It' : 'Next';
+  };
+
+  // Determine if we should disable scrolling on enable slide until enabled
+  const canScrollPastEnable = isEnabled || isConnected;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -185,7 +286,9 @@ export function TapToPayEducationScreen() {
         <TouchableOpacity style={styles.closeButton} onPress={handleSkip}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Learn About Tap to Pay</Text>
+        <Text style={styles.headerTitle}>
+          {isOnEnableSlide ? 'Set Up Tap to Pay' : 'Learn About Tap to Pay'}
+        </Text>
         <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
           <Text style={styles.skipButtonText}>Skip</Text>
         </TouchableOpacity>
@@ -199,9 +302,96 @@ export function TapToPayEducationScreen() {
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        scrollEnabled={canScrollPastEnable || currentSlide > 0}
         style={styles.slidesContainer}
       >
-        {EDUCATION_SLIDES.map((slide, index) => (
+        {/* Enable Slide (First) */}
+        <View style={styles.slide}>
+          {isEnabling ? (
+            /* Configuration Progress State - Apple TTPOi 3.9.1 */
+            <>
+              <View style={styles.progressIconContainer}>
+                <View style={styles.progressRing}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              </View>
+              <Text style={styles.progressPercent}>{Math.round(configurationProgress)}%</Text>
+              <View style={styles.progressBarContainer}>
+                <View style={[styles.progressBarFill, { width: `${configurationProgress}%` }]}>
+                  <LinearGradient
+                    colors={[colors.primary, colors.primary500]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                </View>
+              </View>
+              <Text style={styles.slideTitle}>Setting Up</Text>
+              <Text style={styles.stageText}>
+                {STAGE_MESSAGES[configurationStage] || 'Please wait...'}
+              </Text>
+              {configurationStage === 'connecting_reader' && (
+                <Text style={styles.hintText}>
+                  You may be prompted to accept Terms & Conditions
+                </Text>
+              )}
+            </>
+          ) : isEnabled || isConnected ? (
+            /* Success State */
+            <>
+              <View style={styles.successIconContainer}>
+                <Ionicons name="checkmark-circle" size={80} color={colors.success} />
+              </View>
+              <Text style={styles.slideTitle}>You're All Set!</Text>
+              <Text style={styles.slideDescription}>
+                {TAP_TO_PAY_NAME} is now enabled. Let's show you how it works.
+              </Text>
+            </>
+          ) : (
+            /* Initial Enable State */
+            <>
+              <View style={styles.iconContainer}>
+                <LinearGradient
+                  colors={[colors.primary, colors.primary700]}
+                  style={styles.iconGradient}
+                >
+                  <Ionicons name="wifi" size={64} color="#fff" style={styles.nfcIcon} />
+                </LinearGradient>
+              </View>
+              <Text style={styles.slideTitle}>Enable {TAP_TO_PAY_NAME}</Text>
+              <Text style={styles.slideDescription}>
+                Turn your device into a payment terminal. Accept contactless cards and digital wallets instantly.
+              </Text>
+
+              {/* Features list */}
+              <View style={styles.tipsContainer}>
+                {[
+                  { icon: 'shield-checkmark', text: 'Secure & encrypted payments' },
+                  { icon: 'card', text: 'All major cards & wallets' },
+                  { icon: 'flash', text: 'No extra hardware needed' },
+                ].map((feature, index) => (
+                  <View key={index} style={styles.tipRow}>
+                    <View style={styles.featureIconBg}>
+                      <Ionicons name={feature.icon as any} size={16} color={colors.primary} />
+                    </View>
+                    <Text style={styles.tipText}>{feature.text}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Error message */}
+              {(enableError || terminalError) && (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle" size={18} color={colors.error} />
+                  <Text style={styles.errorText}>{enableError || terminalError}</Text>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Education Slides */}
+        {EDUCATION_SLIDES.map((slide) => (
           <View key={slide.id} style={styles.slide}>
             {/* Icon */}
             <View style={styles.iconContainer}>
@@ -251,32 +441,44 @@ export function TapToPayEducationScreen() {
 
       {/* Pagination */}
       <View style={styles.pagination}>
-        {EDUCATION_SLIDES.map((_, index) => (
+        {Array.from({ length: totalSlides }).map((_, index) => (
           <TouchableOpacity
             key={index}
             style={[
               styles.paginationDot,
               currentSlide === index && styles.paginationDotActive,
             ]}
-            onPress={() => goToSlide(index)}
+            onPress={() => (index === 0 || canScrollPastEnable) && goToSlide(index)}
+            disabled={index > 0 && !canScrollPastEnable}
           />
         ))}
       </View>
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity onPress={handleNext} activeOpacity={0.9}>
+        <TouchableOpacity
+          onPress={handleNext}
+          activeOpacity={0.9}
+          disabled={isEnabling}
+        >
           <LinearGradient
-            colors={[colors.primary, colors.primary700]}
+            colors={isEnabling ? [colors.gray600, colors.gray700] : [colors.primary, colors.primary700]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.nextButton}
           >
-            <Text style={styles.nextButtonText}>
-              {isLastSlide ? 'Got It' : 'Next'}
-            </Text>
-            {!isLastSlide && (
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
+            {isEnabling ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.nextButtonText}>{getButtonText()}</Text>
+                {!isLastSlide && !isOnEnableSlide && (
+                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+                )}
+                {isOnEnableSlide && !isEnabled && !isConnected && (
+                  <Ionicons name="flash" size={20} color="#fff" />
+                )}
+              </>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -285,7 +487,7 @@ export function TapToPayEducationScreen() {
   );
 }
 
-const createStyles = (colors: any, glassColors: typeof glass.dark) =>
+const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -448,5 +650,86 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) =>
       color: '#fff',
       fontSize: 18,
       fontWeight: '600',
+    },
+    // Enable slide - Progress state styles
+    progressIconContainer: {
+      marginBottom: spacing.lg,
+    },
+    progressRing: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+      borderWidth: 3,
+      borderColor: colors.primary + '30',
+    },
+    progressPercent: {
+      fontSize: 32,
+      fontWeight: '700',
+      color: colors.primary,
+      marginBottom: spacing.md,
+    },
+    progressBarContainer: {
+      width: '80%',
+      height: 6,
+      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+      borderRadius: 3,
+      overflow: 'hidden',
+      marginBottom: spacing.xl,
+    },
+    progressBarFill: {
+      height: '100%',
+      borderRadius: 3,
+      overflow: 'hidden',
+    },
+    stageText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: spacing.sm,
+    },
+    hintText: {
+      fontSize: 14,
+      color: colors.textMuted,
+      textAlign: 'center',
+      marginTop: spacing.md,
+      fontStyle: 'italic',
+    },
+    // Enable slide - Success state styles
+    successIconContainer: {
+      marginBottom: spacing.lg,
+      ...glow(colors.success, 'subtle'),
+    },
+    // Enable slide - Initial state styles
+    featureIconBg: {
+      width: 32,
+      height: 32,
+      borderRadius: radius.sm,
+      backgroundColor: colors.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    nfcIcon: {
+      transform: [{ rotate: '90deg' }],
+    },
+    // Error styles
+    errorContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.lg,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
+      backgroundColor: colors.error + '15',
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.error + '30',
+    },
+    errorText: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.error,
     },
   });

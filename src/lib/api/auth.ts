@@ -259,6 +259,31 @@ class AuthService {
     return apiClient.post<{ onboardingCompleted: boolean }>('/auth/complete-onboarding', {});
   }
 
+  /**
+   * Link an IAP purchase token to the user's subscription
+   * This must be called after a successful IAP purchase so the webhook can find the subscription
+   */
+  async linkIapPurchase(params: {
+    platform: 'ios' | 'android';
+    purchaseToken: string;
+    transactionId?: string;
+    productId?: string;
+  }): Promise<{ message: string; subscriptionId: string }> {
+    console.log('[AuthService] Linking IAP purchase', {
+      platform: params.platform,
+      productId: params.productId,
+      purchaseTokenPreview: params.purchaseToken.substring(0, 20) + '...',
+    });
+
+    const response = await apiClient.post<{ message: string; subscriptionId: string }>(
+      '/auth/link-iap-purchase',
+      params
+    );
+
+    console.log('[AuthService] IAP purchase linked successfully', response);
+    return response;
+  }
+
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getAccessToken();
     return !!token;

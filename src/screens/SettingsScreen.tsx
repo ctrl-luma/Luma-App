@@ -14,12 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useTerminal } from '../context/StripeTerminalContext';
+import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { billingService, SubscriptionInfo } from '../lib/api/billing';
 import { Subscription } from '../lib/api';
 import {
@@ -43,7 +44,7 @@ export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { user, organization, subscription, signOut, connectStatus, isPaymentReady } = useAuth();
+  const { user, organization, subscription, signOut, connectStatus, isPaymentReady, refreshAuth } = useAuth();
   const { selectedCatalog, clearCatalog } = useCatalog();
   const {
     deviceCompatibility,
@@ -53,6 +54,16 @@ export function SettingsScreen() {
     configurationProgress,
   } = useTerminal();
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
+
+  // Listen for subscription updates via socket and refresh data
+  useSocketEvent(SocketEvents.SUBSCRIPTION_UPDATED, useCallback((data: any) => {
+    console.log('[SettingsScreen] Received SUBSCRIPTION_UPDATED event:', data);
+    // Invalidate and refetch subscription info
+    queryClient.invalidateQueries({ queryKey: ['subscription-info'] });
+    // Also refresh auth to update subscription in AuthContext
+    refreshAuth();
+  }, [queryClient, refreshAuth]));
 
   // Fetch detailed billing info for all users - needed to check platform (Stripe vs Apple/Google)
   // and to show appropriate manage subscription options
@@ -472,7 +483,7 @@ export function SettingsScreen() {
               <>
                 <TouchableOpacity
                   style={styles.row}
-                  onPress={() => navigation.navigate('StripeOnboarding')}
+                  onPress={() => navigation.navigate('StripeOnboarding', { returnTo: 'settings' })}
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.warning + '15' }]}>
