@@ -67,7 +67,6 @@ export function SettingsScreen() {
 
   // Fetch detailed billing info for all users - needed to check platform (Stripe vs Apple/Google)
   // and to show appropriate manage subscription options
-  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
   const { data: subscriptionInfo, isLoading: subscriptionLoading } = useQuery<SubscriptionInfo>({
     queryKey: ['subscription-info'],
     queryFn: () => billingService.getSubscriptionInfo(),
@@ -75,16 +74,16 @@ export function SettingsScreen() {
     retry: 1,
   });
 
-  // Check if user previously had a PAID Stripe subscription (should manage via web, not in-app purchase)
-  // Only true if:
-  // 1. platform is stripe
-  // 2. tier is pro/enterprise (not starter)
-  // 3. status indicates they completed payment (not 'incomplete' which means signup not finished)
-  // This allows fresh website signups with starter tier to still use in-app purchases
-  const hadPaidStripeSubscription = subscriptionInfo?.platform === 'stripe' &&
-    (subscriptionInfo?.tier === 'pro' || subscriptionInfo?.tier === 'enterprise') &&
-    subscriptionInfo?.status !== 'incomplete' &&
-    subscriptionInfo?.status !== 'none';
+  // Check Pro status from both AuthContext (may be stale) and API response (always fresh)
+  // subscriptionInfo from API takes precedence since it's fetched fresh
+  const tier = subscriptionInfo?.tier || subscription?.tier;
+  const status = subscriptionInfo?.status || subscription?.status;
+  const isPro = tier === 'pro' || tier === 'enterprise';
+
+  // Check if user signed up via the website (Stripe platform)
+  // Website users are locked to Stripe forever and should not see in-app purchase options
+  // They must manage their subscription via the vendor portal
+  const isStripePlatformUser = subscriptionInfo?.platform === 'stripe';
 
   // Debug logging for subscription state
   console.log('[SettingsScreen] Subscription Debug:', {
@@ -97,9 +96,11 @@ export function SettingsScreen() {
     infoTier: subscriptionInfo?.tier,
     infoStatus: subscriptionInfo?.status,
     infoPlatform: subscriptionInfo?.platform,
-    // Computed values
+    // Computed values (API response preferred over AuthContext)
+    computedTier: tier,
+    computedStatus: status,
     isPro,
-    hadPaidStripeSubscription,
+    isStripePlatformUser,
     subscriptionLoading,
   });
 
@@ -204,14 +205,14 @@ export function SettingsScreen() {
   };
 
   const getSubscriptionStatusText = () => {
-    // Use auth subscription for basic tier/status (available immediately)
-    const tier = subscription?.tier || subscriptionInfo?.tier;
-    const status = subscription?.status || subscriptionInfo?.status;
+    // Prefer API response (fresh) over AuthContext (may be stale)
+    const statusTier = subscriptionInfo?.tier || subscription?.tier;
+    const status = subscriptionInfo?.status || subscription?.status;
     const cancel_at = subscriptionInfo?.cancel_at; // Only from billing API
 
-    if (!tier || !status) return 'Free Plan';
+    if (!statusTier || !status) return 'Free Plan';
 
-    if (tier === 'starter' || status === 'none') {
+    if (statusTier === 'starter' || status === 'none') {
       return 'Free Plan';
     }
 
@@ -343,7 +344,7 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subscription</Text>
           <View style={styles.card}>
-            {/* Current Plan - use auth subscription for immediate display */}
+            {/* Current Plan - prefer API response (fresh) over AuthContext (may be stale) */}
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -351,8 +352,8 @@ export function SettingsScreen() {
                 </View>
                 <View style={styles.labelContainer}>
                   <Text style={styles.label}>
-                    {subscription?.tier === 'pro' ? 'Pro Plan' :
-                     subscription?.tier === 'enterprise' ? 'Enterprise Plan' :
+                    {tier === 'pro' ? 'Pro Plan' :
+                     tier === 'enterprise' ? 'Enterprise Plan' :
                      subscriptionInfo?.current_plan?.name || 'Starter Plan'}
                   </Text>
                   {isPro && subscriptionInfo?.current_plan?.price ? (
@@ -367,24 +368,24 @@ export function SettingsScreen() {
               ) : (
                 <View style={[
                   styles.statusBadgeSuccess,
-                  subscription?.status === 'past_due' && styles.statusBadgeError,
+                  status === 'past_due' && styles.statusBadgeError,
                   subscriptionInfo?.cancel_at && styles.statusBadgeWarning,
                 ]}>
                   <Ionicons
                     name={
-                      subscription?.status === 'past_due' ? 'warning' :
+                      status === 'past_due' ? 'warning' :
                       subscriptionInfo?.cancel_at ? 'time-outline' : 'checkmark-circle'
                     }
                     size={14}
                     color={
-                      subscription?.status === 'past_due' ? colors.error :
+                      status === 'past_due' ? colors.error :
                       subscriptionInfo?.cancel_at ? colors.warning : colors.success
                     }
                   />
                   <Text style={[
                     styles.statusBadgeText,
                     {
-                      color: subscription?.status === 'past_due' ? colors.error :
+                      color: status === 'past_due' ? colors.error :
                         subscriptionInfo?.cancel_at ? colors.warning : colors.success
                     }
                   ]}>
@@ -394,14 +395,14 @@ export function SettingsScreen() {
               )}
             </View>
 
-            {/* Manage Subscription - Show for Pro/Enterprise OR for users who previously had Stripe subscription */}
-            {((isPro && subscriptionInfo && subscriptionInfo.status !== 'none') || hadPaidStripeSubscription) && (
+            {/* Manage Subscription - Show for Pro/Enterprise OR for Stripe platform users */}
+            {((isPro && subscriptionInfo && subscriptionInfo.status !== 'none') || isStripePlatformUser) && (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.row}
-                  onPress={hadPaidStripeSubscription && !isPro ? async () => {
-                    // For expired/canceled Stripe subscriptions, open vendor portal billing page
+                  onPress={isStripePlatformUser && !isPro ? async () => {
+                    // For Stripe platform users without active Pro, open vendor portal billing page
                     const url = await createVendorDashboardUrl('/billing');
                     if (url) {
                       Linking.openURL(url);
@@ -429,17 +430,18 @@ export function SettingsScreen() {
               </>
             )}
 
-            {/* Upgrade prompt for free users who don't have a previous Stripe subscription */}
-            {/* Users with previous Stripe subscriptions should use the "Manage Subscription" link above */}
-            {(!subscription || subscription.tier === 'starter' || subscription.status === 'none') && !hadPaidStripeSubscription && (
+            {/* Upgrade prompt for free users */}
+            {/* Stripe platform users are directed to vendor portal, others use in-app purchase */}
+            {/* Only show if NOT Pro (checks both AuthContext and API response) */}
+            {!isPro && (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.row}
                   onPress={() => {
-                    // On native platforms (iOS/Android), navigate to in-app upgrade screen
-                    // On web, open vendor portal billing page
-                    if (Platform.OS === 'web') {
+                    // Stripe platform users must upgrade via vendor portal (website signups are locked to Stripe)
+                    // Other users (app signups) can use in-app purchase
+                    if (Platform.OS === 'web' || isStripePlatformUser) {
                       createVendorDashboardUrl('/billing').then(url => {
                         if (url) {
                           Linking.openURL(url);
@@ -459,12 +461,14 @@ export function SettingsScreen() {
                     <View style={styles.labelContainer}>
                       <Text style={styles.label}>Upgrade to Pro</Text>
                       <Text style={styles.sublabel}>
-                        {Platform.OS === 'web' ? 'View pricing and upgrade options' : 'Unlock all Pro features'}
+                        {Platform.OS === 'web' || isStripePlatformUser
+                          ? 'Upgrade on the vendor portal'
+                          : 'Unlock all Pro features'}
                       </Text>
                     </View>
                   </View>
                   <Ionicons
-                    name={Platform.OS === 'web' ? 'open-outline' : 'chevron-forward'}
+                    name={Platform.OS === 'web' || isStripePlatformUser ? 'open-outline' : 'chevron-forward'}
                     size={18}
                     color={colors.textMuted}
                   />

@@ -24,7 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       icon: './assets/logo-dark.png',
       entitlements: {
         // Tap to Pay entitlement - uncomment when Apple removes development restriction
-        // 'com.apple.developer.proximity-reader.payment.acceptance': true,
+        'com.apple.developer.proximity-reader.payment.acceptance': true,
         'com.apple.developer.in-app-payments': ['merchant.com.lumapos'],
       },
       infoPlist: {

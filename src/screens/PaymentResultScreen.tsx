@@ -243,8 +243,9 @@ export function PaymentResultScreen() {
       });
 
       // Link to existing order if we have one
+      // Mark as 'card' (manual entry) since this is the fallback flow
       if (orderId) {
-        await ordersApi.linkPaymentIntent(orderId, paymentIntent.id);
+        await ordersApi.linkPaymentIntent(orderId, paymentIntent.id, 'card');
       }
 
       // Initialize Stripe with the connected account ID for direct charges

@@ -132,7 +132,6 @@ export function SignUpScreen() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [iapProduct, setIapProduct] = useState<SubscriptionProduct | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
 
   // Combined loading state for disabling form fields
@@ -360,7 +359,10 @@ export function SignUpScreen() {
       acceptTerms: formData.acceptTerms,
       acceptPrivacy: formData.acceptTerms,
       subscriptionTier: tier,
-      // IAP data for mobile app purchases
+      // Always send signup platform so subscription is tied to correct platform
+      // Mobile signups -> 'apple'/'google', prevents them from being marked as 'stripe'
+      signupPlatform: Platform.OS as 'ios' | 'android',
+      // IAP data for mobile app purchases (Pro tier with completed purchase)
       ...(iapData && {
         iapPlatform: Platform.OS as 'ios' | 'android',
         iapReceipt: iapData.receipt,
@@ -372,6 +374,7 @@ export function SignUpScreen() {
     console.log('[SignUp] Sending signup request with data:', {
       email: signupData.email,
       tier: signupData.subscriptionTier,
+      signupPlatform: signupData.signupPlatform,
       hasIapPlatform: !!signupData.iapPlatform,
       iapPlatform: signupData.iapPlatform,
       hasIapReceipt: !!signupData.iapReceipt,
@@ -581,22 +584,10 @@ export function SignUpScreen() {
             value={formData.confirmPassword}
             onChangeText={(value) => updateField('confirmPassword', value)}
             placeholder="Re-enter your password"
-            secureTextEntry={!showConfirmPassword}
+            secureTextEntry={!showPassword}
             autoComplete="password-new"
             editable={!isFormDisabled}
             error={errors.confirmPassword}
-            rightIcon={
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={styles.eyeButton}
-              >
-                <Ionicons
-                  name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={appColors.gray400}
-                />
-              </TouchableOpacity>
-            }
           />
           {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
         </View>

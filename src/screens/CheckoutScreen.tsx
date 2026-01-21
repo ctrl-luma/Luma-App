@@ -58,6 +58,7 @@ export function CheckoutScreen() {
   // Catalog data is automatically updated via socket events in CatalogContext
 
   const [customerEmail, setCustomerEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedTipIndex, setSelectedTipIndex] = useState<number | null>(null);
   const [customTipAmount, setCustomTipAmount] = useState('');
@@ -140,8 +141,29 @@ export function CheckoutScreen() {
     }
   };
 
+  // Validate email format
+  const isValidEmail = (email: string): boolean => {
+    if (!email.trim()) return true; // Empty is valid (optional field)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  };
+
+  // Handle email change and clear error
+  const handleEmailChange = (text: string) => {
+    setCustomerEmail(text);
+    if (emailError) {
+      setEmailError(null);
+    }
+  };
+
   // Main payment handler - shows first-use modal if needed
   const handlePayment = async () => {
+    // Validate email if provided
+    if (customerEmail.trim() && !isValidEmail(customerEmail)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
     // Check if payment setup is complete
     if (connectStatus && !connectStatus.chargesEnabled) {
       Alert.alert(
@@ -470,21 +492,25 @@ export function CheckoutScreen() {
 
         {/* Customer Email (Optional) */}
         {promptForEmail && (
-          <View style={styles.emailSection}>
+          <View style={[styles.emailSection, emailError && styles.emailSectionError]}>
             <Text style={styles.inputLabel}>Customer Email (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, emailError && styles.inputError]}
               placeholder="email@example.com"
               placeholderTextColor={colors.inputPlaceholder}
               value={customerEmail}
-              onChangeText={setCustomerEmail}
+              onChangeText={handleEmailChange}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={styles.inputHint}>
-              Receipt will be sent to this email
-            </Text>
+            {emailError ? (
+              <Text style={styles.inputErrorText}>{emailError}</Text>
+            ) : (
+              <Text style={styles.inputHint}>
+                Receipt will be sent to this email
+              </Text>
+            )}
           </View>
         )}
 
@@ -763,6 +789,18 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       fontSize: 13,
       color: colors.textMuted,
       marginTop: 8,
+    },
+    inputError: {
+      borderColor: colors.error,
+      borderWidth: 1.5,
+    },
+    inputErrorText: {
+      fontSize: 13,
+      color: colors.error,
+      marginTop: 8,
+    },
+    emailSectionError: {
+      borderColor: colors.error,
     },
     paymentAmount: {
       alignItems: 'center',

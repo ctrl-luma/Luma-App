@@ -240,14 +240,14 @@ export function MenuScreen() {
     queryKey: ['products', selectedCatalog?.id],
     queryFn: () => productsApi.list(selectedCatalog!.id),
     enabled: !!selectedCatalog,
-    staleTime: Infinity, // Never auto-refetch - updates via socket events or pull-to-refresh
+    // Uses default staleTime (30s) - refetches on app foreground to catch updates missed while socket was disconnected
   });
 
   const { data: categories } = useQuery({
     queryKey: ['categories', selectedCatalog?.id],
     queryFn: () => categoriesApi.list(selectedCatalog!.id),
     enabled: !!selectedCatalog,
-    staleTime: Infinity, // Never auto-refetch - updates via socket events or pull-to-refresh
+    // Uses default staleTime (30s) - refetches on app foreground to catch updates missed while socket was disconnected
   });
 
   // Listen for real-time updates to products and categories
