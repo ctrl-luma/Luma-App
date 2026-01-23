@@ -26,6 +26,8 @@ import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 import { stripeTerminalApi, ordersApi } from '../lib/api';
+import logger from '../lib/logger';
+import { isValidEmail } from '../lib/validation';
 
 type RouteParams = {
   PaymentResult: {
@@ -77,9 +79,9 @@ export function PaymentResultScreen() {
         try {
           await stripeTerminalApi.sendReceipt(paymentIntentId, customerEmail.trim());
           setReceiptSent(true);
-          console.log('[PaymentResult] Auto-sent receipt to:', customerEmail);
+          logger.log('[PaymentResult] Auto-sent receipt to:', customerEmail);
         } catch (error) {
-          console.error('[PaymentResult] Failed to auto-send receipt:', error);
+          logger.error('[PaymentResult] Failed to auto-send receipt:', error);
           // Don't show error to user - they can manually send later
         }
       };
@@ -267,7 +269,7 @@ export function PaymentResultScreen() {
       });
 
       if (error) {
-        console.error('[ManualCard] Payment failed:', error);
+        logger.error('[ManualCard] Payment failed:', error);
         Alert.alert('Payment Failed', error.message || 'Your payment could not be processed.');
         return;
       }
@@ -298,7 +300,7 @@ export function PaymentResultScreen() {
         Alert.alert('Payment Incomplete', 'The payment was not completed. Please try again.');
       }
     } catch (error: any) {
-      console.error('[ManualCard] Payment error:', error);
+      logger.error('[ManualCard] Payment error:', error);
       Alert.alert('Payment Error', error.message || 'Failed to process payment. Please try again.');
     } finally {
       setProcessingCard(false);
@@ -312,8 +314,7 @@ export function PaymentResultScreen() {
     }
 
     // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(receiptEmail.trim())) {
+    if (!isValidEmail(receiptEmail)) {
       Alert.alert('Invalid Email', 'Please enter a valid email address.');
       return;
     }
@@ -325,7 +326,7 @@ export function PaymentResultScreen() {
       setShowEmailInput(false);
       Alert.alert('Receipt Sent', `A receipt has been sent to ${receiptEmail.trim()}`);
     } catch (error: any) {
-      console.error('Error sending receipt:', error);
+      logger.error('Error sending receipt:', error);
       Alert.alert('Error', error.message || 'Failed to send receipt. Please try again.');
     } finally {
       setSendingReceipt(false);
@@ -409,26 +410,22 @@ export function PaymentResultScreen() {
                 onPress={handleManualCardPayment}
                 disabled={!cardDetails?.complete || processingCard}
                 activeOpacity={0.9}
-                style={styles.cardPagePayButtonContainer}
+                style={[
+                  styles.cardPagePayButton,
+                  { backgroundColor: isDark ? '#fff' : '#09090b' },
+                  (!cardDetails?.complete || processingCard) && styles.cardPagePayButtonDisabled,
+                ]}
               >
-                <LinearGradient
-                  colors={[colors.primary, colors.primary700]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[
-                    styles.cardPagePayButton,
-                    (!cardDetails?.complete || processingCard) && styles.cardPagePayButtonDisabled,
-                  ]}
-                >
-                  {processingCard ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="lock-closed" size={20} color="#fff" />
-                      <Text style={styles.cardPagePayButtonText}>Pay ${(amount / 100).toFixed(2)}</Text>
-                    </>
-                  )}
-                </LinearGradient>
+                {processingCard ? (
+                  <ActivityIndicator size="small" color={isDark ? '#09090b' : '#fff'} />
+                ) : (
+                  <>
+                    <Ionicons name="lock-closed" size={20} color={isDark ? '#09090b' : '#fff'} />
+                    <Text style={[styles.cardPagePayButtonText, { color: isDark ? '#09090b' : '#fff' }]}>
+                      Pay ${(amount / 100).toFixed(2)}
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -615,16 +612,13 @@ export function PaymentResultScreen() {
             </TouchableOpacity>
           ) : (
             <>
-              <TouchableOpacity onPress={handleTryAgain} activeOpacity={0.9}>
-                <LinearGradient
-                  colors={[colors.primary, colors.primary700]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.primaryButton}
-                >
-                  <Ionicons name="refresh" size={24} color="#fff" />
-                  <Text style={styles.primaryButtonText}>Try Again</Text>
-                </LinearGradient>
+              <TouchableOpacity
+                onPress={handleTryAgain}
+                activeOpacity={0.9}
+                style={[styles.primaryButton, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
+              >
+                <Ionicons name="refresh" size={24} color={isDark ? '#09090b' : '#fff'} />
+                <Text style={[styles.primaryButtonText, { color: isDark ? '#09090b' : '#fff' }]}>Try Again</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={handleNewSale}>
                 <Text style={styles.secondaryButtonText}>Cancel Order</Text>

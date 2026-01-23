@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { stripeConnectApi } from '../lib/api';
+import logger from '../lib/logger';
 
 type StripeOnboardingParams = {
   returnTo?: 'education' | 'settings' | 'home';
@@ -45,7 +46,7 @@ export function StripeOnboardingScreen() {
       const response = await stripeConnectApi.getOnboardingLink();
       setOnboardingUrl(response.onboardingUrl);
     } catch (err: any) {
-      console.error('Failed to get onboarding URL:', err);
+      logger.error('Failed to get onboarding URL:', err);
       setError(err.message || 'Failed to load onboarding. Please try again.');
     } finally {
       setIsLoading(false);

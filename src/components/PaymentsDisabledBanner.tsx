@@ -19,10 +19,16 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
 
   if (compact) {
     return (
-      <View style={styles.compactContainer}>
+      <View style={styles.compactContainer} accessibilityRole="alert">
         <Ionicons name="alert-circle" size={18} color={colors.warning} />
         <Text style={styles.compactText}>Payments not set up</Text>
-        <TouchableOpacity onPress={() => openVendorDashboard('/connect')} style={styles.compactButton}>
+        <TouchableOpacity
+          onPress={() => openVendorDashboard('/connect')}
+          style={styles.compactButton}
+          accessibilityRole="button"
+          accessibilityLabel="Set up payments"
+          accessibilityHint="Opens the Vendor Portal to set up your payment account"
+        >
           <Text style={styles.compactButtonText}>Set up</Text>
           <Ionicons name="open-outline" size={14} color={colors.primary} />
         </TouchableOpacity>
@@ -31,7 +37,7 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} accessibilityRole="alert">
       <View style={styles.content}>
         <View style={styles.iconContainer}>
           <Ionicons name="alert-circle" size={24} color={colors.warning} />
@@ -47,6 +53,9 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
         style={styles.button}
         onPress={() => openVendorDashboard('/connect')}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Set Up Payments"
+        accessibilityHint="Opens the Vendor Portal to configure your payment account"
       >
         <Text style={styles.buttonText}>Set Up Payments</Text>
         <Ionicons name="open-outline" size={16} color="#fff" />

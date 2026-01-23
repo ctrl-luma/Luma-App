@@ -28,6 +28,8 @@ import { colors as appColors, glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
 import { config } from '../lib/config';
+import logger from '../lib/logger';
+import { isValidEmail } from '../lib/validation';
 
 // Types
 type Step = 'account' | 'business' | 'plan' | 'confirmation';
@@ -164,10 +166,10 @@ export function SignUpScreen() {
         const products = await iapService.getProducts();
         if (products.length > 0) {
           setIapProduct(products[0]);
-          console.log('[SignUp] IAP product loaded:', products[0].productId);
+          logger.log('[SignUp] IAP product loaded:', products[0].productId);
         }
       } catch (error) {
-        console.error('[SignUp] Failed to initialize IAP:', error);
+        logger.error('[SignUp] Failed to initialize IAP:', error);
       }
     };
     initIAP();
@@ -202,11 +204,6 @@ export function SignUpScreen() {
     return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   };
 
-  // Validate email format
-  const isValidEmail = (email: string) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  };
-
   // Check email availability
   const checkEmailAvailability = async (email: string): Promise<boolean> => {
     try {
@@ -219,7 +216,7 @@ export function SignUpScreen() {
       const data = await response.json();
       return !data.inUse;
     } catch (error) {
-      console.error('Error checking email:', error);
+      logger.error('Error checking email:', error);
       return true; // Allow to proceed if check fails
     } finally {
       setIsCheckingEmail(false);
@@ -253,7 +250,7 @@ export function SignUpScreen() {
             newErrors.password = passwordResult.errors.join('. ');
           }
         } catch (error) {
-          console.error('[SignUp] Password check error:', error);
+          logger.error('[SignUp] Password check error:', error);
           // Fall back to basic validation if API fails
           if (formData.password.length < 8) {
             newErrors.password = 'Password must be at least 8 characters';
@@ -306,12 +303,12 @@ export function SignUpScreen() {
       // This ensures we don't have orphaned payments if account creation fails
       setIsLoading(true);
       try {
-        console.log('[SignUp] Creating account before plan selection...');
+        logger.log('[SignUp] Creating account before plan selection...');
         await createAccount('starter');
-        console.log('[SignUp] Account created successfully, proceeding to plan selection');
+        logger.log('[SignUp] Account created successfully, proceeding to plan selection');
         setCurrentStep('plan');
       } catch (error: any) {
-        console.error('[SignUp] Account creation failed:', error);
+        logger.error('[SignUp] Account creation failed:', error);
         Alert.alert('Error', error.message || 'Failed to create account. Please try again.');
       } finally {
         setIsLoading(false);
@@ -337,16 +334,16 @@ export function SignUpScreen() {
     tier: 'starter' | 'pro',
     iapData?: { receipt: string; transactionId?: string; productId?: string }
   ): Promise<boolean> => {
-    console.log('[SignUp] ========== CREATE ACCOUNT ==========');
-    console.log('[SignUp] Tier:', tier);
-    console.log('[SignUp] Has IAP data:', !!iapData);
+    logger.log('[SignUp] ========== CREATE ACCOUNT ==========');
+    logger.log('[SignUp] Tier:', tier);
+    logger.log('[SignUp] Has IAP data:', !!iapData);
 
     if (iapData) {
-      console.log('[SignUp] IAP Platform:', Platform.OS);
-      console.log('[SignUp] IAP Product ID:', iapData.productId);
-      console.log('[SignUp] IAP Transaction ID:', iapData.transactionId);
-      console.log('[SignUp] IAP Receipt length:', iapData.receipt?.length || 0);
-      console.log('[SignUp] IAP Receipt preview:', iapData.receipt?.substring(0, 50) + '...');
+      logger.log('[SignUp] IAP Platform:', Platform.OS);
+      logger.log('[SignUp] IAP Product ID:', iapData.productId);
+      logger.log('[SignUp] IAP Transaction ID:', iapData.transactionId);
+      logger.log('[SignUp] IAP Receipt length:', iapData.receipt?.length || 0);
+      logger.log('[SignUp] IAP Receipt preview:', iapData.receipt?.substring(0, 50) + '...');
     }
 
     const signupData = {
@@ -371,7 +368,7 @@ export function SignUpScreen() {
       }),
     };
 
-    console.log('[SignUp] Sending signup request with data:', {
+    logger.log('[SignUp] Sending signup request with data:', {
       email: signupData.email,
       tier: signupData.subscriptionTier,
       signupPlatform: signupData.signupPlatform,
@@ -391,15 +388,15 @@ export function SignUpScreen() {
 
     const data = await response.json();
 
-    console.log('[SignUp] Signup response status:', response.status);
-    console.log('[SignUp] Signup response:', JSON.stringify(data, null, 2));
+    logger.log('[SignUp] Signup response status:', response.status);
+    logger.log('[SignUp] Signup response:', JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      console.error('[SignUp] Signup failed:', data.message || data.error);
+      logger.error('[SignUp] Signup failed:', data.message || data.error);
       throw new Error(data.message || 'Failed to create account');
     }
 
-    console.log('[SignUp] ========== ACCOUNT CREATED SUCCESSFULLY ==========');
+    logger.log('[SignUp] ========== ACCOUNT CREATED SUCCESSFULLY ==========');
     return true;
   };
 
@@ -424,23 +421,23 @@ export function SignUpScreen() {
     setIsPurchasing(true);
 
     try {
-      console.log('[SignUp] ========== STARTING IAP PURCHASE ==========');
-      console.log('[SignUp] Product ID:', iapProduct.productId);
-      console.log('[SignUp] Account already created, webhook will update subscription');
+      logger.log('[SignUp] ========== STARTING IAP PURCHASE ==========');
+      logger.log('[SignUp] Product ID:', iapProduct.productId);
+      logger.log('[SignUp] Account already created, webhook will update subscription');
 
       await iapService.purchaseSubscription(iapProduct.productId, async (result) => {
         setIsPurchasing(false);
 
-        console.log('[SignUp] IAP purchase callback received');
-        console.log('[SignUp] Result success:', result.success);
-        console.log('[SignUp] Result transactionId:', result.transactionId);
-        console.log('[SignUp] Result productId:', result.productId);
+        logger.log('[SignUp] IAP purchase callback received');
+        logger.log('[SignUp] Result success:', result.success);
+        logger.log('[SignUp] Result transactionId:', result.transactionId);
+        logger.log('[SignUp] Result productId:', result.productId);
 
         if (result.success) {
-          console.log('[SignUp] ========== IAP PURCHASE SUCCESSFUL ==========');
-          console.log('[SignUp] Transaction ID:', result.transactionId);
-          console.log('[SignUp] Product ID:', result.productId);
-          console.log('[SignUp] Receipt/PurchaseToken:', result.receipt?.substring(0, 30) + '...');
+          logger.log('[SignUp] ========== IAP PURCHASE SUCCESSFUL ==========');
+          logger.log('[SignUp] Transaction ID:', result.transactionId);
+          logger.log('[SignUp] Product ID:', result.productId);
+          logger.log('[SignUp] Receipt/PurchaseToken:', result.receipt?.substring(0, 30) + '...');
 
           // Sign in first, then link the purchase token
           setIsLoading(true);
@@ -455,7 +452,7 @@ export function SignUpScreen() {
             // On Android, the receipt is the purchaseToken
             // On iOS, we use the transactionId
             const platform = Platform.OS === 'ios' ? 'ios' : 'android';
-            console.log('[SignUp] Linking IAP purchase to subscription...');
+            logger.log('[SignUp] Linking IAP purchase to subscription...');
 
             try {
               await authService.linkIapPurchase({
@@ -464,10 +461,10 @@ export function SignUpScreen() {
                 transactionId: result.transactionId,
                 productId: result.productId,
               });
-              console.log('[SignUp] IAP purchase linked successfully');
+              logger.log('[SignUp] IAP purchase linked successfully');
             } catch (linkError: any) {
               // Don't fail the signup if linking fails - webhook might still work
-              console.error('[SignUp] Failed to link IAP purchase (non-fatal):', linkError.message);
+              logger.error('[SignUp] Failed to link IAP purchase (non-fatal):', linkError.message);
             }
           } catch (error: any) {
             setIsLoading(false);
@@ -481,7 +478,7 @@ export function SignUpScreen() {
       });
     } catch (error: any) {
       setIsPurchasing(false);
-      console.error('[SignUp] IAP purchase error:', error);
+      logger.error('[SignUp] IAP purchase error:', error);
       Alert.alert('Error', 'Unable to start purchase. Please try again.');
     }
   };
@@ -499,7 +496,7 @@ export function SignUpScreen() {
       }
 
       // Starter plan - account already created, just sign in
-      console.log('[SignUp] Starter plan selected, signing in...');
+      logger.log('[SignUp] Starter plan selected, signing in...');
       const email = formData.email.trim().toLowerCase();
       await signIn(email, formData.password);
 
@@ -507,7 +504,7 @@ export function SignUpScreen() {
       await storeCredentials(email, formData.password);
 
     } catch (error: any) {
-      console.error('Sign up error:', error);
+      logger.error('Sign up error:', error);
       Alert.alert('Error', error.message || 'Failed to sign in. Please try again.');
     } finally {
       setIsLoading(false);

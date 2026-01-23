@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme, Platform } from 'react-native';
 import { darkColors, lightColors, ThemeColors } from '../lib/colors';
+import logger from '../lib/logger';
 
 // Alternate app icons - import the setter function
 let setAlternateAppIcon: ((iconName: string) => Promise<void>) | null = null;
@@ -10,7 +11,7 @@ if (Platform.OS === 'ios') {
     const alternateIcons = require('expo-alternate-app-icons');
     setAlternateAppIcon = alternateIcons.setAlternateAppIcon;
   } catch (e) {
-    console.warn('[ThemeContext] expo-alternate-app-icons not available');
+    logger.warn('[ThemeContext] expo-alternate-app-icons not available');
   }
 }
 
@@ -54,7 +55,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
           setThemeState(savedTheme as ThemeMode);
         }
       } catch (error) {
-        console.error('Failed to load theme preference:', error);
+        logger.error('Failed to load theme preference:', error);
       } finally {
         setIsLoaded(true);
       }
@@ -66,7 +67,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   useEffect(() => {
     if (setAlternateAppIcon && isLoaded) {
       setAlternateAppIcon(isDark ? 'dark' : 'light').catch((e) => {
-        console.warn('[ThemeContext] Failed to set alternate app icon:', e);
+        logger.warn('[ThemeContext] Failed to set alternate app icon:', e);
       });
     }
   }, [isDark, isLoaded]);
@@ -77,7 +78,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     try {
       await AsyncStorage.setItem(THEME_STORAGE_KEY, newTheme);
     } catch (error) {
-      console.error('Failed to save theme preference:', error);
+      logger.error('Failed to save theme preference:', error);
     }
   }, []);
 

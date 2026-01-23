@@ -34,6 +34,7 @@ import { glass } from '../lib/colors';
 import { shadows, glow } from '../lib/shadows';
 import { spacing, radius } from '../lib/spacing';
 import { config } from '../lib/config';
+import logger from '../lib/logger';
 
 // Apple TTPOi 5.4: Region-correct copy
 const TAP_TO_PAY_NAME = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
@@ -221,7 +222,7 @@ export function TapToPayEducationScreen() {
         setEnableError('Failed to connect. Please try again.');
       }
     } catch (err: any) {
-      console.error('[TapToPayEducation] Enable failed:', err);
+      logger.error('[TapToPayEducation] Enable failed:', err);
       const errorMsg = err.message?.toLowerCase() || '';
 
       // Check if this is a Stripe Connect setup error

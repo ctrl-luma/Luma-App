@@ -39,6 +39,7 @@ import { Toggle } from '../components/Toggle';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
+import logger from '../lib/logger';
 
 export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -52,13 +53,14 @@ export function SettingsScreen() {
     isWarming,
     configurationStage,
     configurationProgress,
+    readerUpdateProgress,
   } = useTerminal();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
 
   // Listen for subscription updates via socket and refresh data
   useSocketEvent(SocketEvents.SUBSCRIPTION_UPDATED, useCallback((data: any) => {
-    console.log('[SettingsScreen] Received SUBSCRIPTION_UPDATED event:', data);
+    logger.log('[SettingsScreen] Received SUBSCRIPTION_UPDATED event:', data);
     // Invalidate and refetch subscription info
     queryClient.invalidateQueries({ queryKey: ['subscription-info'] });
     // Also refresh auth to update subscription in AuthContext
@@ -86,7 +88,7 @@ export function SettingsScreen() {
   const isStripePlatformUser = subscriptionInfo?.platform === 'stripe';
 
   // Debug logging for subscription state
-  console.log('[SettingsScreen] Subscription Debug:', {
+  logger.log('[SettingsScreen] Subscription Debug:', {
     // From AuthContext
     authSubscription: subscription,
     authTier: subscription?.tier,
@@ -133,10 +135,10 @@ export function SettingsScreen() {
 
   // Handle biometric toggle
   const handleBiometricToggle = async (value: boolean) => {
-    console.log('[SettingsScreen] handleBiometricToggle called, value:', value);
+    logger.log('[SettingsScreen] handleBiometricToggle called, value:', value);
 
     if (!biometricCapabilities?.isAvailable) {
-      console.log('[SettingsScreen] Biometrics not available, returning');
+      logger.log('[SettingsScreen] Biometrics not available, returning');
       return;
     }
 
@@ -155,7 +157,7 @@ export function SettingsScreen() {
         setBiometricEnabled(false);
       }
     } catch (error) {
-      console.error('[SettingsScreen] Error toggling biometric:', error);
+      logger.error('[SettingsScreen] Error toggling biometric:', error);
       Alert.alert('Error', `Failed to ${value ? 'enable' : 'disable'} biometric login.`);
     } finally {
       setBiometricLoading(false);
@@ -166,7 +168,7 @@ export function SettingsScreen() {
     try {
       await signOut();
     } catch (error) {
-      console.error('[SettingsScreen] Sign out error:', error);
+      logger.error('[SettingsScreen] Sign out error:', error);
     }
   };
 
@@ -395,21 +397,13 @@ export function SettingsScreen() {
               )}
             </View>
 
-            {/* Manage Subscription - Show for Pro/Enterprise OR for Stripe platform users */}
-            {((isPro && subscriptionInfo && subscriptionInfo.status !== 'none') || isStripePlatformUser) && (
+            {/* Manage Subscription - Only show for Pro/Enterprise users with active subscription */}
+            {isPro && subscriptionInfo && subscriptionInfo.status !== 'none' && (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.row}
-                  onPress={isStripePlatformUser && !isPro ? async () => {
-                    // For Stripe platform users without active Pro, open vendor portal billing page
-                    const url = await createVendorDashboardUrl('/billing');
-                    if (url) {
-                      Linking.openURL(url);
-                    } else {
-                      Linking.openURL(`${config.vendorDashboardUrl}/billing`);
-                    }
-                  } : handleManageSubscription}
+                  onPress={handleManageSubscription}
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
@@ -645,6 +639,13 @@ export function SettingsScreen() {
                   <Ionicons name="close-circle-outline" size={14} color={colors.textMuted} />
                   <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>N/A</Text>
                 </View>
+              ) : readerUpdateProgress !== null ? (
+                <View style={styles.statusBadgeWarning}>
+                  <ActivityIndicator size="small" color={colors.warning} />
+                  <Text style={[styles.statusBadgeText, { color: colors.warning }]}>
+                    Updating {readerUpdateProgress}%
+                  </Text>
+                </View>
               ) : isWarming ? (
                 <View style={styles.statusBadgeWarning}>
                   <ActivityIndicator size="small" color={colors.warning} />
@@ -676,19 +677,20 @@ export function SettingsScreen() {
             )}
 
             {/* Configuration Progress Bar - Apple TTPOi 3.9.1 */}
-            {Platform.OS !== 'web' && isWarming && (
+            {Platform.OS !== 'web' && (isWarming || readerUpdateProgress !== null) && (
               <View style={styles.progressSection}>
                 <View style={styles.progressBarBackground}>
-                  <View style={[styles.progressBarFill, { width: `${configurationProgress}%`, backgroundColor: colors.primary }]} />
+                  <View style={[styles.progressBarFill, { width: `${readerUpdateProgress ?? configurationProgress}%`, backgroundColor: colors.primary }]} />
                 </View>
                 <Text style={styles.progressStageText}>
-                  {configurationStage === 'checking_compatibility' && 'Checking device compatibility...'}
-                  {configurationStage === 'initializing' && 'Initializing payment terminal...'}
-                  {configurationStage === 'fetching_location' && 'Fetching location...'}
-                  {configurationStage === 'discovering_reader' && 'Discovering reader...'}
-                  {configurationStage === 'connecting_reader' && 'Connecting to reader...'}
-                  {configurationStage === 'ready' && 'Ready to accept payments!'}
-                  {configurationStage === 'idle' && 'Preparing...'}
+                  {readerUpdateProgress !== null && 'Installing reader software update...'}
+                  {readerUpdateProgress === null && configurationStage === 'checking_compatibility' && 'Checking device compatibility...'}
+                  {readerUpdateProgress === null && configurationStage === 'initializing' && 'Initializing payment terminal...'}
+                  {readerUpdateProgress === null && configurationStage === 'fetching_location' && 'Fetching location...'}
+                  {readerUpdateProgress === null && configurationStage === 'discovering_reader' && 'Discovering reader...'}
+                  {readerUpdateProgress === null && configurationStage === 'connecting_reader' && 'Connecting to reader...'}
+                  {readerUpdateProgress === null && configurationStage === 'ready' && 'Ready to accept payments!'}
+                  {readerUpdateProgress === null && configurationStage === 'idle' && 'Preparing...'}
                 </Text>
               </View>
             )}

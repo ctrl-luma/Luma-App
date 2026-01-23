@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from '../config';
+import logger from '../logger';
 
 export type ApiError = {
   error: string;
@@ -54,10 +55,10 @@ class ApiClient {
   }
 
   private async handleTokenRefresh(): Promise<boolean> {
-    console.log('[ApiClient] handleTokenRefresh called, isRefreshing:', this.isRefreshing);
+    logger.log('[ApiClient] handleTokenRefresh called, isRefreshing:', this.isRefreshing);
 
     if (this.isRefreshing) {
-      console.log('[ApiClient] Already refreshing, queueing request');
+      logger.log('[ApiClient] Already refreshing, queueing request');
       return new Promise((resolve, reject) => {
         this.requestQueue.push({
           resolve: () => resolve(true),
@@ -77,15 +78,15 @@ class ApiClient {
           const refreshToken = await AsyncStorage.getItem('refreshToken');
 
           if (!refreshToken) {
-            console.log('[ApiClient] No refresh token available');
+            logger.log('[ApiClient] No refresh token available');
             throw new Error('No refresh token available');
           }
 
-          console.log('[ApiClient] Attempting token refresh...');
+          logger.log('[ApiClient] Attempting token refresh...');
           const tokens = await authService.refreshTokens();
 
           if (tokens) {
-            console.log('[ApiClient] Token refresh successful');
+            logger.log('[ApiClient] Token refresh successful');
             this.isRefreshing = false;
             this.refreshPromise = null;
             this.processRequestQueue();
@@ -94,7 +95,7 @@ class ApiClient {
             throw new Error('Failed to refresh tokens');
           }
         } catch (error: any) {
-          console.log('[ApiClient] Token refresh failed:', error?.message || error);
+          logger.log('[ApiClient] Token refresh failed:', error?.message || error);
           this.isRefreshing = false;
           this.refreshPromise = null;
           this.requestQueue = [];
@@ -131,7 +132,7 @@ class ApiClient {
 
       // Check if session was kicked (logged in on another device)
       if (response.status === 401 && error.code === 'SESSION_KICKED') {
-        console.log('[ApiClient] Session kicked - user logged in on another device');
+        logger.log('[ApiClient] Session kicked - user logged in on another device');
         if (onSessionKickedCallback) {
           onSessionKickedCallback();
         }
@@ -144,16 +145,16 @@ class ApiClient {
 
       // If we get a 401 and haven't retried yet, try to refresh the token
       if (response.status === 401 && retryCount === 0 && !isAuthEndpoint) {
-        console.log('[ApiClient] Got 401 on', endpoint, '- attempting token refresh');
+        logger.log('[ApiClient] Got 401 on', endpoint, '- attempting token refresh');
         try {
           const refreshed = await this.handleTokenRefresh();
           if (refreshed) {
-            console.log('[ApiClient] Refresh succeeded, retrying request to', endpoint);
+            logger.log('[ApiClient] Refresh succeeded, retrying request to', endpoint);
             // Retry the original request with same method and data
             return this.retryRequest<T>(endpoint, retryCount + 1, method, data, options);
           }
         } catch (refreshError: any) {
-          console.log('[ApiClient] Refresh failed for', endpoint, ':', refreshError?.message);
+          logger.log('[ApiClient] Refresh failed for', endpoint, ':', refreshError?.message);
           // Refresh failed, throw the original error
         }
       }
@@ -180,7 +181,7 @@ class ApiClient {
 
     // Get fresh token after refresh
     const token = await this.getAuthToken();
-    console.log('[ApiClient] Retry using token:', token ? token.substring(0, 50) + '...' : 'null');
+    logger.log('[ApiClient] Retry using token:', token ? token.substring(0, 50) + '...' : 'null');
 
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       ...options,

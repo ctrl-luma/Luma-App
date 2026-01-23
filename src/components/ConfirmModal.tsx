@@ -38,6 +38,7 @@ export function ConfirmModal({
       transparent
       animationType="fade"
       onRequestClose={onCancel}
+      accessibilityViewIsModal={true}
     >
       <Pressable style={styles.overlay} onPress={onCancel}>
         <Pressable style={[styles.container, { backgroundColor: colors.card }]}>
@@ -49,6 +50,9 @@ export function ConfirmModal({
             <TouchableOpacity
               style={[styles.button, styles.cancelButton, { borderColor: colors.border }]}
               onPress={onCancel}
+              accessibilityRole="button"
+              accessibilityLabel={cancelText}
+              accessibilityHint="Dismisses the dialog without taking action"
             >
               <Text style={[styles.buttonText, { color: colors.text }]}>
                 {cancelText}
@@ -64,6 +68,13 @@ export function ConfirmModal({
                 },
               ]}
               onPress={onConfirm}
+              accessibilityRole="button"
+              accessibilityLabel={confirmText}
+              accessibilityHint={
+                confirmStyle === 'destructive'
+                  ? 'Confirms the action. This cannot be undone.'
+                  : 'Confirms the action'
+              }
             >
               <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
                 {confirmText}

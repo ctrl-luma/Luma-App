@@ -6,6 +6,7 @@
 import { Linking } from 'react-native';
 import { authService } from './api/auth';
 import { config } from './config';
+import logger from './logger';
 
 /**
  * Creates an authenticated URL to the vendor dashboard
@@ -22,7 +23,7 @@ export async function createVendorDashboardUrl(redirectPath?: string): Promise<s
     const user = await authService.getUser();
 
     if (!accessToken || !refreshToken) {
-      console.error('[AuthHandoff] No authentication tokens available');
+      logger.error('[AuthHandoff] No authentication tokens available');
       return null;
     }
 
@@ -47,7 +48,7 @@ export async function createVendorDashboardUrl(redirectPath?: string): Promise<s
 
     return authCallbackUrl;
   } catch (error) {
-    console.error('[AuthHandoff] Error creating vendor dashboard URL:', error);
+    logger.error('[AuthHandoff] Error creating vendor dashboard URL:', error);
     return null;
   }
 }
@@ -63,7 +64,7 @@ export async function openVendorDashboard(redirectPath?: string): Promise<void> 
     const url = await createVendorDashboardUrl(redirectPath);
 
     if (!url) {
-      console.error('[AuthHandoff] Cannot open vendor dashboard - no auth URL');
+      logger.error('[AuthHandoff] Cannot open vendor dashboard - no auth URL');
       // Fallback: open dashboard without auth (with redirect if provided)
       const fallbackUrl = redirectPath
         ? `${config.vendorDashboardUrl}${redirectPath}`
@@ -77,7 +78,7 @@ export async function openVendorDashboard(redirectPath?: string): Promise<void> 
     // for HTTPS URLs even when they can be opened. Just try to open directly.
     await Linking.openURL(url);
   } catch (error) {
-    console.error('[AuthHandoff] Error opening vendor dashboard:', error);
+    logger.error('[AuthHandoff] Error opening vendor dashboard:', error);
     // Try fallback URL if main URL fails
     try {
       const fallbackUrl = redirectPath
@@ -85,7 +86,7 @@ export async function openVendorDashboard(redirectPath?: string): Promise<void> 
         : config.vendorDashboardUrl;
       await Linking.openURL(fallbackUrl);
     } catch (fallbackError) {
-      console.error('[AuthHandoff] Fallback also failed:', fallbackError);
+      logger.error('[AuthHandoff] Fallback also failed:', fallbackError);
     }
   }
 }

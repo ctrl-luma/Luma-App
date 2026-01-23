@@ -23,6 +23,9 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
         style={[styles.compactContainer, { backgroundColor: colors.warning + '15' }]}
         onPress={handleSetup}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Complete payment setup to accept payments"
+        accessibilityHint="Navigates to the Stripe onboarding screen to complete payment setup"
       >
         <Ionicons name="warning" size={16} color={colors.warning} />
         <Text style={[styles.compactText, { color: colors.warning }]}>
@@ -34,7 +37,10 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.warning + '10', borderColor: colors.warning + '30' }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.warning + '10', borderColor: colors.warning + '30' }]}
+      accessibilityRole="alert"
+    >
       <View style={styles.content}>
         <View style={[styles.iconContainer, { backgroundColor: colors.warning + '20' }]}>
           <Ionicons name="card-outline" size={24} color={colors.warning} />
@@ -50,6 +56,9 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
         style={[styles.button, { backgroundColor: colors.warning }]}
         onPress={handleSetup}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Complete Setup"
+        accessibilityHint="Navigates to the Stripe onboarding screen to complete payment setup"
       >
         <Text style={styles.buttonText}>Complete Setup</Text>
         <Ionicons name="arrow-forward" size={16} color="#fff" />

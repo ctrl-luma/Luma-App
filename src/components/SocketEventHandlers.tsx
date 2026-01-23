@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useSocketEvent, SocketEvents } from '../context/SocketContext';
+import logger from '../lib/logger';
 
 // Component that listens for socket events and updates contexts
 export function SocketEventHandlers() {
@@ -8,12 +9,12 @@ export function SocketEventHandlers() {
 
   // Handle user/organization updates
   const handleUserUpdate = useCallback(() => {
-    console.log('User update received via socket');
+    logger.log('[SocketEventHandlers] User update received via socket');
     refreshAuth();
   }, [refreshAuth]);
 
   const handleOrgUpdate = useCallback(() => {
-    console.log('Organization update received via socket');
+    logger.log('[SocketEventHandlers] Organization update received via socket');
     refreshAuth();
   }, [refreshAuth]);
 

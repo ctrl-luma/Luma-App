@@ -1,7 +1,7 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const ENV = process.env.EXPO_PUBLIC_ || 'dev';
+  const ENV = process.env.EXPO_PUBLIC_APP_ENV || 'dev';
 
   return {
     ...config,

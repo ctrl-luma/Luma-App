@@ -79,6 +79,13 @@ export const ordersApi = {
   /**
    * List orders for the organization
    */
-  list: (params?: { limit?: number; offset?: number; status?: string }) =>
-    apiClient.get<OrdersListResponse>('/orders', params),
+  list: (params?: { limit?: number; offset?: number; status?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.offset) searchParams.append('offset', params.offset.toString());
+    if (params?.status) searchParams.append('status', params.status);
+
+    const query = searchParams.toString();
+    return apiClient.get<OrdersListResponse>(`/orders${query ? `?${query}` : ''}`);
+  },
 };

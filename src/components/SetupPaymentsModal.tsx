@@ -89,16 +89,32 @@ export function SetupPaymentsModal({
   // Loading state
   if (isLoading) {
     return (
-      <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        accessibilityViewIsModal={true}
+      >
         <View style={styles.overlay}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+            accessibilityLabel="Loading payment setup"
+          />
         </View>
       </Modal>
     );
   }
 
   return (
-    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      accessibilityViewIsModal={true}
+    >
       <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
         {/* Solid background to hide content behind modal */}
         <View style={StyleSheet.absoluteFill} />
@@ -115,7 +131,10 @@ export function SetupPaymentsModal({
             </View>
 
             {/* Animated Icon */}
-            <Animated.View style={[styles.iconContainer, { transform: [{ scale: iconPulseAnim }] }]}>
+            <Animated.View
+              style={[styles.iconContainer, { transform: [{ scale: iconPulseAnim }] }]}
+              accessibilityLabel="Payment card icon"
+            >
               <LinearGradient
                 colors={[colors.primary, colors.primary700]}
                 style={styles.iconGradient}
@@ -125,21 +144,37 @@ export function SetupPaymentsModal({
             </Animated.View>
 
             {/* Title */}
-            <Text style={styles.title}>Set Up Payments</Text>
+            <Text
+              style={styles.title}
+              accessibilityRole="header"
+              accessibilityLabel="Set Up Payments"
+            >
+              Set Up Payments
+            </Text>
 
             {/* Description */}
-            <Text style={styles.description}>
+            <Text
+              style={styles.description}
+              accessibilityLabel="To start accepting payments, you'll need to set up your payment processing account with Stripe. This only takes a few minutes."
+            >
               To start accepting payments, you'll need to set up your payment processing account with Stripe. This only takes a few minutes.
             </Text>
 
             {/* Features list */}
-            <View style={styles.featuresList}>
+            <View
+              style={styles.featuresList}
+              accessibilityLabel="Payment setup features"
+            >
               {[
                 { icon: 'shield-checkmark', text: 'Secure payment processing' },
                 { icon: 'cash', text: 'Direct deposits to your bank' },
                 { icon: 'time', text: 'Takes about 5 minutes' },
               ].map((feature, index) => (
-                <View key={index} style={styles.featureRow}>
+                <View
+                  key={index}
+                  style={styles.featureRow}
+                  accessibilityLabel={feature.text}
+                >
                   <View style={styles.featureIconBg}>
                     <Ionicons name={feature.icon as any} size={16} color={colors.primary} />
                   </View>
@@ -149,7 +184,10 @@ export function SetupPaymentsModal({
             </View>
 
             {/* Required notice */}
-            <View style={styles.requiredNotice}>
+            <View
+              style={styles.requiredNotice}
+              accessibilityLabel="Important: This step is required to accept payments"
+            >
               <Ionicons name="information-circle" size={16} color={colors.textMuted} />
               <Text style={styles.requiredText}>
                 This step is required to accept payments
@@ -157,7 +195,14 @@ export function SetupPaymentsModal({
             </View>
 
             {/* Setup Button */}
-            <TouchableOpacity onPress={onSetup} activeOpacity={0.9} style={styles.setupButtonWrapper}>
+            <TouchableOpacity
+              onPress={onSetup}
+              activeOpacity={0.9}
+              style={styles.setupButtonWrapper}
+              accessibilityRole="button"
+              accessibilityLabel="Continue"
+              accessibilityHint="Opens Stripe Connect to set up your payment processing account"
+            >
               <LinearGradient
                 colors={[colors.primary, colors.primary700]}
                 start={{ x: 0, y: 0 }}
