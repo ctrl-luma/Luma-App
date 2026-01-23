@@ -66,6 +66,81 @@ import { useTapToPayEducation } from './src/hooks/useTapToPayEducation';
 // Keep splash screen visible while loading fonts
 SplashScreen.preventAutoHideAsync();
 
+// Error Boundary to catch rendering errors and prevent blank screens
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  ErrorBoundaryState
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={errorBoundaryStyles.container}>
+          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
+          <Text style={errorBoundaryStyles.title}>Something went wrong</Text>
+          <Text style={errorBoundaryStyles.message}>
+            The app encountered an unexpected error. Please restart the app.
+          </Text>
+          {__DEV__ && this.state.error && (
+            <Text style={errorBoundaryStyles.error}>
+              {this.state.error.toString()}
+            </Text>
+          )}
+        </View>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+const errorBoundaryStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    padding: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  message: {
+    fontSize: 16,
+    color: '#9ca3af',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  error: {
+    fontSize: 12,
+    color: '#ef4444',
+    marginTop: 16,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+});
+
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const MenuStack = createNativeStackNavigator();
@@ -503,28 +578,30 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={styles.gestureRoot}>
-      <StripeProvider
-        publishableKey={config.stripePublishableKey}
-        merchantIdentifier="merchant.com.lumapos"
-      >
-        <QueryProvider>
-          <SafeAreaProvider>
-            <ThemeProvider>
-              <AuthProvider>
-                <SocketProvider>
-                  <SocketEventHandlers />
-                  <CatalogProvider>
-                    <CartProvider>
-                      <NetworkStatus />
-                      <AppNavigator />
-                    </CartProvider>
-                  </CatalogProvider>
-                </SocketProvider>
-              </AuthProvider>
-            </ThemeProvider>
-          </SafeAreaProvider>
-        </QueryProvider>
-      </StripeProvider>
+      <ErrorBoundary>
+        <StripeProvider
+          publishableKey={config.stripePublishableKey}
+          merchantIdentifier="merchant.com.lumapos"
+        >
+          <QueryProvider>
+            <SafeAreaProvider>
+              <ThemeProvider>
+                <AuthProvider>
+                  <SocketProvider>
+                    <SocketEventHandlers />
+                    <CatalogProvider>
+                      <CartProvider>
+                        <NetworkStatus />
+                        <AppNavigator />
+                      </CartProvider>
+                    </CatalogProvider>
+                  </SocketProvider>
+                </AuthProvider>
+              </ThemeProvider>
+            </SafeAreaProvider>
+          </QueryProvider>
+        </StripeProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

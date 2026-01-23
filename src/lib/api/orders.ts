@@ -62,10 +62,12 @@ export const ordersApi = {
 
   /**
    * Link a Stripe PaymentIntent to an existing order
+   * Optionally update the payment method (e.g., when falling back to manual card entry)
    */
-  linkPaymentIntent: (orderId: string, stripePaymentIntentId: string) =>
+  linkPaymentIntent: (orderId: string, stripePaymentIntentId: string, paymentMethod?: 'card' | 'cash' | 'tap_to_pay') =>
     apiClient.patch<Order>(`/orders/${orderId}/payment-intent`, {
       stripePaymentIntentId,
+      ...(paymentMethod && { paymentMethod }),
     }),
 
   /**
@@ -77,6 +79,13 @@ export const ordersApi = {
   /**
    * List orders for the organization
    */
-  list: (params?: { limit?: number; offset?: number; status?: string }) =>
-    apiClient.get<OrdersListResponse>('/orders', params),
+  list: (params?: { limit?: number; offset?: number; status?: string }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.offset) searchParams.append('offset', params.offset.toString());
+    if (params?.status) searchParams.append('status', params.status);
+
+    const query = searchParams.toString();
+    return apiClient.get<OrdersListResponse>(`/orders${query ? `?${query}` : ''}`);
+  },
 };

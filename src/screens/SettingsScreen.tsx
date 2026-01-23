@@ -39,6 +39,7 @@ import { Toggle } from '../components/Toggle';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
+import logger from '../lib/logger';
 
 export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -52,13 +53,14 @@ export function SettingsScreen() {
     isWarming,
     configurationStage,
     configurationProgress,
+    readerUpdateProgress,
   } = useTerminal();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
 
   // Listen for subscription updates via socket and refresh data
   useSocketEvent(SocketEvents.SUBSCRIPTION_UPDATED, useCallback((data: any) => {
-    console.log('[SettingsScreen] Received SUBSCRIPTION_UPDATED event:', data);
+    logger.log('[SettingsScreen] Received SUBSCRIPTION_UPDATED event:', data);
     // Invalidate and refetch subscription info
     queryClient.invalidateQueries({ queryKey: ['subscription-info'] });
     // Also refresh auth to update subscription in AuthContext
@@ -67,7 +69,6 @@ export function SettingsScreen() {
 
   // Fetch detailed billing info for all users - needed to check platform (Stripe vs Apple/Google)
   // and to show appropriate manage subscription options
-  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
   const { data: subscriptionInfo, isLoading: subscriptionLoading } = useQuery<SubscriptionInfo>({
     queryKey: ['subscription-info'],
     queryFn: () => billingService.getSubscriptionInfo(),
@@ -75,19 +76,19 @@ export function SettingsScreen() {
     retry: 1,
   });
 
-  // Check if user previously had a PAID Stripe subscription (should manage via web, not in-app purchase)
-  // Only true if:
-  // 1. platform is stripe
-  // 2. tier is pro/enterprise (not starter)
-  // 3. status indicates they completed payment (not 'incomplete' which means signup not finished)
-  // This allows fresh website signups with starter tier to still use in-app purchases
-  const hadPaidStripeSubscription = subscriptionInfo?.platform === 'stripe' &&
-    (subscriptionInfo?.tier === 'pro' || subscriptionInfo?.tier === 'enterprise') &&
-    subscriptionInfo?.status !== 'incomplete' &&
-    subscriptionInfo?.status !== 'none';
+  // Check Pro status from both AuthContext (may be stale) and API response (always fresh)
+  // subscriptionInfo from API takes precedence since it's fetched fresh
+  const tier = subscriptionInfo?.tier || subscription?.tier;
+  const status = subscriptionInfo?.status || subscription?.status;
+  const isPro = tier === 'pro' || tier === 'enterprise';
+
+  // Check if user signed up via the website (Stripe platform)
+  // Website users are locked to Stripe forever and should not see in-app purchase options
+  // They must manage their subscription via the vendor portal
+  const isStripePlatformUser = subscriptionInfo?.platform === 'stripe';
 
   // Debug logging for subscription state
-  console.log('[SettingsScreen] Subscription Debug:', {
+  logger.log('[SettingsScreen] Subscription Debug:', {
     // From AuthContext
     authSubscription: subscription,
     authTier: subscription?.tier,
@@ -97,9 +98,11 @@ export function SettingsScreen() {
     infoTier: subscriptionInfo?.tier,
     infoStatus: subscriptionInfo?.status,
     infoPlatform: subscriptionInfo?.platform,
-    // Computed values
+    // Computed values (API response preferred over AuthContext)
+    computedTier: tier,
+    computedStatus: status,
     isPro,
-    hadPaidStripeSubscription,
+    isStripePlatformUser,
     subscriptionLoading,
   });
 
@@ -132,10 +135,10 @@ export function SettingsScreen() {
 
   // Handle biometric toggle
   const handleBiometricToggle = async (value: boolean) => {
-    console.log('[SettingsScreen] handleBiometricToggle called, value:', value);
+    logger.log('[SettingsScreen] handleBiometricToggle called, value:', value);
 
     if (!biometricCapabilities?.isAvailable) {
-      console.log('[SettingsScreen] Biometrics not available, returning');
+      logger.log('[SettingsScreen] Biometrics not available, returning');
       return;
     }
 
@@ -154,7 +157,7 @@ export function SettingsScreen() {
         setBiometricEnabled(false);
       }
     } catch (error) {
-      console.error('[SettingsScreen] Error toggling biometric:', error);
+      logger.error('[SettingsScreen] Error toggling biometric:', error);
       Alert.alert('Error', `Failed to ${value ? 'enable' : 'disable'} biometric login.`);
     } finally {
       setBiometricLoading(false);
@@ -165,7 +168,7 @@ export function SettingsScreen() {
     try {
       await signOut();
     } catch (error) {
-      console.error('[SettingsScreen] Sign out error:', error);
+      logger.error('[SettingsScreen] Sign out error:', error);
     }
   };
 
@@ -204,14 +207,14 @@ export function SettingsScreen() {
   };
 
   const getSubscriptionStatusText = () => {
-    // Use auth subscription for basic tier/status (available immediately)
-    const tier = subscription?.tier || subscriptionInfo?.tier;
-    const status = subscription?.status || subscriptionInfo?.status;
+    // Prefer API response (fresh) over AuthContext (may be stale)
+    const statusTier = subscriptionInfo?.tier || subscription?.tier;
+    const status = subscriptionInfo?.status || subscription?.status;
     const cancel_at = subscriptionInfo?.cancel_at; // Only from billing API
 
-    if (!tier || !status) return 'Free Plan';
+    if (!statusTier || !status) return 'Free Plan';
 
-    if (tier === 'starter' || status === 'none') {
+    if (statusTier === 'starter' || status === 'none') {
       return 'Free Plan';
     }
 
@@ -343,7 +346,7 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Subscription</Text>
           <View style={styles.card}>
-            {/* Current Plan - use auth subscription for immediate display */}
+            {/* Current Plan - prefer API response (fresh) over AuthContext (may be stale) */}
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -351,8 +354,8 @@ export function SettingsScreen() {
                 </View>
                 <View style={styles.labelContainer}>
                   <Text style={styles.label}>
-                    {subscription?.tier === 'pro' ? 'Pro Plan' :
-                     subscription?.tier === 'enterprise' ? 'Enterprise Plan' :
+                    {tier === 'pro' ? 'Pro Plan' :
+                     tier === 'enterprise' ? 'Enterprise Plan' :
                      subscriptionInfo?.current_plan?.name || 'Starter Plan'}
                   </Text>
                   {isPro && subscriptionInfo?.current_plan?.price ? (
@@ -367,24 +370,24 @@ export function SettingsScreen() {
               ) : (
                 <View style={[
                   styles.statusBadgeSuccess,
-                  subscription?.status === 'past_due' && styles.statusBadgeError,
+                  status === 'past_due' && styles.statusBadgeError,
                   subscriptionInfo?.cancel_at && styles.statusBadgeWarning,
                 ]}>
                   <Ionicons
                     name={
-                      subscription?.status === 'past_due' ? 'warning' :
+                      status === 'past_due' ? 'warning' :
                       subscriptionInfo?.cancel_at ? 'time-outline' : 'checkmark-circle'
                     }
                     size={14}
                     color={
-                      subscription?.status === 'past_due' ? colors.error :
+                      status === 'past_due' ? colors.error :
                       subscriptionInfo?.cancel_at ? colors.warning : colors.success
                     }
                   />
                   <Text style={[
                     styles.statusBadgeText,
                     {
-                      color: subscription?.status === 'past_due' ? colors.error :
+                      color: status === 'past_due' ? colors.error :
                         subscriptionInfo?.cancel_at ? colors.warning : colors.success
                     }
                   ]}>
@@ -394,21 +397,13 @@ export function SettingsScreen() {
               )}
             </View>
 
-            {/* Manage Subscription - Show for Pro/Enterprise OR for users who previously had Stripe subscription */}
-            {((isPro && subscriptionInfo && subscriptionInfo.status !== 'none') || hadPaidStripeSubscription) && (
+            {/* Manage Subscription - Only show for Pro/Enterprise users with active subscription */}
+            {isPro && subscriptionInfo && subscriptionInfo.status !== 'none' && (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.row}
-                  onPress={hadPaidStripeSubscription && !isPro ? async () => {
-                    // For expired/canceled Stripe subscriptions, open vendor portal billing page
-                    const url = await createVendorDashboardUrl('/billing');
-                    if (url) {
-                      Linking.openURL(url);
-                    } else {
-                      Linking.openURL(`${config.vendorDashboardUrl}/billing`);
-                    }
-                  } : handleManageSubscription}
+                  onPress={handleManageSubscription}
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
@@ -429,17 +424,18 @@ export function SettingsScreen() {
               </>
             )}
 
-            {/* Upgrade prompt for free users who don't have a previous Stripe subscription */}
-            {/* Users with previous Stripe subscriptions should use the "Manage Subscription" link above */}
-            {(!subscription || subscription.tier === 'starter' || subscription.status === 'none') && !hadPaidStripeSubscription && (
+            {/* Upgrade prompt for free users */}
+            {/* Stripe platform users are directed to vendor portal, others use in-app purchase */}
+            {/* Only show if NOT Pro (checks both AuthContext and API response) */}
+            {!isPro && (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.row}
                   onPress={() => {
-                    // On native platforms (iOS/Android), navigate to in-app upgrade screen
-                    // On web, open vendor portal billing page
-                    if (Platform.OS === 'web') {
+                    // Stripe platform users must upgrade via vendor portal (website signups are locked to Stripe)
+                    // Other users (app signups) can use in-app purchase
+                    if (Platform.OS === 'web' || isStripePlatformUser) {
                       createVendorDashboardUrl('/billing').then(url => {
                         if (url) {
                           Linking.openURL(url);
@@ -459,12 +455,14 @@ export function SettingsScreen() {
                     <View style={styles.labelContainer}>
                       <Text style={styles.label}>Upgrade to Pro</Text>
                       <Text style={styles.sublabel}>
-                        {Platform.OS === 'web' ? 'View pricing and upgrade options' : 'Unlock all Pro features'}
+                        {Platform.OS === 'web' || isStripePlatformUser
+                          ? 'Upgrade on the vendor portal'
+                          : 'Unlock all Pro features'}
                       </Text>
                     </View>
                   </View>
                   <Ionicons
-                    name={Platform.OS === 'web' ? 'open-outline' : 'chevron-forward'}
+                    name={Platform.OS === 'web' || isStripePlatformUser ? 'open-outline' : 'chevron-forward'}
                     size={18}
                     color={colors.textMuted}
                   />
@@ -641,6 +639,13 @@ export function SettingsScreen() {
                   <Ionicons name="close-circle-outline" size={14} color={colors.textMuted} />
                   <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>N/A</Text>
                 </View>
+              ) : readerUpdateProgress !== null ? (
+                <View style={styles.statusBadgeWarning}>
+                  <ActivityIndicator size="small" color={colors.warning} />
+                  <Text style={[styles.statusBadgeText, { color: colors.warning }]}>
+                    Updating {readerUpdateProgress}%
+                  </Text>
+                </View>
               ) : isWarming ? (
                 <View style={styles.statusBadgeWarning}>
                   <ActivityIndicator size="small" color={colors.warning} />
@@ -672,19 +677,20 @@ export function SettingsScreen() {
             )}
 
             {/* Configuration Progress Bar - Apple TTPOi 3.9.1 */}
-            {Platform.OS !== 'web' && isWarming && (
+            {Platform.OS !== 'web' && (isWarming || readerUpdateProgress !== null) && (
               <View style={styles.progressSection}>
                 <View style={styles.progressBarBackground}>
-                  <View style={[styles.progressBarFill, { width: `${configurationProgress}%`, backgroundColor: colors.primary }]} />
+                  <View style={[styles.progressBarFill, { width: `${readerUpdateProgress ?? configurationProgress}%`, backgroundColor: colors.primary }]} />
                 </View>
                 <Text style={styles.progressStageText}>
-                  {configurationStage === 'checking_compatibility' && 'Checking device compatibility...'}
-                  {configurationStage === 'initializing' && 'Initializing payment terminal...'}
-                  {configurationStage === 'fetching_location' && 'Fetching location...'}
-                  {configurationStage === 'discovering_reader' && 'Discovering reader...'}
-                  {configurationStage === 'connecting_reader' && 'Connecting to reader...'}
-                  {configurationStage === 'ready' && 'Ready to accept payments!'}
-                  {configurationStage === 'idle' && 'Preparing...'}
+                  {readerUpdateProgress !== null && 'Installing reader software update...'}
+                  {readerUpdateProgress === null && configurationStage === 'checking_compatibility' && 'Checking device compatibility...'}
+                  {readerUpdateProgress === null && configurationStage === 'initializing' && 'Initializing payment terminal...'}
+                  {readerUpdateProgress === null && configurationStage === 'fetching_location' && 'Fetching location...'}
+                  {readerUpdateProgress === null && configurationStage === 'discovering_reader' && 'Discovering reader...'}
+                  {readerUpdateProgress === null && configurationStage === 'connecting_reader' && 'Connecting to reader...'}
+                  {readerUpdateProgress === null && configurationStage === 'ready' && 'Ready to accept payments!'}
+                  {readerUpdateProgress === null && configurationStage === 'idle' && 'Preparing...'}
                 </Text>
               </View>
             )}

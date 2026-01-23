@@ -6,16 +6,19 @@ import {
   StyleSheet,
   ViewStyle,
   TextStyle,
+  AccessibilityProps,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 
-interface InputProps extends Omit<TextInputProps, 'style'> {
+interface InputProps extends Omit<TextInputProps, 'style'>, AccessibilityProps {
   icon?: keyof typeof Ionicons.glyphMap;
   rightIcon?: React.ReactNode;
   containerStyle?: ViewStyle;
   inputStyle?: TextStyle;
+  label?: string;
+  error?: string;
 }
 
 export function Input({
@@ -25,6 +28,11 @@ export function Input({
   inputStyle,
   onFocus,
   onBlur,
+  label,
+  error,
+  placeholder,
+  accessibilityLabel,
+  accessibilityHint,
   ...props
 }: InputProps) {
   const focusAnim = useRef(new Animated.Value(0)).current;
@@ -79,6 +87,12 @@ export function Input({
         selectionColor={colors.primary}
         onFocus={handleFocus}
         onBlur={handleBlur}
+        placeholder={placeholder}
+        accessibilityLabel={accessibilityLabel || label || placeholder}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={error ? { invalid: true } : undefined}
+        accessibilityLiveRegion={error ? 'polite' : 'none'}
+        accessibilityValue={error ? { text: error } : undefined}
         {...props}
       />
       {rightIcon}

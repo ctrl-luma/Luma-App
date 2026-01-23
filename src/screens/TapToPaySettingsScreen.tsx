@@ -23,6 +23,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
+import logger from '../lib/logger';
 
 interface CatalogSettings {
   showTipScreen: boolean;
@@ -137,7 +138,7 @@ export function TapToPaySettingsScreen() {
       await refreshCatalogs();
       showToastAndNavigate();
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logger.error('Failed to save settings:', error);
       Alert.alert('Error', 'Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);

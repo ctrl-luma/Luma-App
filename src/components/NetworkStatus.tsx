@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { Text, StyleSheet, Animated } from 'react-native';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ export function NetworkStatus() {
   const insets = useSafeAreaInsets();
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
   const [showBanner, setShowBanner] = useState(false);
-  const slideAnim = useState(() => new Animated.Value(-100))[0];
+  const slideAnim = useRef(new Animated.Value(-100)).current;
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
@@ -49,7 +49,7 @@ export function NetworkStatus() {
         }),
       ]).start(() => setShowBanner(false));
     }
-  }, [isConnected]);
+  }, [isConnected, showBanner, slideAnim]);
 
   if (!showBanner) return null;
 

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from './client';
 import { organizationsService } from './organizations';
 import { isBiometricLoginEnabled, clearStoredCredentials } from '../biometricAuth';
+import logger from '../logger';
 
 export interface User {
   id: string;
@@ -82,21 +83,21 @@ class AuthService {
         const tokenParts = response.tokens.accessToken.split('.');
         if (tokenParts.length === 3) {
           const payload = JSON.parse(atob(tokenParts[1]));
-          console.log('[AuthService] Token payload keys:', Object.keys(payload));
-          console.log('[AuthService] cognito:username:', payload['cognito:username']);
-          console.log('[AuthService] username:', payload.username);
-          console.log('[AuthService] sub:', payload.sub);
+          logger.log('[AuthService] Token payload keys:', Object.keys(payload));
+          logger.log('[AuthService] cognito:username:', payload['cognito:username']);
+          logger.log('[AuthService] username:', payload.username);
+          logger.log('[AuthService] sub:', payload.sub);
           const cognitoUsername = payload['cognito:username'] || payload.username || payload.sub;
-          console.log('[AuthService] Extracted cognitoUsername:', cognitoUsername);
+          logger.log('[AuthService] Extracted cognitoUsername:', cognitoUsername);
           if (cognitoUsername) {
             response.user.cognitoUsername = cognitoUsername;
           }
         }
       } catch (error) {
-        console.error('[AuthService] Error parsing token:', error);
+        logger.error('[AuthService] Error parsing token:', error);
       }
     }
-    console.log('[AuthService] User after login:', JSON.stringify(response.user));
+    logger.log('[AuthService] User after login:', JSON.stringify(response.user));
 
     await this.saveAuthData(response);
 
@@ -108,26 +109,26 @@ class AuthService {
 
     // Check if biometric login is enabled
     const biometricEnabled = await isBiometricLoginEnabled();
-    console.log('[AuthService] Logout - biometric enabled:', biometricEnabled);
+    logger.log('[AuthService] Logout - biometric enabled:', biometricEnabled);
 
     // Clear auth data immediately for instant logout
     await this.clearAuthData();
 
     // If biometric is NOT enabled, clear stored credentials too
     if (!biometricEnabled) {
-      console.log('[AuthService] Clearing stored credentials (biometric disabled)');
+      logger.log('[AuthService] Clearing stored credentials (biometric disabled)');
       await clearStoredCredentials();
     }
 
     // Invalidate token on server
     if (refreshToken) {
-      console.log('[AuthService] Invalidating token on server...');
+      logger.log('[AuthService] Invalidating token on server...');
       try {
         await apiClient.post('/auth/logout', { refreshToken });
-        console.log('[AuthService] Token invalidated on server');
+        logger.log('[AuthService] Token invalidated on server');
       } catch (error) {
         // Silently handle error - user is already logged out locally
-        console.log('[AuthService] Token invalidation failed (non-critical)');
+        logger.log('[AuthService] Token invalidation failed (non-critical)');
       }
     }
   }
@@ -147,9 +148,9 @@ class AuthService {
    * @param providedUsername - Optional cognitoUsername (for biometric login where user data is cleared)
    */
   async refreshTokensWithToken(refreshToken: string, providedUsername?: string): Promise<AuthTokens | null> {
-    console.log('[AuthService] refreshTokensWithToken called');
-    console.log('[AuthService] Token being used (first 50 chars):', refreshToken?.substring(0, 50));
-    console.log('[AuthService] Provided username:', providedUsername);
+    logger.log('[AuthService] refreshTokensWithToken called');
+    logger.log('[AuthService] Token being used (first 50 chars):', refreshToken?.substring(0, 50));
+    logger.log('[AuthService] Provided username:', providedUsername);
 
     const accessToken = await this.getAccessToken();
 
@@ -174,17 +175,17 @@ class AuthService {
       }
     }
 
-    console.log('[AuthService] Using cognitoUsername:', cognitoUsername);
+    logger.log('[AuthService] Using cognitoUsername:', cognitoUsername);
 
     try {
-      console.log('[AuthService] Calling /auth/refresh...');
+      logger.log('[AuthService] Calling /auth/refresh...');
       const tokens = await apiClient.post<AuthTokens>('/auth/refresh', {
         refreshToken,
         username: cognitoUsername,
       });
 
-      console.log('[AuthService] Got new tokens, saving...');
-      console.log('[AuthService] New access token:', tokens.accessToken?.substring(0, 20) + '...');
+      logger.log('[AuthService] Got new tokens, saving...');
+      logger.log('[AuthService] New access token:', tokens.accessToken?.substring(0, 20) + '...');
       await this.saveTokens(tokens);
 
       // Extract and save cognitoUsername from new access token
@@ -200,22 +201,22 @@ class AuthService {
               if (storedUser) {
                 storedUser.cognitoUsername = extractedUsername;
                 await this.saveUser(storedUser);
-                console.log('[AuthService] Updated stored user with cognitoUsername:', extractedUsername);
+                logger.log('[AuthService] Updated stored user with cognitoUsername:', extractedUsername);
               }
             }
           }
         } catch (error) {
-          console.error('[AuthService] Error extracting cognitoUsername from refreshed token:', error);
+          logger.error('[AuthService] Error extracting cognitoUsername from refreshed token:', error);
         }
       }
 
       // Verify tokens were saved
       const savedToken = await this.getAccessToken();
-      console.log('[AuthService] Verified saved token:', savedToken?.substring(0, 20) + '...');
+      logger.log('[AuthService] Verified saved token:', savedToken?.substring(0, 20) + '...');
 
       return tokens;
     } catch (error: any) {
-      console.log('[AuthService] Refresh failed:', error?.message);
+      logger.log('[AuthService] Refresh failed:', error?.message);
       await this.clearAuthData();
       throw error;
     }
@@ -269,7 +270,7 @@ class AuthService {
     transactionId?: string;
     productId?: string;
   }): Promise<{ message: string; subscriptionId: string }> {
-    console.log('[AuthService] Linking IAP purchase', {
+    logger.log('[AuthService] Linking IAP purchase', {
       platform: params.platform,
       productId: params.productId,
       purchaseTokenPreview: params.purchaseToken.substring(0, 20) + '...',
@@ -280,7 +281,7 @@ class AuthService {
       params
     );
 
-    console.log('[AuthService] IAP purchase linked successfully', response);
+    logger.log('[AuthService] IAP purchase linked successfully', response);
     return response;
   }
 

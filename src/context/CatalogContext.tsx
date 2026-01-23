@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Catalog, catalogsApi } from '../lib/api';
 import { useAuth } from './AuthContext';
 import { useSocketEvent, SocketEvents } from './SocketContext';
+import logger from '../lib/logger';
 
 interface CatalogContextType {
   selectedCatalog: Catalog | null;
@@ -40,7 +41,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
         return true;
       }
     } catch (error) {
-      console.error('Failed to load cached catalog:', error);
+      logger.error('Failed to load cached catalog:', error);
     }
     return false;
   }, []);
@@ -77,7 +78,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
         await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(fetchedCatalogs[0]));
       }
     } catch (error) {
-      console.error('Failed to fetch catalogs:', error);
+      logger.error('Failed to fetch catalogs:', error);
       // Keep using cached catalog if API fails
     } finally {
       // Always set loading false after fetch completes (or fails)
@@ -117,7 +118,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
     try {
       await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(catalog));
     } catch (error) {
-      console.error('Failed to save catalog:', error);
+      logger.error('Failed to save catalog:', error);
     }
   }, []);
 
@@ -126,7 +127,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
     try {
       await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);
     } catch (error) {
-      console.error('Failed to clear catalog:', error);
+      logger.error('Failed to clear catalog:', error);
     }
   }, []);
 
@@ -149,7 +150,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
         }
       }
     } catch (error) {
-      console.error('Failed to refresh catalogs:', error);
+      logger.error('Failed to refresh catalogs:', error);
     }
   }, []);
 
@@ -180,7 +181,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
           }
         }
       } catch (error) {
-        console.error('Failed to handle catalog deletion:', error);
+        logger.error('Failed to handle catalog deletion:', error);
       }
     }
   }, [isAuthenticated]);

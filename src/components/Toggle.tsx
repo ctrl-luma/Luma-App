@@ -6,6 +6,7 @@ interface ToggleProps {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  accessibilityLabel?: string;
 }
 
 const TRACK_WIDTH = 44;
@@ -13,7 +14,7 @@ const TRACK_PADDING = 2;
 const THUMB_SIZE = 20;
 const THUMB_TRAVEL = TRACK_WIDTH - TRACK_PADDING * 2 - THUMB_SIZE;
 
-export function Toggle({ value, onValueChange, disabled = false }: ToggleProps) {
+export function Toggle({ value, onValueChange, disabled = false, accessibilityLabel = 'Toggle' }: ToggleProps) {
   const { colors, isDark } = useTheme();
 
   const animatedValue = useRef(new Animated.Value(value ? 1 : 0)).current;
@@ -52,6 +53,10 @@ export function Toggle({ value, onValueChange, disabled = false }: ToggleProps) 
       onPress={handlePress}
       disabled={disabled}
       style={[styles.touchable, disabled && styles.disabled]}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint="Double tap to toggle"
     >
       <Animated.View style={[styles.track, { backgroundColor: trackBackgroundColor }]}>
         <Animated.View

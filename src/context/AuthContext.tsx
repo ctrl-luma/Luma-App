@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { authService, User, Organization, Subscription, stripeConnectApi, ConnectStatus } from '../lib/api';
 import { setOnSessionKicked } from '../lib/api/client';
 import { setOnSocketSessionKicked } from '../lib/session-callbacks';
+import logger from '../lib/logger';
 
 interface AuthState {
   user: User | null;
@@ -48,13 +49,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     sessionKickedAlertShown.current = true;
 
-    console.log('[AuthContext] Session kicked - signing out user');
+    logger.log('[AuthContext] Session kicked - signing out user');
 
     // Clear auth data immediately
     try {
       await authService.logout();
     } catch (error) {
-      console.error('[AuthContext] Error during session kicked logout:', error);
+      logger.error('[AuthContext] Error during session kicked logout:', error);
     }
 
     // Update state
@@ -86,12 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Load cached user/org and stop loading immediately if we have cached data
   const loadCachedAuth = useCallback(async (): Promise<boolean> => {
     try {
-      console.log('[AuthContext] loadCachedAuth: checking authentication...');
+      logger.log('[AuthContext] loadCachedAuth: checking authentication...');
       const isAuthenticated = await authService.isAuthenticated();
-      console.log('[AuthContext] loadCachedAuth: isAuthenticated =', isAuthenticated);
+      logger.log('[AuthContext] loadCachedAuth: isAuthenticated =', isAuthenticated);
 
       if (!isAuthenticated) {
-        console.log('[AuthContext] loadCachedAuth: no token, setting isLoading=false');
+        logger.log('[AuthContext] loadCachedAuth: no token, setting isLoading=false');
         setState(prev => ({ ...prev, isLoading: false }));
         return false;
       }
@@ -100,11 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const user = await authService.getUser();
       const organization = await authService.getOrganization();
       const subscription = await authService.getSubscription();
-      console.log('[AuthContext] loadCachedAuth: cached user =', user?.email, ', org =', organization?.name, ', subscription =', subscription?.tier);
+      logger.log('[AuthContext] loadCachedAuth: cached user =', user?.email, ', org =', organization?.name, ', subscription =', subscription?.tier);
 
       if (user && organization) {
         // We have cached data, show it immediately
-        console.log('[AuthContext] loadCachedAuth: using cached data');
+        logger.log('[AuthContext] loadCachedAuth: using cached data');
         setState(prev => ({
           ...prev,
           user,
@@ -117,10 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Token exists but no cached data - keep isLoading true, refreshProfileFromAPI will handle it
-      console.log('[AuthContext] loadCachedAuth: token exists but no cached data');
+      logger.log('[AuthContext] loadCachedAuth: token exists but no cached data');
       return false;
     } catch (error) {
-      console.error('[AuthContext] loadCachedAuth: error', error);
+      logger.error('[AuthContext] loadCachedAuth: error', error);
       setState(prev => ({ ...prev, isLoading: false }));
       return false;
     }
@@ -154,7 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAuthenticated: true,
         }));
       } catch (error: any) {
-        console.error('Failed to fetch profile:', error);
+        logger.error('Failed to fetch profile:', error);
         // If it's a 401, the API client already tried to refresh and failed
         // In that case, or any auth error, log the user out
         if (error?.statusCode === 401) {
@@ -178,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error) {
-      console.error('Failed to refresh profile:', error);
+      logger.error('Failed to refresh profile:', error);
       // If we didn't have cached data, stop loading
       if (!hadCachedData) {
         setState(prev => ({ ...prev, isLoading: false }));
@@ -211,7 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await authService.logout();
     } catch (error) {
-      console.error('Logout API error:', error);
+      logger.error('Logout API error:', error);
       // Continue with local logout even if API fails
     }
     setState({
@@ -245,7 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         connectLoading: false,
       }));
     } catch (error) {
-      console.error('Failed to fetch Connect status:', error);
+      logger.error('Failed to fetch Connect status:', error);
       setState(prev => ({
         ...prev,
         connectStatus: null,
@@ -269,7 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await authService.saveUser({ ...state.user, onboardingCompleted: true });
       }
     } catch (error) {
-      console.error('Failed to complete onboarding:', error);
+      logger.error('Failed to complete onboarding:', error);
       // Don't throw - onboarding completion is not critical
     }
   }, [state.user]);

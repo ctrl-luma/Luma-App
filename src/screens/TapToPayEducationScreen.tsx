@@ -34,6 +34,7 @@ import { glass } from '../lib/colors';
 import { shadows, glow } from '../lib/shadows';
 import { spacing, radius } from '../lib/spacing';
 import { config } from '../lib/config';
+import logger from '../lib/logger';
 
 // Apple TTPOi 5.4: Region-correct copy
 const TAP_TO_PAY_NAME = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
@@ -177,6 +178,7 @@ export function TapToPayEducationScreen() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isEnabling, setIsEnabling] = useState(false);
   const [enableError, setEnableError] = useState<string | null>(null);
+  const [isConnectSetupError, setIsConnectSetupError] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
 
   const styles = createStyles(colors, glassColors, isDark);
@@ -199,6 +201,7 @@ export function TapToPayEducationScreen() {
 
     setIsEnabling(true);
     setEnableError(null);
+    setIsConnectSetupError(false);
 
     try {
       // Initialize terminal if not already done
@@ -219,11 +222,31 @@ export function TapToPayEducationScreen() {
         setEnableError('Failed to connect. Please try again.');
       }
     } catch (err: any) {
-      console.error('[TapToPayEducation] Enable failed:', err);
-      setEnableError(err.message || 'Failed to enable Tap to Pay');
+      logger.error('[TapToPayEducation] Enable failed:', err);
+      const errorMsg = err.message?.toLowerCase() || '';
+
+      // Check if this is a Stripe Connect setup error
+      if (
+        errorMsg.includes('connection token') ||
+        errorMsg.includes('tokenprovider') ||
+        errorMsg.includes('payment processing is not set up') ||
+        errorMsg.includes('connect') ||
+        errorMsg.includes('not found') ||
+        errorMsg.includes('no connected account')
+      ) {
+        setIsConnectSetupError(true);
+        setEnableError('You need to set up payment processing before enabling Tap to Pay.');
+      } else {
+        setEnableError(err.message || 'Failed to enable Tap to Pay');
+      }
     } finally {
       setIsEnabling(false);
     }
+  };
+
+  // Navigate to Stripe onboarding
+  const handleGoToPaymentSetup = () => {
+    navigation.navigate('StripeOnboarding');
   };
 
   const handleScroll = (event: any) => {
@@ -384,6 +407,15 @@ export function TapToPayEducationScreen() {
                 <View style={styles.errorContainer}>
                   <Ionicons name="alert-circle" size={18} color={colors.error} />
                   <Text style={styles.errorText}>{enableError || terminalError}</Text>
+                  {isConnectSetupError && (
+                    <TouchableOpacity
+                      style={styles.setupPaymentsButton}
+                      onPress={handleGoToPaymentSetup}
+                    >
+                      <Ionicons name="card-outline" size={18} color="#fff" />
+                      <Text style={styles.setupPaymentsButtonText}>Set Up Payments</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </>
@@ -716,20 +748,35 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     // Error styles
     errorContainer: {
-      flexDirection: 'row',
+      flexDirection: 'column',
       alignItems: 'center',
       gap: spacing.sm,
       marginTop: spacing.lg,
       paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      paddingVertical: spacing.md,
       backgroundColor: colors.error + '15',
       borderRadius: radius.md,
       borderWidth: 1,
       borderColor: colors.error + '30',
     },
     errorText: {
-      flex: 1,
       fontSize: 14,
       color: colors.error,
+      textAlign: 'center',
+    },
+    setupPaymentsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      backgroundColor: colors.primary,
+      borderRadius: radius.md,
+    },
+    setupPaymentsButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#fff',
     },
   });

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
 import { Catalog } from '../lib/api';
+import { openVendorDashboard } from '../lib/auth-handoff';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -109,7 +110,7 @@ export function CatalogSelectScreen() {
   const activeCatalogs = catalogs.filter((c) => c.isActive);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -129,11 +130,23 @@ export function CatalogSelectScreen() {
 
       {activeCatalogs.length === 0 ? (
         <View style={styles.centered}>
-          <Ionicons name="folder-open-outline" size={64} color={colors.textMuted} />
+          <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary + '15' }]}>
+            <Ionicons name="grid-outline" size={48} color={colors.primary} />
+          </View>
           <Text style={styles.emptyTitle}>No Catalogs Available</Text>
           <Text style={styles.emptyText}>
-            Create catalogs in the vendor portal to get started.
+            Create your product menu in the Vendor Portal to start selling with preset items and prices.
           </Text>
+          <TouchableOpacity
+            style={[styles.createButton, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
+            onPress={() => openVendorDashboard('/products')}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.createButtonText, { color: isDark ? '#09090b' : '#fff' }]}>
+              Open Vendor Portal
+            </Text>
+            <Ionicons name="arrow-forward" size={18} color={isDark ? '#09090b' : '#fff'} />
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -266,6 +279,14 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
+    emptyIconContainer: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 8,
+    },
     emptyTitle: {
       fontSize: 22,
       fontFamily: fonts.bold,
@@ -278,6 +299,21 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 24,
+    },
+    createButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: 12,
+      gap: 10,
+    },
+    createButtonText: {
+      fontSize: 16,
+      fontFamily: fonts.semiBold,
     },
   });
 };

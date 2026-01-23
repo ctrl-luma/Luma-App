@@ -20,6 +20,7 @@ import { iapService, SubscriptionProduct, SUBSCRIPTION_SKUS } from '../lib/iap';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
+import logger from '../lib/logger';
 
 const PRO_FEATURES = [
   { icon: 'infinite-outline', text: 'Unlimited custom catalogs' },
@@ -56,13 +57,13 @@ export function UpgradeScreen() {
       const initialized = await iapService.initialize();
       if (initialized) {
         const products = await iapService.getProducts();
-        console.log('[UpgradeScreen] Products loaded:', products);
+        logger.log('[UpgradeScreen] Products loaded:', products);
         if (products.length > 0) {
           setProduct(products[0]);
         }
       }
     } catch (error) {
-      console.error('[UpgradeScreen] Error loading products:', error);
+      logger.error('[UpgradeScreen] Error loading products:', error);
     } finally {
       setLoading(false);
     }

@@ -34,6 +34,7 @@ import {
 } from '../lib/biometricAuth';
 import { authService } from '../lib/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from '../lib/logger';
 
 // Key to track if user has been asked about biometric setup
 const BIOMETRIC_PROMPT_SHOWN_KEY = 'biometric_prompt_shown';
@@ -108,11 +109,11 @@ export function LoginScreen() {
       }
 
       // Use stored email/password to login
-      console.log('[Login] Biometric login with stored credentials for:', credentials.email);
+      logger.log('[Login] Biometric login with stored credentials for:', credentials.email);
       await signIn(credentials.email, credentials.password);
-      console.log('[Login] Biometric login successful');
+      logger.log('[Login] Biometric login successful');
     } catch (err: any) {
-      console.error('[Login] Biometric login failed:', err);
+      logger.error('[Login] Biometric login failed:', err);
       setError('Biometric login failed. Please use your password.');
     } finally {
       setBiometricLoading(false);
@@ -189,7 +190,7 @@ export function LoginScreen() {
         ]
       );
     } catch (error) {
-      console.error('[Login] Error prompting for biometric setup:', error);
+      logger.error('[Login] Error prompting for biometric setup:', error);
       // Silently fail - don't disrupt the login flow
     }
   };

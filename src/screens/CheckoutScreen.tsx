@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useCart, CartItem } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
@@ -27,6 +26,8 @@ import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 import { PayoutsSetupBanner } from '../components/PayoutsSetupBanner';
 import { SetupRequiredBanner } from '../components/SetupRequiredBanner';
+import logger from '../lib/logger';
+import { isValidEmailOrEmpty } from '../lib/validation';
 
 // Apple TTPOi 5.4: Use region-correct copy
 const TAP_TO_PAY_LABEL = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
@@ -58,6 +59,7 @@ export function CheckoutScreen() {
   // Catalog data is automatically updated via socket events in CatalogContext
 
   const [customerEmail, setCustomerEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedTipIndex, setSelectedTipIndex] = useState<number | null>(null);
   const [customTipAmount, setCustomTipAmount] = useState('');
@@ -140,8 +142,22 @@ export function CheckoutScreen() {
     }
   };
 
+  // Handle email change and clear error
+  const handleEmailChange = (text: string) => {
+    setCustomerEmail(text);
+    if (emailError) {
+      setEmailError(null);
+    }
+  };
+
   // Main payment handler - shows first-use modal if needed
   const handlePayment = async () => {
+    // Validate email if provided
+    if (customerEmail.trim() && !isValidEmailOrEmpty(customerEmail)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+
     // Check if payment setup is complete
     if (connectStatus && !connectStatus.chargesEnabled) {
       Alert.alert(
@@ -246,7 +262,7 @@ export function CheckoutScreen() {
         customerEmail: receiptEmail,
       });
     } catch (error: any) {
-      console.error('Payment error:', error);
+      logger.error('Payment error:', error);
       Alert.alert(
         'Payment Error',
         error.message || 'Failed to initiate payment. Please try again.'
@@ -470,21 +486,25 @@ export function CheckoutScreen() {
 
         {/* Customer Email (Optional) */}
         {promptForEmail && (
-          <View style={styles.emailSection}>
+          <View style={[styles.emailSection, emailError && styles.emailSectionError]}>
             <Text style={styles.inputLabel}>Customer Email (Optional)</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, emailError && styles.inputError]}
               placeholder="email@example.com"
               placeholderTextColor={colors.inputPlaceholder}
               value={customerEmail}
-              onChangeText={setCustomerEmail}
+              onChangeText={handleEmailChange}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
-            <Text style={styles.inputHint}>
-              Receipt will be sent to this email
-            </Text>
+            {emailError ? (
+              <Text style={styles.inputErrorText}>{emailError}</Text>
+            ) : (
+              <Text style={styles.inputHint}>
+                Receipt will be sent to this email
+              </Text>
+            )}
           </View>
         )}
 
@@ -522,26 +542,24 @@ export function CheckoutScreen() {
           onPress={handlePayment}
           disabled={isProcessing}
           activeOpacity={0.9}
+          style={[
+            styles.payButton,
+            { backgroundColor: isDark ? '#fff' : '#09090b' },
+            isProcessing && styles.payButtonDisabled,
+          ]}
         >
-          <LinearGradient
-            colors={[colors.primary, colors.primary700]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[styles.payButton, isProcessing && styles.payButtonDisabled]}
-          >
-            {isProcessing ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                {/* Apple TTPOi 5.5: Contactless payment icon (wave symbol) */}
-                <View style={styles.tapToPayIcon}>
-                  <Ionicons name="wifi" size={22} color="#fff" style={styles.tapToPayIconRotated} />
-                </View>
-                {/* Apple TTPOi 5.4: Region-correct copy */}
-                <Text style={styles.payButtonText}>{TAP_TO_PAY_LABEL}</Text>
-              </>
-            )}
-          </LinearGradient>
+          {isProcessing ? (
+            <ActivityIndicator color={isDark ? '#09090b' : '#fff'} />
+          ) : (
+            <>
+              {/* Apple TTPOi 5.5: Contactless payment icon (wave symbol) */}
+              <View style={styles.tapToPayIcon}>
+                <Ionicons name="wifi" size={22} color={isDark ? '#09090b' : '#fff'} style={styles.tapToPayIconRotated} />
+              </View>
+              {/* Apple TTPOi 5.4: Region-correct copy */}
+              <Text style={[styles.payButtonText, { color: isDark ? '#09090b' : '#fff' }]}>{TAP_TO_PAY_LABEL}</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -763,6 +781,18 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       fontSize: 13,
       color: colors.textMuted,
       marginTop: 8,
+    },
+    inputError: {
+      borderColor: colors.error,
+      borderWidth: 1.5,
+    },
+    inputErrorText: {
+      fontSize: 13,
+      color: colors.error,
+      marginTop: 8,
+    },
+    emailSectionError: {
+      borderColor: colors.error,
     },
     paymentAmount: {
       alignItems: 'center',

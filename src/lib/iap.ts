@@ -9,6 +9,7 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from './config';
+import logger from './logger';
 
 // Storage key for access token (must match auth.ts)
 const ACCESS_TOKEN_KEY = 'accessToken';
@@ -21,10 +22,10 @@ let iapLoadError: string | null = null;
 if (Platform.OS !== 'web') {
   try {
     RNIap = require('react-native-iap');
-    console.log('[IAP] Module loaded, available functions:', Object.keys(RNIap || {}));
+    logger.log('[IAP] Module loaded, available functions:', Object.keys(RNIap || {}));
   } catch (error: any) {
     iapLoadError = `Failed to load react-native-iap: ${error?.message || error}`;
-    console.warn('[IAP]', iapLoadError);
+    logger.warn('[IAP]', iapLoadError);
   }
 }
 
@@ -99,28 +100,28 @@ class IAPService {
    */
   async initialize(): Promise<boolean> {
     if (!this.isAvailable()) {
-      console.log('[IAP] Not available:', this.getUnavailableReason());
+      logger.log('[IAP] Not available:', this.getUnavailableReason());
       return false;
     }
 
     if (this.isInitialized) {
-      console.log('[IAP] Already initialized');
+      logger.log('[IAP] Already initialized');
       return true;
     }
 
     try {
-      console.log('[IAP] Initializing connection...');
+      logger.log('[IAP] Initializing connection...');
       const result = await RNIap.initConnection();
-      console.log('[IAP] Connection result:', result);
+      logger.log('[IAP] Connection result:', result);
 
       // Set up purchase listeners
       this.setupPurchaseListeners();
 
       this.isInitialized = true;
-      console.log('[IAP] Initialized successfully');
+      logger.log('[IAP] Initialized successfully');
       return true;
     } catch (error: any) {
-      console.error('[IAP] Failed to initialize:', error);
+      logger.error('[IAP] Failed to initialize:', error);
       return false;
     }
   }
@@ -137,8 +138,8 @@ class IAPService {
         // v14 may use 'id' instead of 'productId'
         const productId = purchase.productId || purchase.id;
         const transactionId = purchase.transactionId || purchase.id;
-        console.log('[IAP] Purchase updated:', productId);
-        console.log('[IAP] Purchase object:', JSON.stringify(purchase));
+        logger.log('[IAP] Purchase updated:', productId);
+        logger.log('[IAP] Purchase object:', JSON.stringify(purchase));
 
         try {
           // Validate receipt with backend
@@ -147,7 +148,7 @@ class IAPService {
           if (validation.valid) {
             // Finish the transaction
             await RNIap.finishTransaction({ purchase, isConsumable: false });
-            console.log('[IAP] Transaction finished successfully');
+            logger.log('[IAP] Transaction finished successfully');
 
             if (this.onPurchaseComplete) {
               this.onPurchaseComplete({
@@ -160,7 +161,7 @@ class IAPService {
               });
             }
           } else {
-            console.error('[IAP] Receipt validation failed');
+            logger.error('[IAP] Receipt validation failed');
             if (this.onPurchaseComplete) {
               this.onPurchaseComplete({
                 success: false,
@@ -169,7 +170,7 @@ class IAPService {
             }
           }
         } catch (error: any) {
-          console.error('[IAP] Error processing purchase:', error);
+          logger.error('[IAP] Error processing purchase:', error);
           if (this.onPurchaseComplete) {
             this.onPurchaseComplete({
               success: false,
@@ -183,7 +184,7 @@ class IAPService {
     // Listen for purchase errors
     this.purchaseErrorSubscription = RNIap.purchaseErrorListener(
       (error: any) => {
-        console.error('[IAP] Purchase error:', error);
+        logger.error('[IAP] Purchase error:', error);
 
         if (this.onPurchaseComplete) {
           // User cancelled is not a real error
@@ -209,7 +210,7 @@ class IAPService {
   async cleanup(): Promise<void> {
     if (!this.isAvailable()) return;
 
-    console.log('[IAP] Cleaning up...');
+    logger.log('[IAP] Cleaning up...');
 
     if (this.purchaseUpdateSubscription) {
       this.purchaseUpdateSubscription.remove();
@@ -224,9 +225,9 @@ class IAPService {
     try {
       await RNIap.endConnection();
       this.isInitialized = false;
-      console.log('[IAP] Cleanup complete');
+      logger.log('[IAP] Cleanup complete');
     } catch (error) {
-      console.error('[IAP] Error during cleanup:', error);
+      logger.error('[IAP] Error during cleanup:', error);
     }
   }
 
@@ -235,7 +236,7 @@ class IAPService {
    */
   async getProducts(): Promise<SubscriptionProduct[]> {
     if (!this.isAvailable()) {
-      console.log('[IAP] Not available, returning empty products');
+      logger.log('[IAP] Not available, returning empty products');
       return [];
     }
 
@@ -244,10 +245,10 @@ class IAPService {
     }
 
     try {
-      console.log('[IAP] Fetching products:', SUBSCRIPTION_SKUS);
+      logger.log('[IAP] Fetching products:', SUBSCRIPTION_SKUS);
       // v14 API: use fetchProducts with type: 'subs' for subscriptions
       const subscriptions = await RNIap.fetchProducts({ skus: SUBSCRIPTION_SKUS!, type: 'subs' });
-      console.log('[IAP] Products fetched:', subscriptions.length, subscriptions);
+      logger.log('[IAP] Products fetched:', subscriptions.length, subscriptions);
 
       // v14 API uses different property names:
       // - 'id' instead of 'productId'
@@ -269,7 +270,7 @@ class IAPService {
         freeTrialPeriodAndroid: sub.freeTrialPeriodAndroid,
       }));
     } catch (error: any) {
-      console.error('[IAP] Error fetching products:', error);
+      logger.error('[IAP] Error fetching products:', error);
       return [];
     }
   }
@@ -296,11 +297,11 @@ class IAPService {
     this.onPurchaseComplete = onComplete;
 
     try {
-      console.log('[IAP] Requesting subscription:', productId);
+      logger.log('[IAP] Requesting subscription:', productId);
 
       if (Platform.OS === 'ios') {
         // iOS: use requestPurchase with request.apple wrapper
-        console.log('[IAP] iOS: requesting subscription purchase');
+        logger.log('[IAP] iOS: requesting subscription purchase');
         await RNIap.requestPurchase({
           request: {
             apple: {
@@ -313,7 +314,7 @@ class IAPService {
         // Android requires offer token for subscriptions
         // Fetch products to get offer details
         const subscriptions = await RNIap.fetchProducts({ skus: [productId], type: 'subs' });
-        console.log('[IAP] Android subscriptions fetched:', subscriptions.length);
+        logger.log('[IAP] Android subscriptions fetched:', subscriptions.length);
 
         if (subscriptions.length > 0) {
           const subscription = subscriptions[0] as any;
@@ -326,14 +327,14 @@ class IAPService {
             offerToken: offer.offerToken,
           })) || [];
 
-          console.log('[IAP] Subscription offers:', JSON.stringify(subscriptionOffers));
+          logger.log('[IAP] Subscription offers:', JSON.stringify(subscriptionOffers));
 
           if (subscriptionOffers.length === 0) {
             throw new Error('No offer token available for subscription');
           }
 
           // Android: use requestPurchase with request.google wrapper and type: 'subs'
-          console.log('[IAP] Android: requesting subscription purchase');
+          logger.log('[IAP] Android: requesting subscription purchase');
           await RNIap.requestPurchase({
             request: {
               google: {
@@ -348,7 +349,7 @@ class IAPService {
         }
       }
     } catch (error: any) {
-      console.error('[IAP] Error purchasing subscription:', error);
+      logger.error('[IAP] Error purchasing subscription:', error);
       onComplete({
         success: false,
         error: error.message || 'Failed to purchase subscription',
@@ -369,9 +370,9 @@ class IAPService {
     }
 
     try {
-      console.log('[IAP] Restoring purchases...');
+      logger.log('[IAP] Restoring purchases...');
       const purchases = await RNIap.getAvailablePurchases();
-      console.log('[IAP] Found purchases:', purchases.length);
+      logger.log('[IAP] Found purchases:', purchases.length);
 
       // Find active subscription
       for (const purchase of purchases) {
@@ -395,7 +396,7 @@ class IAPService {
 
       return { isActive: false };
     } catch (error: any) {
-      console.error('[IAP] Error restoring purchases:', error);
+      logger.error('[IAP] Error restoring purchases:', error);
       return { isActive: false };
     }
   }
@@ -420,7 +421,7 @@ class IAPService {
         ? purchase.transactionReceipt
         : purchase.purchaseToken;
 
-      console.log('[IAP] Validating receipt for:', productId);
+      logger.log('[IAP] Validating receipt for:', productId);
 
       // Get auth token for authenticated request
       const accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
@@ -428,7 +429,7 @@ class IAPService {
         // No auth token - this is likely a signup flow where the user isn't logged in yet.
         // Skip client-side validation and return valid: true so the purchase can proceed.
         // The signup endpoint will validate the receipt when creating the account.
-        console.log('[IAP] No access token - skipping client validation (signup flow)');
+        logger.log('[IAP] No access token - skipping client validation (signup flow)');
         return { valid: true };
       }
 
@@ -447,7 +448,7 @@ class IAPService {
       });
 
       if (!response.ok) {
-        console.error('[IAP] Receipt validation failed:', response.status);
+        logger.error('[IAP] Receipt validation failed:', response.status);
         return { valid: false };
       }
 
@@ -460,7 +461,7 @@ class IAPService {
         autoRenewing: data.autoRenewing,
       };
     } catch (error) {
-      console.error('[IAP] Error validating receipt:', error);
+      logger.error('[IAP] Error validating receipt:', error);
       return { valid: false };
     }
   }
@@ -473,7 +474,7 @@ class IAPService {
       // Get auth token for authenticated request
       const accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
       if (!accessToken) {
-        console.log('[IAP] No access token, cannot check subscription status');
+        logger.log('[IAP] No access token, cannot check subscription status');
         return { isActive: false };
       }
 
@@ -505,7 +506,7 @@ class IAPService {
 
       return { isActive: false };
     } catch (error) {
-      console.error('[IAP] Error checking subscription status:', error);
+      logger.error('[IAP] Error checking subscription status:', error);
       return { isActive: false };
     }
   }

@@ -12,7 +12,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '../context/ThemeContext';
@@ -316,28 +315,16 @@ export function ChargeScreen() {
             }
           }}
           disabled={chargeDisabled}
+          style={({ pressed }) => [
+            styles.chargeButton,
+            { backgroundColor: chargeDisabled ? glassColors.backgroundElevated : (isDark ? '#fff' : '#09090b') },
+            pressed && !chargeDisabled && styles.chargeButtonPressed,
+          ]}
         >
-          {({ pressed }) => (
-            <LinearGradient
-              colors={
-                chargeDisabled
-                  ? [colors.gray600, colors.gray700]
-                  : [colors.primary, colors.primary700]
-              }
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[
-                styles.chargeButton,
-                chargeDisabled && styles.chargeButtonDisabled,
-                pressed && !chargeDisabled && styles.chargeButtonPressed,
-              ]}
-            >
-              <Ionicons name="flash" size={22} color="#fff" />
-              <Text style={styles.chargeButtonText}>
-                {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
-              </Text>
-            </LinearGradient>
-          )}
+          <Ionicons name="flash" size={22} color={chargeDisabled ? colors.textMuted : (isDark ? '#09090b' : '#fff')} />
+          <Text style={[styles.chargeButtonText, { color: chargeDisabled ? colors.textMuted : (isDark ? '#09090b' : '#fff') }]}>
+            {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
+          </Text>
         </Pressable>
 
         <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
@@ -440,18 +427,12 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: Respon
     },
     chargeButton: {
       flexDirection: 'row',
-      borderRadius: 20,
+      borderRadius: 16,
       paddingVertical: 18,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 10,
       ...shadows.md,
-      shadowColor: colors.primary,
-      shadowOpacity: 0.3,
-    },
-    chargeButtonDisabled: {
-      opacity: 0.4,
-      shadowOpacity: 0,
     },
     chargeButtonPressed: {
       opacity: 0.9,
@@ -460,7 +441,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: Respon
     chargeButtonText: {
       fontSize: 18,
       fontFamily: fonts.semiBold,
-      color: '#fff',
     },
     minimumHint: {
       textAlign: 'center',

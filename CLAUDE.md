@@ -1,72 +1,139 @@
 # Luma-App - Mobile POS Application
 
+> **For full ecosystem context, see the root [CLAUDE.md](../CLAUDE.md)**
+
 ## Project Overview
 
-Luma-App is a React Native/Expo mobile application for a point-of-sale (POS) system designed for mobile bars, food trucks, and events. The app allows staff to:
-- Select product catalogs/menus configured via the vendor portal
-- Browse products organized by categories
-- Build customer orders with a cart system
-- Accept contactless payments via Stripe Tap to Pay
-- View transaction history and issue refunds
+Luma-App is a React Native/Expo mobile application for a point-of-sale (POS) system designed for mobile bars, food trucks, and events. The app enables staff to process contactless payments via Stripe Tap to Pay on iPhone/Android.
 
-## Architecture
+**Tech Stack:**
+- **Framework:** React Native 0.81.5 with Expo SDK 54
+- **Language:** TypeScript 5.9 (strict mode)
+- **Navigation:** React Navigation v7 (native-stack + bottom-tabs)
+- **State:** React Context + TanStack Query v5
+- **Payments:** Stripe React Native + Stripe Terminal (Tap to Pay)
+- **Real-time:** Socket.IO client
+- **Storage:** AsyncStorage (tokens/cache)
 
-### Technology Stack
-- **Framework**: React Native with Expo SDK 54
-- **Language**: TypeScript (strict mode)
-- **Navigation**: React Navigation (native-stack + bottom-tabs)
-- **State Management**: React Context (auth) + TanStack React Query v5 (data)
-- **Storage**: AsyncStorage (tokens/cache), expo-secure-store available
-- **Payments**: Stripe React Native + Stripe Terminal React Native
-- **Styling**: React Native StyleSheet with dark theme
+---
 
-### Project Structure
+## Apple Tap to Pay Compliance (CRITICAL)
+
+This app implements Tap to Pay on iPhone and must comply with Apple's TTPOi requirements (v1.5, March 2025).
+
+### Device Requirements
+- **iPhone:** XS or later, iOS 16.4+
+- **Android:** NFC-capable device, Android 8.0 (SDK 26)+
+
+### Required Entitlements
+1. **Development Entitlement:** Request via Apple Developer portal for testing
+2. **Publishing Entitlement:** Required before App Store submission
+
+### UX Requirements (Apple Mandated)
+
+**Onboarding (Section 2.1-2.3):**
+- Must educate merchants on Tap to Pay before first use
+- Show supported card types and device compatibility
+- Explain how contactless payments work
+
+**Checkout Flow (Section 3.1-3.5):**
+- Clear total amount display before payment
+- Payment sheet must show amount being charged
+- Success/failure feedback required
+- Receipt offering required after successful payment
+
+**Error Handling (Section 4.1-4.3):**
+- Clear error messages for failed transactions
+- Retry option for transient failures
+- Guidance for persistent issues
+
+### Marketing Requirements (Section 5.1-5.3)
+- Use official Apple Tap to Pay branding assets
+- Follow trademark guidelines
+- Include required disclaimers
+
+---
+
+## Directory Structure
+
 ```
-/src
-  /context
-    - AuthContext.tsx       # Global auth state and actions
-  /lib
-    /api
-      - client.ts           # HTTP client with token refresh
-      - auth.ts             # Auth service (login, logout, refresh, etc.)
-      - index.ts            # API exports
-    - colors.ts             # Design system colors
-    - config.ts             # Environment configuration
-  /screens
-    - LoginScreen.tsx       # Email/password login
-    - ForgotPasswordScreen.tsx
-    - ResetPasswordScreen.tsx
-    - HomeScreen.tsx        # Dashboard with stats
-    - ChargeScreen.tsx      # Amount entry (payment not connected)
-    - SettingsScreen.tsx    # Account settings, logout
-  /hooks
-    - useProfile.ts         # Profile query/mutation hooks
-    - index.ts
-  /providers
-    - QueryProvider.tsx     # TanStack Query setup
+Luma-App/
+├── src/
+│   ├── screens/                    # All app screens
+│   │   ├── LoginScreen.tsx         # Email/password login
+│   │   ├── ForgotPasswordScreen.tsx
+│   │   ├── ResetPasswordScreen.tsx
+│   │   ├── CatalogSelectScreen.tsx # Catalog selection
+│   │   ├── MenuScreen.tsx          # Product grid with categories
+│   │   ├── CartScreen.tsx          # Shopping cart
+│   │   ├── CheckoutScreen.tsx      # Order summary + tip
+│   │   ├── PaymentProcessingScreen.tsx  # Tap to Pay UI
+│   │   ├── PaymentResultScreen.tsx # Success/failure + receipt
+│   │   ├── ChargeScreen.tsx        # Quick charge (amount only)
+│   │   ├── TransactionsScreen.tsx  # Transaction history
+│   │   ├── TransactionDetailScreen.tsx  # Transaction details + refund
+│   │   ├── SettingsScreen.tsx      # Account settings
+│   │   └── TapToPaySettingsScreen.tsx   # Terminal settings
+│   ├── context/                    # State management
+│   │   ├── AuthContext.tsx         # Auth state + tokens
+│   │   ├── CartContext.tsx         # Shopping cart state
+│   │   ├── CatalogContext.tsx      # Selected catalog
+│   │   ├── ThemeContext.tsx        # Theme preferences
+│   │   └── SocketContext.tsx       # Socket.IO connection
+│   ├── lib/
+│   │   ├── api/                    # API clients
+│   │   │   ├── client.ts           # HTTP client with refresh
+│   │   │   ├── auth.ts             # Auth service
+│   │   │   ├── catalogs.ts         # Catalog API
+│   │   │   ├── products.ts         # Products API
+│   │   │   ├── orders.ts           # Orders API
+│   │   │   ├── transactions.ts     # Transactions API
+│   │   │   └── stripe-terminal.ts  # Terminal API
+│   │   ├── colors.ts               # Design system colors
+│   │   └── config.ts               # Environment config
+│   ├── components/                 # Reusable UI components
+│   ├── hooks/                      # Custom hooks
+│   └── providers/                  # Provider wrappers
+├── app.config.ts                   # Expo configuration
+├── eas.json                        # EAS Build configuration
+└── App.tsx                         # Root component
 ```
 
-### Related Repositories
+---
 
-#### Luma-Vendor (../Luma-Vendor)
-Next.js web portal for vendors to manage their business:
-- **Tech**: Next.js 16, React 19, TanStack Query, Tailwind CSS, Zustand
-- **Features**: Catalog/product/category management, orders/transactions, Stripe Connect, analytics, billing
+## Navigation Structure
 
-#### Luma-API (../Luma-API)
-Hono-based backend API:
-- **Tech**: Hono, PostgreSQL, Redis, BullMQ, Stripe, AWS Cognito, Socket.io
-- **Key Routes**:
-  - `POST /auth/login` - User authentication
-  - `POST /auth/refresh` - Token refresh
-  - `GET /auth/profile` - User profile + organization
-  - `GET /catalogs` - List catalogs for organization
-  - `GET /catalogs/:id/products` - List products in catalog
-  - `GET /categories` - List categories
-  - `POST /stripe/terminal/connection-token` - Get Stripe Terminal connection token
-  - `POST /stripe/terminal/payment-intent` - Create payment intent for terminal
-  - `GET /transactions` - List transactions
-  - `POST /transactions/:id/refund` - Refund transaction
+```
+Root Navigator
+├── Auth Stack (unauthenticated)
+│   ├── LoginScreen
+│   ├── ForgotPasswordScreen
+│   └── ResetPasswordScreen
+│
+└── Main Stack (authenticated)
+    ├── CatalogSelectScreen (modal, shown if no catalog)
+    │
+    ├── MainTabs (Bottom Tab Navigator)
+    │   ├── Menu Tab
+    │   │   ├── MenuScreen (product grid)
+    │   │   └── CartScreen
+    │   ├── QuickCharge Tab
+    │   │   └── ChargeScreen
+    │   ├── History Tab
+    │   │   ├── TransactionsScreen
+    │   │   └── TransactionDetailScreen
+    │   └── Settings Tab
+    │       └── SettingsScreen
+    │
+    ├── TapToPaySettingsScreen
+    │
+    └── Payment Flow (modal stack)
+        ├── CheckoutScreen
+        ├── PaymentProcessingScreen
+        └── PaymentResultScreen
+```
+
+---
 
 ## Data Models
 
@@ -80,8 +147,12 @@ interface Catalog {
   date: string | null;
   productCount: number;
   isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  showTipScreen: boolean;
+  promptForEmail: boolean;
+  tipPercentages: number[];      // e.g., [15, 18, 20, 25]
+  allowCustomTip: boolean;
+  taxRate: string;               // Decimal string
+  layoutType: 'grid' | 'list' | 'large-grid' | 'compact';
 }
 ```
 
@@ -92,29 +163,37 @@ interface Product {
   catalogId: string;
   name: string;
   description: string | null;
-  price: number;           // In cents
+  price: number;                 // In cents
   imageId: string | null;
   imageUrl: string | null;
   categoryId: string | null;
   categoryName: string | null;
   isActive: boolean;
   sortOrder: number;
-  createdAt: string;
-  updatedAt: string;
 }
 ```
 
-### Category
+### CartItem
 ```typescript
-interface Category {
+interface CartItem {
+  product: Product;
+  quantity: number;
+}
+```
+
+### Order
+```typescript
+interface Order {
   id: string;
-  name: string;
-  description: string | null;
-  sortOrder: number;
-  isActive: boolean;
-  productCount: number;
+  orderNumber: string;
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  subtotal: number;              // In cents
+  taxAmount: number;
+  tipAmount: number;
+  totalAmount: number;
+  customerEmail: string | null;
+  items: OrderItem[];
   createdAt: string;
-  updatedAt: string;
 }
 ```
 
@@ -122,244 +201,289 @@ interface Category {
 ```typescript
 interface Transaction {
   id: string;
-  amount: number;
+  amount: number;                // In cents
   amountRefunded: number;
   status: 'succeeded' | 'pending' | 'failed' | 'refunded' | 'partially_refunded';
-  description: string | null;
-  customerName: string | null;
   customerEmail: string | null;
   paymentMethod: {
     brand: string | null;
     last4: string;
   } | null;
-  created: number;         // Unix timestamp
+  created: number;               // Unix timestamp
   receiptUrl: string | null;
 }
 ```
 
-## Current State
+---
 
-### Implemented Features
-- [x] User authentication (login/logout)
-- [x] Password reset flow
-- [x] Token refresh with request queuing
-- [x] Protected route navigation
-- [x] Home screen with greeting and basic stats
-- [x] Charge screen with amount keypad (UI only)
-- [x] Settings screen with account info and logout
-- [x] Dark theme throughout
+## Stripe Terminal Integration
 
-### Not Yet Implemented
-- [ ] Catalog selection
-- [ ] Product browsing and display
-- [ ] Category filtering
-- [ ] Shopping cart
-- [ ] Checkout flow
-- [ ] Stripe Terminal integration
-- [ ] Tap to Pay payments
-- [ ] Transaction history
-- [ ] Refund capability
-- [ ] Real-time updates (Socket.io)
-- [ ] Secure token storage (currently using AsyncStorage)
+### Connection Flow
+```typescript
+// 1. Get connection token from API
+const { secret } = await stripeTerminalApi.getConnectionToken();
 
-## API Configuration
+// 2. Initialize Terminal SDK
+await initStripeTerminal({
+  fetchConnectionToken: async () => secret,
+});
 
-Base URL configured in `/src/lib/config.ts`:
-- Production: `https://api.lumapos.co`
-- Configurable via `EXPO_PUBLIC_API_URL` environment variable
+// 3. Discover local mobile reader
+const { readers } = await discoverReaders({
+  discoveryMethod: DiscoveryMethod.LocalMobile,
+});
 
-## Design System
+// 4. Connect to reader (phone's NFC)
+await connectLocalMobileReader({ reader: readers[0] });
+```
 
-Colors defined in `/src/lib/colors.ts`:
-- Primary: `#2563EB` (blue)
-- Background: `#0A0A0F` (near black)
-- Card: `#111118`
-- Border: `#1E1E2A`
-- Text: White with gray variants for secondary text
+### Payment Flow
+```typescript
+// 1. Create PaymentIntent via API
+const { clientSecret, paymentIntentId } = await stripeTerminalApi.createPaymentIntent({
+  amount: totalAmount,           // In cents
+  catalogId,
+  items,
+  tipAmount,
+  customerEmail,
+});
+
+// 2. Retrieve PaymentIntent
+const { paymentIntent } = await retrievePaymentIntent(clientSecret);
+
+// 3. Collect payment (shows Tap to Pay UI)
+const { paymentIntent: collected } = await collectPaymentMethod({ paymentIntent });
+
+// 4. Confirm payment
+const { paymentIntent: confirmed } = await confirmPaymentIntent({ paymentIntent: collected });
+
+// 5. Send receipt (if email provided)
+if (customerEmail) {
+  await stripeTerminalApi.sendReceipt(paymentIntentId, customerEmail);
+}
+```
 
 ---
 
-## Feature Implementation Roadmap
+## API Endpoints Used
 
-### Phase 1: Catalog & Product Display
+### Authentication
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/auth/login` | User login |
+| POST | `/auth/refresh` | Token refresh |
+| POST | `/auth/logout` | Logout |
+| GET | `/auth/me` | Get profile |
+| POST | `/auth/forgot-password` | Request reset |
+| POST | `/auth/reset-password` | Complete reset |
 
-#### 1.1 API Integration Layer
-- [ ] Create `/src/lib/api/catalogs.ts` with catalog API functions
-- [ ] Create `/src/lib/api/products.ts` with product API functions
-- [ ] Create `/src/lib/api/categories.ts` with category API functions
-- [ ] Add TypeScript interfaces for all data models
+### Catalogs & Products
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/catalogs` | List catalogs |
+| GET | `/catalogs/{id}` | Get catalog |
+| GET | `/catalogs/{id}/products` | Get products |
+| GET | `/catalogs/{id}/categories` | Get categories |
 
-#### 1.2 Catalog Selection Screen
-- [ ] Create `/src/screens/CatalogSelectScreen.tsx`
-- [ ] Display list of active catalogs with name, location, date
-- [ ] Show product count per catalog
-- [ ] Store selected catalog in context/state
-- [ ] Add to navigation flow after login
+### Orders & Payments
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/orders` | Create order |
+| GET | `/orders/{id}` | Get order |
+| POST | `/stripe/terminal/connection-token` | Get Terminal token |
+| POST | `/stripe/terminal/payment-intent` | Create PaymentIntent |
+| POST | `/stripe/terminal/payment-intent/{id}/send-receipt` | Send receipt |
+| POST | `/stripe/terminal/payment-intent/{id}/simulate` | Test simulation |
 
-#### 1.3 Product Browsing Screen
-- [ ] Create `/src/screens/MenuScreen.tsx` (or ProductsScreen)
-- [ ] Fetch products for selected catalog
-- [ ] Display products grouped by category
-- [ ] Show product image, name, price
-- [ ] Implement search/filter functionality
-- [ ] Add horizontal category tabs for quick filtering
+### Transactions
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/stripe/connect/transactions` | List transactions |
+| POST | `/orders/{id}/refund` | Refund order |
 
-### Phase 2: Cart & Checkout
+---
 
-#### 2.1 Cart State Management
-- [ ] Create `/src/context/CartContext.tsx`
-- [ ] Implement add/remove/update quantity functions
-- [ ] Calculate subtotal, tax, total
-- [ ] Persist cart across navigation
+## Socket.IO Events
 
-#### 2.2 Add to Cart Functionality
-- [ ] Add "+" button or tap action on product cards
-- [ ] Show quantity selector for items already in cart
-- [ ] Display cart badge/indicator in navigation
-- [ ] Implement quick-add animation feedback
+```typescript
+// Connect with auth
+socket.auth = { token: accessToken };
+socket.connect();
 
-#### 2.3 Cart Screen
-- [ ] Create `/src/screens/CartScreen.tsx`
-- [ ] List cart items with quantity controls
-- [ ] Show itemized pricing
-- [ ] Allow item removal
-- [ ] Display order total prominently
-- [ ] "Proceed to Checkout" button
+// Join organization room
+socket.emit('join', `org:${organizationId}`);
 
-#### 2.4 Checkout Flow
-- [ ] Create `/src/screens/CheckoutScreen.tsx`
-- [ ] Order summary display
-- [ ] Payment method selection (Tap to Pay primary)
-- [ ] Optional: Add customer email for receipt
-- [ ] Create PaymentIntent via API
+// Listen for events
+socket.on('ORDER_COMPLETED', (data) => {
+  queryClient.invalidateQueries({ queryKey: ['transactions'] });
+});
 
-### Phase 3: Stripe Terminal Integration
+socket.on('CATALOG_UPDATED', (data) => {
+  queryClient.invalidateQueries({ queryKey: ['catalogs'] });
+});
 
-#### 3.1 Terminal Setup
-- [ ] Create `/src/lib/api/stripe-terminal.ts`
-- [ ] Implement connection token fetching
-- [ ] Create `/src/context/StripeTerminalContext.tsx`
-- [ ] Initialize Stripe Terminal SDK on app start
-- [ ] Handle terminal discovery and connection
-
-#### 3.2 Tap to Pay Implementation
-- [ ] Request location permissions for NFC
-- [ ] Implement payment collection flow
-- [ ] Handle payment states (processing, success, failure)
-- [ ] Display appropriate UI during tap
-- [ ] Show success/failure result screens
-
-#### 3.3 Payment Confirmation
-- [ ] Create `/src/screens/PaymentSuccessScreen.tsx`
-- [ ] Show transaction details
-- [ ] Offer to email receipt
-- [ ] "New Sale" button to return to menu
-- [ ] Handle payment failures with retry option
-
-### Phase 4: Transaction Management
-
-#### 4.1 Transaction History
-- [ ] Create `/src/lib/api/transactions.ts`
-- [ ] Create `/src/screens/TransactionsScreen.tsx`
-- [ ] List transactions with status, amount, date
-- [ ] Implement pagination/infinite scroll
-- [ ] Filter by status (succeeded, refunded, etc.)
-
-#### 4.2 Transaction Details
-- [ ] Create `/src/screens/TransactionDetailScreen.tsx`
-- [ ] Show full transaction info
-- [ ] Display payment method details
-- [ ] Show refund history if applicable
-- [ ] Link to Stripe receipt
-
-#### 4.3 Refund Capability
-- [ ] Add refund button on transaction detail
-- [ ] Implement partial refund option
-- [ ] Confirmation dialog before refunding
-- [ ] Handle refund success/failure
-
-### Phase 5: Polish & Enhancements
-
-#### 5.1 Real-time Updates
-- [ ] Integrate Socket.io client
-- [ ] Subscribe to order/catalog updates
-- [ ] Update UI when products change
-- [ ] Show notifications for new orders (if needed)
-
-#### 5.2 Security Improvements
-- [ ] Migrate tokens from AsyncStorage to expo-secure-store
-- [ ] Implement biometric authentication option
-- [ ] Add session timeout handling
-
-#### 5.3 Offline Support
-- [ ] Cache catalog/products locally
-- [ ] Queue transactions when offline
-- [ ] Sync when connection restored
-- [ ] Show offline indicator
-
-#### 5.4 Settings Enhancements
-- [ ] Tap to Pay settings/configuration
-- [ ] Terminal reader selection
-- [ ] Receipt email preferences
-- [ ] App version and updates
-
-### Navigation Structure (Proposed)
-
-```
-Root
-├── Auth Stack (unauthenticated)
-│   ├── Login
-│   ├── ForgotPassword
-│   └── ResetPassword
-│
-└── Main Stack (authenticated)
-    ├── CatalogSelect (initial if no catalog selected)
-    │
-    └── Tab Navigator
-        ├── Menu Tab
-        │   ├── MenuScreen (products grid)
-        │   ├── ProductDetail (optional)
-        │   └── Cart (modal or screen)
-        │
-        ├── Transactions Tab
-        │   ├── TransactionsList
-        │   └── TransactionDetail
-        │
-        └── Settings Tab
-            └── SettingsScreen
-
-    └── Modal Stack
-        ├── Checkout
-        ├── PaymentProcessing
-        └── PaymentResult
+socket.on('SESSION_KICKED', () => {
+  // Another device logged in - force logout
+  logout();
+  Alert.alert('Session Ended', 'You have been logged out because another device signed in.');
+});
 ```
 
-## Development Commands
+---
+
+## Design System
+
+### Colors (`/src/lib/colors.ts`)
+```typescript
+export const colors = {
+  primary: '#2563EB',            // Blue
+  primaryLight: '#3B82F6',
+  primaryDark: '#1D4ED8',
+
+  background: '#0A0A0F',         // Near black
+  card: '#111118',
+  cardHover: '#1A1A24',
+  border: '#1E1E2A',
+
+  text: '#FFFFFF',
+  textSecondary: '#A1A1AA',
+  textMuted: '#71717A',
+
+  success: '#22C55E',
+  error: '#EF4444',
+  warning: '#F59E0B',
+};
+```
+
+---
+
+## Build Configuration
+
+### EAS Build (`eas.json`)
+```json
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  }
+}
+```
+
+### App Config (`app.config.ts`)
+```typescript
+export default {
+  expo: {
+    plugins: [
+      ['expo-build-properties', {
+        android: { minSdkVersion: 26 }  // Required for Stripe Terminal
+      }],
+      ['@stripe/stripe-react-native', {
+        merchantIdentifier: 'merchant.com.lumapos',
+        enableGooglePay: true,
+      }],
+    ],
+  },
+};
+```
+
+### Build Commands
+```bash
+# Development build (with dev client)
+eas build --platform android --profile development
+eas build --platform ios --profile development
+
+# Preview APK (for internal testing)
+eas build --platform android --profile preview
+
+# Production builds
+eas build --platform android --profile production
+eas build --platform ios --profile production
+
+# Submit to stores
+eas submit --platform android
+eas submit --platform ios
+```
+
+---
+
+## Environment Variables
 
 ```bash
-# Start development server
+# .env
+EXPO_PUBLIC_API_URL=https://api.lumapos.co
+
+# For local development
+EXPO_PUBLIC_API_URL=http://localhost:3334
+```
+
+---
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start Expo dev server
 npm run dev
+# or
+npx expo start
 
 # Run on specific platform
 npm run android
 npm run ios
-npm run web
 
-# Build Android development build
-npm run build:android
+# Clear cache and restart
+npx expo start --clear
+
+# Prebuild native directories
+npx expo prebuild
+
+# Clean prebuild
+npx expo prebuild --clean
 ```
 
-## Environment Variables
+---
 
-Create `.env` file based on `.env.example`:
+## Debugging
+
+### Android Logs (PowerShell)
+
+```powershell
+# View React Native logs from connected Android device
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" logcat *:S ReactNative:V ReactNativeJS:V
 ```
-EXPO_PUBLIC_API_URL=https://api.lumapos.co
-```
 
-## Notes for Development
+---
 
-1. **Stripe Terminal**: Requires a development build (not Expo Go) for native module access
-2. **Tap to Pay**: Only works on physical devices with NFC capability
-3. **Authentication**: Uses AWS Cognito via the API; tokens stored locally
-4. **Price Display**: All prices from API are in cents; divide by 100 for display
-5. **Images**: Product images served from S3 via CloudFront CDN
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| minSdkVersion error | Ensure `expo-build-properties` plugin sets `minSdkVersion: 26` |
+| Stripe Terminal not working | Must use development build, not Expo Go |
+| NFC not detecting | Check device NFC is enabled, try different card angle |
+| Token refresh loop | Clear AsyncStorage, re-login |
+| Socket not connecting | Verify API URL, check auth token validity |
+
+---
+
+## Security Notes
+
+- Tokens stored in AsyncStorage (consider migrating to expo-secure-store)
+- All API calls use HTTPS in production
+- Sensitive data not logged in production builds
+- Payment data handled entirely by Stripe SDK (PCI compliant)
+
+---
+
+**Remember:** This is a financial application handling real payments. Test thoroughly in Stripe test mode before any production deployment. Ensure Apple TTPOi compliance for App Store approval.

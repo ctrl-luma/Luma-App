@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import logger from '../lib/logger';
 
 // Base keys - userId will be appended to make them user-specific
 const EDUCATION_SEEN_KEY_BASE = '@luma/tap_to_pay_education_seen';
@@ -54,13 +55,15 @@ export function useTapToPayEducation(userId?: string): UseTapToPayEducationRetur
         setHasSeenEducation(seen === 'true');
         setHasDismissedEducation(dismissed === 'true');
       } catch (error) {
-        console.warn('[TapToPayEducation] Failed to load state:', error);
+        logger.warn('[TapToPayEducation] Failed to load state:', error);
       } finally {
         setIsLoading(false);
       }
     };
     loadState();
-  }, [userId, educationSeenKey, educationDismissedKey]);
+    // educationSeenKey and educationDismissedKey are derived from userId
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   // Mark education as seen (user completed the education flow)
   const markEducationSeen = useCallback(async () => {
@@ -68,7 +71,7 @@ export function useTapToPayEducation(userId?: string): UseTapToPayEducationRetur
       await AsyncStorage.setItem(educationSeenKey, 'true');
       setHasSeenEducation(true);
     } catch (error) {
-      console.warn('[TapToPayEducation] Failed to mark as seen:', error);
+      logger.warn('[TapToPayEducation] Failed to mark as seen:', error);
     }
   }, [educationSeenKey]);
 
@@ -78,7 +81,7 @@ export function useTapToPayEducation(userId?: string): UseTapToPayEducationRetur
       await AsyncStorage.setItem(educationDismissedKey, 'true');
       setHasDismissedEducation(true);
     } catch (error) {
-      console.warn('[TapToPayEducation] Failed to mark as dismissed:', error);
+      logger.warn('[TapToPayEducation] Failed to mark as dismissed:', error);
     }
   }, [educationDismissedKey]);
 
@@ -92,7 +95,7 @@ export function useTapToPayEducation(userId?: string): UseTapToPayEducationRetur
       setHasSeenEducation(false);
       setHasDismissedEducation(false);
     } catch (error) {
-      console.warn('[TapToPayEducation] Failed to reset state:', error);
+      logger.warn('[TapToPayEducation] Failed to reset state:', error);
     }
   }, [educationSeenKey, educationDismissedKey]);
 

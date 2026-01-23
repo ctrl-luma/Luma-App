@@ -8,6 +8,7 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import logger from './logger';
 
 // Keys for secure storage
 const BIOMETRIC_ENABLED_KEY = 'biometric_enabled';
@@ -67,7 +68,7 @@ export async function checkBiometricCapabilities(): Promise<BiometricCapabilitie
       biometricName,
     };
   } catch (error) {
-    console.warn('[BiometricAuth] Error checking capabilities:', error);
+    logger.warn('[BiometricAuth] Error checking capabilities:', error);
     return {
       isAvailable: false,
       biometricTypes: [],
@@ -96,13 +97,13 @@ export async function authenticateWithBiometric(
       };
     }
 
-    console.log('[BiometricAuth] Calling authenticateAsync...');
+    logger.log('[BiometricAuth] Calling authenticateAsync...');
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: promptMessage || `Sign in with ${capabilities.biometricName}`,
       disableDeviceFallback: false, // Allow passcode fallback if biometric is locked out
       cancelLabel: 'Use Password',
     });
-    console.log('[BiometricAuth] Auth result:', JSON.stringify(result));
+    logger.log('[BiometricAuth] Auth result:', JSON.stringify(result));
 
     if (result.success) {
       return { success: true };
@@ -110,16 +111,16 @@ export async function authenticateWithBiometric(
 
     // Handle different error types
     if (result.error === 'user_cancel') {
-      console.log('[BiometricAuth] User cancelled');
+      logger.log('[BiometricAuth] User cancelled');
       return { success: false, error: 'Authentication cancelled' };
     }
 
     if (result.error === 'lockout') {
-      console.log('[BiometricAuth] Biometric locked out');
+      logger.log('[BiometricAuth] Biometric locked out');
       return { success: false, error: `${capabilities.biometricName} is locked. Please use your password.` };
     }
 
-    console.log('[BiometricAuth] Auth failed:', result.error);
+    logger.log('[BiometricAuth] Auth failed:', result.error);
     return {
       success: false,
       error: result.error === 'user_fallback'
@@ -127,7 +128,7 @@ export async function authenticateWithBiometric(
         : `Authentication failed: ${result.error}`,
     };
   } catch (error: any) {
-    console.error('[BiometricAuth] Authentication error:', error);
+    logger.error('[BiometricAuth] Authentication error:', error);
     return { success: false, error: error.message || 'Authentication failed' };
   }
 }
@@ -140,7 +141,7 @@ export async function isBiometricLoginEnabled(): Promise<boolean> {
     const value = await SecureStore.getItemAsync(BIOMETRIC_ENABLED_KEY);
     return value === 'true';
   } catch (error) {
-    console.warn('[BiometricAuth] Error checking if enabled:', error);
+    logger.warn('[BiometricAuth] Error checking if enabled:', error);
     return false;
   }
 }
@@ -156,7 +157,7 @@ export async function storeCredentials(
   password: string
 ): Promise<boolean> {
   try {
-    console.log('[BiometricAuth] Storing credentials for:', email);
+    logger.log('[BiometricAuth] Storing credentials for:', email);
 
     const credentials = JSON.stringify({
       email,
@@ -169,10 +170,10 @@ export async function storeCredentials(
     });
     await SecureStore.setItemAsync(CREDENTIALS_STORED_KEY, 'true');
 
-    console.log('[BiometricAuth] Credentials stored successfully');
+    logger.log('[BiometricAuth] Credentials stored successfully');
     return true;
   } catch (error) {
-    console.error('[BiometricAuth] Error storing credentials:', error);
+    logger.error('[BiometricAuth] Error storing credentials:', error);
     return false;
   }
 }
@@ -195,29 +196,29 @@ export async function hasStoredCredentials(): Promise<boolean> {
  */
 export async function enableBiometricLogin(): Promise<boolean> {
   try {
-    console.log('[BiometricAuth] Enabling biometric login...');
+    logger.log('[BiometricAuth] Enabling biometric login...');
 
     // Check if credentials are stored
     const hasCredentials = await hasStoredCredentials();
     if (!hasCredentials) {
-      console.log('[BiometricAuth] No stored credentials found');
+      logger.log('[BiometricAuth] No stored credentials found');
       return false;
     }
 
     // Authenticate with biometric to confirm identity
     const authResult = await authenticateWithBiometric('Enable biometric login');
     if (!authResult.success) {
-      console.log('[BiometricAuth] Biometric auth cancelled/failed');
+      logger.log('[BiometricAuth] Biometric auth cancelled/failed');
       return false;
     }
 
     // Enable biometric login
     await SecureStore.setItemAsync(BIOMETRIC_ENABLED_KEY, 'true');
 
-    console.log('[BiometricAuth] Biometric login enabled successfully');
+    logger.log('[BiometricAuth] Biometric login enabled successfully');
     return true;
   } catch (error) {
-    console.error('[BiometricAuth] Error enabling:', error);
+    logger.error('[BiometricAuth] Error enabling:', error);
     return false;
   }
 }
@@ -228,9 +229,9 @@ export async function enableBiometricLogin(): Promise<boolean> {
 export async function disableBiometricLogin(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
-    console.log('[BiometricAuth] Biometric login disabled');
+    logger.log('[BiometricAuth] Biometric login disabled');
   } catch (error) {
-    console.error('[BiometricAuth] Error disabling:', error);
+    logger.error('[BiometricAuth] Error disabling:', error);
   }
 }
 
@@ -242,9 +243,9 @@ export async function clearStoredCredentials(): Promise<void> {
     await SecureStore.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY);
     await SecureStore.deleteItemAsync(CREDENTIALS_STORED_KEY);
     await SecureStore.deleteItemAsync(BIOMETRIC_ENABLED_KEY);
-    console.log('[BiometricAuth] Stored credentials cleared');
+    logger.log('[BiometricAuth] Stored credentials cleared');
   } catch (error) {
-    console.error('[BiometricAuth] Error clearing credentials:', error);
+    logger.error('[BiometricAuth] Error clearing credentials:', error);
   }
 }
 
@@ -257,31 +258,31 @@ export async function getBiometricCredentials(): Promise<{
   password: string;
 } | null> {
   try {
-    console.log('[BiometricAuth] Getting biometric credentials...');
+    logger.log('[BiometricAuth] Getting biometric credentials...');
 
     // Authenticate first
     const authResult = await authenticateWithBiometric('Sign in');
     if (!authResult.success) {
-      console.log('[BiometricAuth] Biometric auth failed/cancelled');
+      logger.log('[BiometricAuth] Biometric auth failed/cancelled');
       return null;
     }
 
     // Get stored credentials
     const stored = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
     if (!stored) {
-      console.log('[BiometricAuth] No stored credentials found');
+      logger.log('[BiometricAuth] No stored credentials found');
       return null;
     }
 
     const credentials = JSON.parse(stored);
-    console.log('[BiometricAuth] Retrieved credentials for:', credentials.email);
+    logger.log('[BiometricAuth] Retrieved credentials for:', credentials.email);
 
     return {
       email: credentials.email,
       password: credentials.password,
     };
   } catch (error) {
-    console.error('[BiometricAuth] Error getting credentials:', error);
+    logger.error('[BiometricAuth] Error getting credentials:', error);
     return null;
   }
 }

@@ -9,7 +9,7 @@
     "web": "expo start --web --port 3336",
     "build:dev": "eas build --profile dev --platform android",
     "build:dev:ios": "eas build --profile dev --platform ios --auto-submit",
-    "build:prod": "eas build --profile prod --platform all",
+    "build:prod": "eas build --profile prod --platform android",
     "submit:ios": "eas submit --platform ios",
     "sim": "npx expo start"
   },
@@ -28,7 +28,6 @@
     "expo-alternate-app-icons": "^7.0.0",
     "expo-blur": "^15.0.8",
     "expo-build-properties": "^1.0.10",
-    "expo-clipboard": "^8.0.8",
     "expo-dev-client": "^6.0.20",
     "expo-device": "^8.0.10",
     "expo-font": "~14.0.10",
@@ -36,7 +35,6 @@
     "expo-linear-gradient": "~15.0.8",
     "expo-local-authentication": "~17.0.8",
     "expo-secure-store": "^15.0.8",
-    "expo-sharing": "^14.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
@@ -53,7 +51,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "sharp": "^0.34.5",
     "typescript": "~5.9.2"
   },
   "private": true,

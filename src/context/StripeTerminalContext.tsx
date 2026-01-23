@@ -16,6 +16,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { stripeTerminalApi } from '../lib/api';
 import { useAuth } from './AuthContext';
+import logger from '../lib/logger';
 
 // Check if running in Expo Go (which doesn't support native modules)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -37,15 +38,15 @@ if (Platform.OS !== 'web' && !isExpoGo) {
       requestNeededAndroidPermissions = terminal.requestNeededAndroidPermissions;
     } else {
       terminalLoadError = 'Stripe Terminal module loaded but exports are missing.';
-      console.warn('[StripeTerminal]', terminalLoadError);
+      logger.warn('[StripeTerminal]', terminalLoadError);
     }
   } catch (error: any) {
     terminalLoadError = `Stripe Terminal native module error: ${error?.message || error}`;
-    console.warn('[StripeTerminal] Failed to load terminal SDK:', error);
+    logger.warn('[StripeTerminal] Failed to load terminal SDK:', error);
   }
 } else if (isExpoGo) {
   terminalLoadError = 'Stripe Terminal is not available in Expo Go. Please use a development build (eas build --profile development).';
-  console.log('[StripeTerminal] Skipping native module load - running in Expo Go');
+  logger.log('[StripeTerminal] Skipping native module load - running in Expo Go');
 }
 
 // Device compatibility check for Tap to Pay on iPhone (requires iPhone XS or later / A12 chip)
@@ -131,6 +132,7 @@ interface StripeTerminalContextValue {
   deviceCompatibility: DeviceCompatibility;
   configurationStage: ConfigurationStage;
   configurationProgress: number; // 0-100
+  readerUpdateProgress: number | null; // 0-100 when updating, null otherwise
   termsAcceptance: TermsAcceptanceStatus;
   initializeTerminal: () => Promise<void>;
   connectReader: () => Promise<boolean>;
@@ -205,6 +207,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   const [deviceCompatibility, setDeviceCompatibility] = useState<DeviceCompatibility>(() => checkDeviceCompatibilitySync());
   const [configurationStage, setConfigurationStage] = useState<ConfigurationStage>('idle');
   const [configurationProgress, setConfigurationProgress] = useState(0);
+  const [readerUpdateProgress, setReaderUpdateProgress] = useState<number | null>(null);
   // Terms & Conditions acceptance status - retrieved from Apple via SDK (not stored locally)
   // Apple TTPOi Requirement: Always check T&C status from SDK, never cache locally
   const [termsAcceptance, setTermsAcceptance] = useState<TermsAcceptanceStatus>({
@@ -232,15 +235,34 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     cancelCollectPaymentMethod,
   } = useStripeTerminal({
     onUpdateDiscoveredReaders: (readers: any[]) => {
-      console.log('[StripeTerminal] Discovered readers via callback:', readers.length);
+      logger.log('[StripeTerminal] Discovered readers via callback:', readers.length);
       if (readers.length > 0) {
-        console.log('[StripeTerminal] Reader details:', JSON.stringify(readers[0], null, 2));
+        logger.log('[StripeTerminal] Reader details:', JSON.stringify(readers[0], null, 2));
       }
       discoveredReadersRef.current = readers;
     },
     onDidChangeConnectionStatus: (status: string) => {
-      console.log('[StripeTerminal] Connection status changed:', status);
+      logger.log('[StripeTerminal] Connection status changed:', status);
       setIsConnected(status === 'connected');
+    },
+    onDidStartInstallingUpdate: (update: any) => {
+      logger.log('[StripeTerminal] Started installing update:', update);
+      setReaderUpdateProgress(0);
+      setConfigurationStage('connecting_reader');
+    },
+    onDidReportReaderSoftwareUpdateProgress: (progress: number) => {
+      // Progress is 0.0 to 1.0, convert to percentage
+      const percentage = Math.round(progress * 100);
+      logger.log('[StripeTerminal] Reader update progress:', percentage + '%');
+      setReaderUpdateProgress(percentage);
+      setConfigurationProgress(percentage);
+    },
+    onDidFinishInstallingUpdate: (update: any, error: any) => {
+      logger.log('[StripeTerminal] Finished installing update:', update, error);
+      setReaderUpdateProgress(null);
+      if (!error) {
+        setConfigurationProgress(100);
+      }
     },
   });
 
@@ -254,7 +276,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
           buttonPositive: 'Allow',
         },
       }).catch((err: any) => {
-        console.warn('[StripeTerminal] Permission request failed:', err);
+        logger.warn('[StripeTerminal] Permission request failed:', err);
       });
     }
   }, []);
@@ -269,21 +291,21 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   // Warm the terminal - initialize SDK and prepare for payments (Apple TTPOi 1.4)
   // This should be called at app launch and when returning to foreground
   const warmTerminal = useCallback(async () => {
-    console.log('[StripeTerminal] ========== WARMING TERMINAL ==========');
+    logger.log('[StripeTerminal] ========== WARMING TERMINAL ==========');
 
     // Check device compatibility first
     const compatibility = checkDeviceCompatibilitySync();
     setDeviceCompatibility(compatibility);
 
     if (!compatibility.isCompatible && Platform.OS === 'ios') {
-      console.log('[StripeTerminal] Device not compatible for TTP:', compatibility.errorMessage);
+      logger.log('[StripeTerminal] Device not compatible for TTP:', compatibility.errorMessage);
       setError(compatibility.errorMessage);
       setConfigurationStage('error');
       return;
     }
 
     if (isInitialized) {
-      console.log('[StripeTerminal] Already initialized, skipping warm');
+      logger.log('[StripeTerminal] Already initialized, skipping warm');
       return;
     }
 
@@ -295,7 +317,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       // Step 1: Initialize the SDK
       setConfigurationStage('initializing');
       setConfigurationProgress(30);
-      console.log('[StripeTerminal] Warming: Initializing SDK...');
+      logger.log('[StripeTerminal] Warming: Initializing SDK...');
 
       const initResult = await initialize();
 
@@ -304,7 +326,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
         if (initResult.error.code === 'osVersionNotSupported' ||
             initResult.error.message?.includes('osVersionNotSupported') ||
             initResult.error.message?.includes('OS version')) {
-          console.error('[StripeTerminal] iOS version not supported for TTP');
+          logger.error('[StripeTerminal] iOS version not supported for TTP');
           const errorMsg = `Tap to Pay on iPhone requires iOS ${MIN_IOS_VERSION} or later. Please update your device.`;
           setError(errorMsg);
           setDeviceCompatibility(prev => ({
@@ -325,23 +347,23 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       // Step 2: Fetch location in background
       setConfigurationStage('fetching_location');
       setConfigurationProgress(70);
-      console.log('[StripeTerminal] Warming: Fetching location...');
+      logger.log('[StripeTerminal] Warming: Fetching location...');
 
       try {
         const { locationId: locId } = await stripeTerminalApi.getLocation();
         setLocationId(locId);
-        console.log('[StripeTerminal] Warming: Location cached:', locId);
+        logger.log('[StripeTerminal] Warming: Location cached:', locId);
       } catch (locErr: any) {
-        console.warn('[StripeTerminal] Warming: Location fetch failed (non-fatal):', locErr.message);
+        logger.warn('[StripeTerminal] Warming: Location fetch failed (non-fatal):', locErr.message);
         // Don't fail warming for location errors - we can fetch later
       }
 
       setConfigurationStage('ready');
       setConfigurationProgress(100);
-      console.log('[StripeTerminal] ========== WARMING COMPLETE ==========');
+      logger.log('[StripeTerminal] ========== WARMING COMPLETE ==========');
 
     } catch (err: any) {
-      console.error('[StripeTerminal] Warming failed:', err.message);
+      logger.error('[StripeTerminal] Warming failed:', err.message);
       setError(err.message || 'Failed to warm terminal');
       setConfigurationStage('error');
     } finally {
@@ -354,16 +376,16 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Skip warming if Stripe Connect isn't set up yet
     if (!chargesEnabled) {
-      console.log('[StripeTerminal] Skipping auto-warm - Stripe Connect not set up (chargesEnabled=false)');
+      logger.log('[StripeTerminal] Skipping auto-warm - Stripe Connect not set up (chargesEnabled=false)');
       return;
     }
 
     // Initial warm on mount
     if (!hasWarmedRef.current && deviceCompatibility.isCompatible) {
-      console.log('[StripeTerminal] Auto-warming on mount...');
+      logger.log('[StripeTerminal] Auto-warming on mount...');
       hasWarmedRef.current = true;
       warmTerminal().catch(err => {
-        console.error('[StripeTerminal] Auto-warm failed:', err);
+        logger.error('[StripeTerminal] Auto-warm failed:', err);
       });
     }
 
@@ -373,11 +395,11 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
         appStateRef.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        console.log('[StripeTerminal] App came to foreground, checking terminal state...');
+        logger.log('[StripeTerminal] App came to foreground, checking terminal state...');
         // Re-warm if not initialized (connection may have been lost)
         if (!isInitialized && chargesEnabled) {
           warmTerminal().catch(err => {
-            console.error('[StripeTerminal] Re-warm on foreground failed:', err);
+            logger.error('[StripeTerminal] Re-warm on foreground failed:', err);
           });
         }
       }
@@ -393,18 +415,18 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Skip if Stripe Connect isn't set up
     if (!chargesEnabled) {
-      console.log('[StripeTerminal] Skipping location fetch - Stripe Connect not set up');
+      logger.log('[StripeTerminal] Skipping location fetch - Stripe Connect not set up');
       return;
     }
 
     const fetchLocation = async () => {
       try {
-        console.log('[StripeTerminal] Fetching terminal location...');
+        logger.log('[StripeTerminal] Fetching terminal location...');
         const { locationId: locId } = await stripeTerminalApi.getLocation();
-        console.log('[StripeTerminal] Got location:', locId);
+        logger.log('[StripeTerminal] Got location:', locId);
         setLocationId(locId);
       } catch (err: any) {
-        console.warn('[StripeTerminal] Failed to fetch location:', err.message);
+        logger.warn('[StripeTerminal] Failed to fetch location:', err.message);
         // Don't fail - location will be fetched again when needed
       }
     };
@@ -412,66 +434,66 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   }, [chargesEnabled]);
 
   const initializeTerminal = useCallback(async () => {
-    console.log('[StripeTerminal] ========== INITIALIZE START ==========');
-    console.log('[StripeTerminal] isInitialized:', isInitialized);
+    logger.log('[StripeTerminal] ========== INITIALIZE START ==========');
+    logger.log('[StripeTerminal] isInitialized:', isInitialized);
 
     if (isInitialized) {
-      console.log('[StripeTerminal] Already initialized, skipping');
+      logger.log('[StripeTerminal] Already initialized, skipping');
       return;
     }
 
     try {
-      console.log('[StripeTerminal] Calling initialize()...');
+      logger.log('[StripeTerminal] Calling initialize()...');
       setError(null);
 
       const initResult = await initialize();
-      console.log('[StripeTerminal] Initialize result:', JSON.stringify(initResult, null, 2));
+      logger.log('[StripeTerminal] Initialize result:', JSON.stringify(initResult, null, 2));
 
       if (initResult.error) {
-        console.error('[StripeTerminal] Initialize error:', initResult.error);
+        logger.error('[StripeTerminal] Initialize error:', initResult.error);
         const errMsg = `Init error: ${initResult.error.message || initResult.error.code || 'Unknown'}`;
         setError(errMsg);
         throw new Error(errMsg);
       }
 
       setIsInitialized(true);
-      console.log('[StripeTerminal] ========== INITIALIZE SUCCESS ==========');
+      logger.log('[StripeTerminal] ========== INITIALIZE SUCCESS ==========');
     } catch (err: any) {
-      console.error('[StripeTerminal] ========== INITIALIZE FAILED ==========');
-      console.error('[StripeTerminal] Error:', err);
-      console.error('[StripeTerminal] Message:', err.message);
+      logger.error('[StripeTerminal] ========== INITIALIZE FAILED ==========');
+      logger.error('[StripeTerminal] Error:', err);
+      logger.error('[StripeTerminal] Message:', err.message);
       setError(err.message || 'Failed to initialize terminal');
       throw err;
     }
   }, [initialize, isInitialized]);
 
   const connectReader = useCallback(async (): Promise<boolean> => {
-    console.log('[StripeTerminal] ========== CONNECT READER START ==========');
-    console.log('[StripeTerminal] Platform:', Platform.OS);
-    console.log('[StripeTerminal] Already connected:', isConnected);
+    logger.log('[StripeTerminal] ========== CONNECT READER START ==========');
+    logger.log('[StripeTerminal] Platform:', Platform.OS);
+    logger.log('[StripeTerminal] Already connected:', isConnected);
     setError(null);
 
     // If already connected, skip discovery and connection
     if (isConnected) {
-      console.log('[StripeTerminal] Reader already connected, reusing connection');
+      logger.log('[StripeTerminal] Reader already connected, reusing connection');
       return true;
     }
 
     // Ensure we have a location ID (required for Tap to Pay)
     let currentLocationId = locationId;
-    console.log('[StripeTerminal] Cached locationId:', currentLocationId);
+    logger.log('[StripeTerminal] Cached locationId:', currentLocationId);
 
     if (!currentLocationId) {
-      console.log('[StripeTerminal] No cached location, fetching from API...');
+      logger.log('[StripeTerminal] No cached location, fetching from API...');
       try {
         const locationResponse = await stripeTerminalApi.getLocation();
-        console.log('[StripeTerminal] Location API response:', JSON.stringify(locationResponse));
+        logger.log('[StripeTerminal] Location API response:', JSON.stringify(locationResponse));
         currentLocationId = locationResponse.locationId;
         setLocationId(currentLocationId);
-        console.log('[StripeTerminal] Got location:', currentLocationId);
+        logger.log('[StripeTerminal] Got location:', currentLocationId);
       } catch (locErr: any) {
-        console.error('[StripeTerminal] Location fetch error:', locErr);
-        console.error('[StripeTerminal] Location error details:', JSON.stringify(locErr, null, 2));
+        logger.error('[StripeTerminal] Location fetch error:', locErr);
+        logger.error('[StripeTerminal] Location error details:', JSON.stringify(locErr, null, 2));
         const errMsg = `Location error: ${locErr.message || locErr.error || 'Unknown error'}`;
         setError(errMsg);
         throw new Error(errMsg);
@@ -480,27 +502,27 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
     // Discover Tap to Pay readers
     const useSimulator = false; // Set to true to test without real NFC hardware
-    console.log('[StripeTerminal] Discovering Tap to Pay reader...');
-    console.log('[StripeTerminal] Discovery params: { discoveryMethod: "tapToPay", simulated:', useSimulator, '}');
+    logger.log('[StripeTerminal] Discovering Tap to Pay reader...');
+    logger.log('[StripeTerminal] Discovery params: { discoveryMethod: "tapToPay", simulated:', useSimulator, '}');
 
     // Clear previous discovered readers
-    console.log('[StripeTerminal] Clearing previous discovered readers...');
+    logger.log('[StripeTerminal] Clearing previous discovered readers...');
     discoveredReadersRef.current = [];
 
     // Start discovery - readers come via onUpdateDiscoveredReaders callback
-    console.log('[StripeTerminal] Calling discoverReaders()...');
+    logger.log('[StripeTerminal] Calling discoverReaders()...');
     const discoverResult = await discoverReaders({
       discoveryMethod: 'tapToPay',
       simulated: useSimulator,
     });
 
-    console.log('[StripeTerminal] discoverReaders() returned');
-    console.log('[StripeTerminal] Discovery result:', JSON.stringify(discoverResult, null, 2));
-    console.log('[StripeTerminal] discoveredReadersRef.current:', discoveredReadersRef.current.length);
-    console.log('[StripeTerminal] hookDiscoveredReaders:', hookDiscoveredReaders?.length || 0);
+    logger.log('[StripeTerminal] discoverReaders() returned');
+    logger.log('[StripeTerminal] Discovery result:', JSON.stringify(discoverResult, null, 2));
+    logger.log('[StripeTerminal] discoveredReadersRef.current:', discoveredReadersRef.current.length);
+    logger.log('[StripeTerminal] hookDiscoveredReaders:', hookDiscoveredReaders?.length || 0);
 
     if (discoverResult.error) {
-      console.error('[StripeTerminal] Discovery error:', discoverResult.error);
+      logger.error('[StripeTerminal] Discovery error:', discoverResult.error);
       const errMsg = `Discovery: ${discoverResult.error.message || discoverResult.error.code || 'Unknown error'}`;
       setError(errMsg);
       setIsConnected(false);
@@ -509,36 +531,36 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
     // Check if readers are already available from ref (callback may have fired during await)
     if (discoveredReadersRef.current.length > 0) {
-      console.log('[StripeTerminal] Readers already available in ref:', discoveredReadersRef.current.length);
+      logger.log('[StripeTerminal] Readers already available in ref:', discoveredReadersRef.current.length);
     }
 
     // Wait for readers to be discovered via callback
     // Poll for up to 5 seconds for readers to appear
     let readers: any[] = discoveredReadersRef.current;
     if (readers.length === 0) {
-      console.log('[StripeTerminal] No readers in ref yet, polling...');
+      logger.log('[StripeTerminal] No readers in ref yet, polling...');
       for (let i = 0; i < 10; i++) {
         await new Promise(resolve => setTimeout(resolve, 500));
         // Check ref first (updated by callback), then hook state
         readers = discoveredReadersRef.current.length > 0
           ? discoveredReadersRef.current
           : (hookDiscoveredReaders || []);
-        console.log('[StripeTerminal] Poll attempt', i + 1, '- ref:', discoveredReadersRef.current.length, '- hook:', hookDiscoveredReaders?.length || 0);
+        logger.log('[StripeTerminal] Poll attempt', i + 1, '- ref:', discoveredReadersRef.current.length, '- hook:', hookDiscoveredReaders?.length || 0);
         if (readers.length > 0) {
-          console.log('[StripeTerminal] Found readers after polling!');
+          logger.log('[StripeTerminal] Found readers after polling!');
           break;
         }
       }
     }
 
-    console.log('[StripeTerminal] Final readers found:', readers.length);
+    logger.log('[StripeTerminal] Final readers found:', readers.length);
 
     if (readers.length > 0) {
-      console.log('[StripeTerminal] Reader to connect:', JSON.stringify(readers[0], null, 2));
+      logger.log('[StripeTerminal] Reader to connect:', JSON.stringify(readers[0], null, 2));
     }
 
     if (readers.length === 0) {
-      console.error('[StripeTerminal] No readers found after polling');
+      logger.error('[StripeTerminal] No readers found after polling');
       const errMsg = 'No readers found. Ensure NFC is enabled and device supports Tap to Pay.';
       setError(errMsg);
       setIsConnected(false);
@@ -551,31 +573,31 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     const RETRY_DELAY_MS = 2000;
 
     for (let attempt = 1; attempt <= MAX_CONNECT_RETRIES; attempt++) {
-      console.log('[StripeTerminal] ========== CONNECTING TO READER ==========');
-      console.log('[StripeTerminal] Reader:', readers[0].serialNumber || readers[0].id || 'unknown');
-      console.log('[StripeTerminal] Location ID:', currentLocationId);
-      console.log('[StripeTerminal] Attempt:', attempt, 'of', MAX_CONNECT_RETRIES);
+      logger.log('[StripeTerminal] ========== CONNECTING TO READER ==========');
+      logger.log('[StripeTerminal] Reader:', readers[0].serialNumber || readers[0].id || 'unknown');
+      logger.log('[StripeTerminal] Location ID:', currentLocationId);
+      logger.log('[StripeTerminal] Attempt:', attempt, 'of', MAX_CONNECT_RETRIES);
 
       try {
-        console.log('[StripeTerminal] Calling sdkConnectReader()...');
+        logger.log('[StripeTerminal] Calling sdkConnectReader()...');
         const connectResult = await sdkConnectReader({
           reader: readers[0],
           locationId: currentLocationId,
         }, 'tapToPay');
 
-        console.log('[StripeTerminal] sdkConnectReader() returned');
-        console.log('[StripeTerminal] Connect result:', JSON.stringify(connectResult, null, 2));
+        logger.log('[StripeTerminal] sdkConnectReader() returned');
+        logger.log('[StripeTerminal] Connect result:', JSON.stringify(connectResult, null, 2));
 
         if (connectResult.error) {
-          console.error('[StripeTerminal] Connect error:', connectResult.error);
-          console.error('[StripeTerminal] Error code:', connectResult.error.code);
-          console.error('[StripeTerminal] Error message:', connectResult.error.message);
+          logger.error('[StripeTerminal] Connect error:', connectResult.error);
+          logger.error('[StripeTerminal] Error code:', connectResult.error.code);
+          logger.error('[StripeTerminal] Error message:', connectResult.error.message);
 
           // Check if this is a "No such location" error - can happen with newly created locations
           const isLocationNotFoundError = connectResult.error.message?.includes('No such location');
 
           if (isLocationNotFoundError && attempt < MAX_CONNECT_RETRIES) {
-            console.log(`[StripeTerminal] Location not found, retrying in ${RETRY_DELAY_MS}ms...`);
+            logger.log(`[StripeTerminal] Location not found, retrying in ${RETRY_DELAY_MS}ms...`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
             continue; // Retry
           }
@@ -586,14 +608,14 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
           throw new Error(errMsg);
         }
 
-        console.log('[StripeTerminal] ========== CONNECTED SUCCESSFULLY ==========');
-        console.log('[StripeTerminal] Connected reader:', connectResult.reader?.serialNumber || 'tap-to-pay');
+        logger.log('[StripeTerminal] ========== CONNECTED SUCCESSFULLY ==========');
+        logger.log('[StripeTerminal] Connected reader:', connectResult.reader?.serialNumber || 'tap-to-pay');
 
         // Apple TTPOi Requirement: Check T&C acceptance status from the reader (not cached locally)
         // The SDK retrieves this status from Apple each time
         const connectedReader = connectResult.reader;
-        console.log('[StripeTerminal] Reader accountOnboarded:', connectedReader?.accountOnboarded);
-        console.log('[StripeTerminal] Full reader object:', JSON.stringify(connectedReader, null, 2));
+        logger.log('[StripeTerminal] Reader accountOnboarded:', connectedReader?.accountOnboarded);
+        logger.log('[StripeTerminal] Full reader object:', JSON.stringify(connectedReader, null, 2));
 
         // Update T&C acceptance status based on reader's accountOnboarded property
         // accountOnboarded is true when the merchant has accepted Apple's Tap to Pay T&C
@@ -606,21 +628,21 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
               ? null
               : 'Please accept the Tap to Pay Terms & Conditions to start accepting payments. The acceptance screen will appear when you attempt your first payment.',
           });
-          console.log('[StripeTerminal] T&C acceptance status:', isOnboarded ? 'Accepted' : 'Not yet accepted');
+          logger.log('[StripeTerminal] T&C acceptance status:', isOnboarded ? 'Accepted' : 'Not yet accepted');
         }
 
         setIsConnected(true);
         return true;
       } catch (connectErr: any) {
-        console.error('[StripeTerminal] ========== CONNECTION EXCEPTION ==========');
-        console.error('[StripeTerminal] Exception:', connectErr);
-        console.error('[StripeTerminal] Message:', connectErr.message);
-        console.error('[StripeTerminal] Code:', connectErr.code);
+        logger.error('[StripeTerminal] ========== CONNECTION EXCEPTION ==========');
+        logger.error('[StripeTerminal] Exception:', connectErr);
+        logger.error('[StripeTerminal] Message:', connectErr.message);
+        logger.error('[StripeTerminal] Code:', connectErr.code);
 
         // Check if this is a "No such location" error - retry if we haven't exhausted attempts
         const isLocationNotFoundError = connectErr.message?.includes('No such location');
         if (isLocationNotFoundError && attempt < MAX_CONNECT_RETRIES) {
-          console.log(`[StripeTerminal] Location not found (exception), retrying in ${RETRY_DELAY_MS}ms...`);
+          logger.log(`[StripeTerminal] Location not found (exception), retrying in ${RETRY_DELAY_MS}ms...`);
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
           continue; // Retry
         }
@@ -634,60 +656,60 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   }, [discoverReaders, sdkConnectReader, locationId, hookDiscoveredReaders, isConnected]);
 
   const processPayment = useCallback(async (paymentIntentId: string) => {
-    console.log('[StripeTerminal] ========== PROCESS PAYMENT START ==========');
-    console.log('[StripeTerminal] PaymentIntent ID:', paymentIntentId);
+    logger.log('[StripeTerminal] ========== PROCESS PAYMENT START ==========');
+    logger.log('[StripeTerminal] PaymentIntent ID:', paymentIntentId);
 
     try {
       setIsProcessing(true);
       setError(null);
 
       // Step 1: Retrieve the payment intent
-      console.log('[StripeTerminal] Step 1: Retrieving payment intent...');
+      logger.log('[StripeTerminal] Step 1: Retrieving payment intent...');
       const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(paymentIntentId);
 
       if (retrieveError) {
-        console.error('[StripeTerminal] Retrieve error:', retrieveError);
+        logger.error('[StripeTerminal] Retrieve error:', retrieveError);
         throw new Error(retrieveError.message || 'Failed to retrieve payment intent');
       }
 
-      console.log('[StripeTerminal] Payment intent retrieved successfully');
-      console.log('[StripeTerminal] Amount:', paymentIntent?.amount);
-      console.log('[StripeTerminal] Status:', paymentIntent?.status);
+      logger.log('[StripeTerminal] Payment intent retrieved successfully');
+      logger.log('[StripeTerminal] Amount:', paymentIntent?.amount);
+      logger.log('[StripeTerminal] Status:', paymentIntent?.status);
 
       // Step 2: Collect payment method (shows Tap to Pay UI)
-      console.log('[StripeTerminal] Step 2: Collecting payment method (Tap to Pay UI)...');
+      logger.log('[StripeTerminal] Step 2: Collecting payment method (Tap to Pay UI)...');
       const { paymentIntent: collectedIntent, error: collectError } = await collectPaymentMethod({
         paymentIntent,
       });
 
       if (collectError) {
-        console.error('[StripeTerminal] Collect error:', collectError);
+        logger.error('[StripeTerminal] Collect error:', collectError);
         throw new Error(collectError.message || 'Failed to collect payment method');
       }
 
-      console.log('[StripeTerminal] Payment method collected successfully');
+      logger.log('[StripeTerminal] Payment method collected successfully');
 
       // Step 3: Confirm the payment
-      console.log('[StripeTerminal] Step 3: Confirming payment...');
+      logger.log('[StripeTerminal] Step 3: Confirming payment...');
       const { paymentIntent: confirmedIntent, error: confirmError } = await confirmPaymentIntent({
         paymentIntent: collectedIntent,
       });
 
       if (confirmError) {
-        console.error('[StripeTerminal] Confirm error:', confirmError);
+        logger.error('[StripeTerminal] Confirm error:', confirmError);
         throw new Error(confirmError.message || 'Failed to confirm payment');
       }
 
-      console.log('[StripeTerminal] ========== PAYMENT SUCCESS ==========');
-      console.log('[StripeTerminal] Final status:', confirmedIntent?.status);
+      logger.log('[StripeTerminal] ========== PAYMENT SUCCESS ==========');
+      logger.log('[StripeTerminal] Final status:', confirmedIntent?.status);
 
       return {
         status: confirmedIntent?.status || 'unknown',
         paymentIntent: confirmedIntent,
       };
     } catch (err: any) {
-      console.error('[StripeTerminal] ========== PAYMENT FAILED ==========');
-      console.error('[StripeTerminal] Error:', err.message);
+      logger.error('[StripeTerminal] ========== PAYMENT FAILED ==========');
+      logger.error('[StripeTerminal] Error:', err.message);
       setError(err.message || 'Payment failed');
       throw err;
     } finally {
@@ -697,11 +719,11 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
   const cancelPayment = useCallback(async () => {
     try {
-      console.log('[StripeTerminal] Cancelling payment...');
+      logger.log('[StripeTerminal] Cancelling payment...');
       await cancelCollectPaymentMethod();
-      console.log('[StripeTerminal] Payment cancelled');
+      logger.log('[StripeTerminal] Payment cancelled');
     } catch (err: any) {
-      console.warn('[StripeTerminal] Cancel failed:', err);
+      logger.warn('[StripeTerminal] Cancel failed:', err);
       // Don't throw - cancellation errors are not critical
     }
   }, [cancelCollectPaymentMethod]);
@@ -715,6 +737,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     deviceCompatibility,
     configurationStage,
     configurationProgress,
+    readerUpdateProgress,
     termsAcceptance,
     initializeTerminal,
     connectReader,
@@ -733,13 +756,13 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
 // Token provider function for StripeTerminalProvider
 async function fetchConnectionToken(): Promise<string> {
-  console.log('[StripeTerminal] Fetching connection token...');
+  logger.log('[StripeTerminal] Fetching connection token...');
   try {
     const { secret } = await stripeTerminalApi.getConnectionToken();
-    console.log('[StripeTerminal] Connection token received');
+    logger.log('[StripeTerminal] Connection token received');
     return secret;
   } catch (error: any) {
-    console.error('[StripeTerminal] Failed to get connection token:', error);
+    logger.error('[StripeTerminal] Failed to get connection token:', error);
 
     // Check for common error conditions and provide clearer messages
     const errorMessage = error?.message?.toLowerCase() || '';
@@ -791,6 +814,7 @@ export function StripeTerminalContextProvider({ children }: { children: React.Re
       },
       configurationStage: 'error',
       configurationProgress: 0,
+      readerUpdateProgress: null,
       termsAcceptance: {
         accepted: false,
         checked: false,

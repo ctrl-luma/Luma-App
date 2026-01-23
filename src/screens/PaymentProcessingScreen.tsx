@@ -40,6 +40,7 @@ export function PaymentProcessingScreen() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [statusText, setStatusText] = useState('Preparing payment...');
   const [isSimulating, setIsSimulating] = useState(false);
+  const isCancelledRef = React.useRef(false);
 
   useEffect(() => {
     processPayment();
@@ -85,7 +86,18 @@ export function PaymentProcessingScreen() {
         throw new Error(`Payment status: ${result.status}`);
       }
     } catch (error: any) {
-      const errorMessage = error.message || 'Payment failed';
+      // If user cancelled, don't show error screen - they already navigated away
+      if (isCancelledRef.current) {
+        return;
+      }
+
+      let errorMessage = error.message || 'Payment failed';
+
+      // Transform SDK error messages to be more user-friendly
+      if (errorMessage.toLowerCase().includes('command was canceled') ||
+          errorMessage.toLowerCase().includes('command was cancelled')) {
+        errorMessage = 'The transaction was canceled.';
+      }
 
       navigation.replace('PaymentResult', {
         success: false,
@@ -100,14 +112,15 @@ export function PaymentProcessingScreen() {
   };
 
   const handleCancel = async () => {
+    isCancelledRef.current = true;
     setIsCancelling(true);
-    try {
-      await cancelPayment();
-      await stripeTerminalApi.cancelPaymentIntent(paymentIntentId);
-    } catch (e) {
-      // Ignore
-    }
+
+    // Navigate immediately for better UX - don't wait for cleanup
     navigation.goBack();
+
+    // Cleanup in background (fire and forget)
+    cancelPayment().catch(() => {});
+    stripeTerminalApi.cancelPaymentIntent(paymentIntentId).catch(() => {});
   };
 
   const handleDevSkip = async () => {
