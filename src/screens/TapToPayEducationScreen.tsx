@@ -184,6 +184,11 @@ export function TapToPayEducationScreen() {
     error: terminalError,
   } = useTerminal();
 
+  // Android doesn't require the enable flow (no Apple ToS acceptance needed)
+  // Skip directly to education slides on Android
+  const isAndroid = Platform.OS === 'android';
+  const showEnableSlide = !isAndroid;
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isEnabling, setIsEnabling] = useState(false);
   const [enableError, setEnableError] = useState<string | null>(null);
@@ -278,13 +283,13 @@ export function TapToPayEducationScreen() {
   };
 
   const handleNext = () => {
-    // On enable slide, trigger enable flow
-    if (currentSlide === 0 && !isEnabled && !isConnected) {
+    // On enable slide (iOS only), trigger enable flow
+    if (isOnEnableSlide && !isEnabled && !isConnected) {
       handleEnable();
       return;
     }
 
-    if (currentSlide < EDUCATION_SLIDES.length) {
+    if (currentSlide < totalSlides - 1) {
       goToSlide(currentSlide + 1);
     } else {
       // User completed education - mark as seen so it doesn't show again
@@ -299,9 +304,9 @@ export function TapToPayEducationScreen() {
     navigation.goBack();
   };
 
-  // Total slides = 1 (enable) + education slides
-  const totalSlides = EDUCATION_SLIDES.length + 1;
-  const isOnEnableSlide = currentSlide === 0;
+  // Total slides = 1 (enable, iOS only) + education slides
+  const totalSlides = showEnableSlide ? EDUCATION_SLIDES.length + 1 : EDUCATION_SLIDES.length;
+  const isOnEnableSlide = showEnableSlide && currentSlide === 0;
   const isLastSlide = currentSlide === totalSlides - 1;
 
   const openStripeHelp = () => {
@@ -323,7 +328,8 @@ export function TapToPayEducationScreen() {
   };
 
   // Determine if we should disable scrolling on enable slide until enabled
-  const canScrollPastEnable = isEnabled || isConnected;
+  // On Android, no enable slide so always allow scrolling
+  const canScrollPastEnable = !showEnableSlide || isEnabled || isConnected;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -351,7 +357,8 @@ export function TapToPayEducationScreen() {
         scrollEnabled={canScrollPastEnable || currentSlide > 0}
         style={styles.slidesContainer}
       >
-        {/* Enable Slide (First) */}
+        {/* Enable Slide (First, iOS only) */}
+        {showEnableSlide && (
         <View style={styles.slide}>
           <ScrollView
             showsVerticalScrollIndicator={false}
@@ -449,6 +456,7 @@ export function TapToPayEducationScreen() {
             )}
           </ScrollView>
         </View>
+        )}
 
         {/* Education Slides */}
         {EDUCATION_SLIDES.map((slide) => (
@@ -513,8 +521,8 @@ export function TapToPayEducationScreen() {
               styles.paginationDot,
               currentSlide === index && styles.paginationDotActive,
             ]}
-            onPress={() => (index === 0 || canScrollPastEnable) && goToSlide(index)}
-            disabled={index > 0 && !canScrollPastEnable}
+            onPress={() => canScrollPastEnable && goToSlide(index)}
+            disabled={!canScrollPastEnable && index > 0}
           />
         ))}
       </View>
