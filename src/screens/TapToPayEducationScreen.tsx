@@ -233,14 +233,24 @@ export function TapToPayEducationScreen() {
     } catch (err: any) {
       logger.error('[TapToPayEducation] Enable failed:', err);
       const errorMsg = err.message?.toLowerCase() || '';
+      const errorCode = err.code?.toLowerCase() || '';
 
-      // Check if this is a Stripe Connect setup error
+      // Check for ToS cancellation first (user declined Apple's Terms of Service)
       if (
+        errorCode.includes('tosacceptancecanceled') ||
+        errorMsg.includes('terms of service') ||
+        errorMsg.includes('tos acceptance')
+      ) {
+        // User cancelled ToS - this is not a setup error, just needs retry
+        setEnableError('You must accept the Terms of Service to use Tap to Pay. Please try again.');
+      }
+      // Check if this is a Stripe Connect setup error
+      else if (
         errorMsg.includes('connection token') ||
         errorMsg.includes('tokenprovider') ||
         errorMsg.includes('payment processing is not set up') ||
-        errorMsg.includes('connect') ||
-        errorMsg.includes('not found') ||
+        errorMsg.includes('stripe connect') ||
+        errorMsg.includes('connected account') ||
         errorMsg.includes('no connected account')
       ) {
         setIsConnectSetupError(true);
