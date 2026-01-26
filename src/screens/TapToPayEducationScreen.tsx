@@ -28,6 +28,9 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useAuth } from '../context/AuthContext';
+import { useTapToPayEducation } from '../hooks/useTapToPayEducation';
+
 import { useTheme } from '../context/ThemeContext';
 import { useTerminal, ConfigurationStage } from '../context/StripeTerminalContext';
 import { glass } from '../lib/colors';
@@ -163,6 +166,12 @@ export function TapToPayEducationScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const scrollViewRef = useRef<ScrollView>(null);
 
+  // Auth context for user ID
+  const { user } = useAuth();
+
+  // Education tracking - mark as seen when user completes this screen
+  const { markEducationSeen } = useTapToPayEducation(user?.id);
+
   // Terminal context for enabling Tap to Pay
   const {
     deviceCompatibility,
@@ -268,11 +277,15 @@ export function TapToPayEducationScreen() {
     if (currentSlide < EDUCATION_SLIDES.length) {
       goToSlide(currentSlide + 1);
     } else {
+      // User completed education - mark as seen so it doesn't show again
+      markEducationSeen();
       navigation.goBack();
     }
   };
 
   const handleSkip = () => {
+    // User skipped education - still mark as seen so it doesn't show again
+    markEducationSeen();
     navigation.goBack();
   };
 
@@ -330,143 +343,153 @@ export function TapToPayEducationScreen() {
       >
         {/* Enable Slide (First) */}
         <View style={styles.slide}>
-          {isEnabling ? (
-            /* Configuration Progress State - Apple TTPOi 3.9.1 */
-            <>
-              <View style={styles.progressIconContainer}>
-                <View style={styles.progressRing}>
-                  <ActivityIndicator size="large" color={colors.primary} />
-                </View>
-              </View>
-              <Text style={styles.progressPercent}>{Math.round(configurationProgress)}%</Text>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBarFill, { width: `${configurationProgress}%` }]}>
-                  <LinearGradient
-                    colors={[colors.primary, colors.primary500]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                </View>
-              </View>
-              <Text style={styles.slideTitle}>Setting Up</Text>
-              <Text style={styles.stageText}>
-                {STAGE_MESSAGES[configurationStage] || 'Please wait...'}
-              </Text>
-              {configurationStage === 'connecting_reader' && (
-                <Text style={styles.hintText}>
-                  You may be prompted to accept Terms & Conditions
-                </Text>
-              )}
-            </>
-          ) : isEnabled || isConnected ? (
-            /* Success State */
-            <>
-              <View style={styles.successIconContainer}>
-                <Ionicons name="checkmark-circle" size={80} color={colors.success} />
-              </View>
-              <Text style={styles.slideTitle}>You're All Set!</Text>
-              <Text style={styles.slideDescription}>
-                {TAP_TO_PAY_NAME} is now enabled. Let's show you how it works.
-              </Text>
-            </>
-          ) : (
-            /* Initial Enable State */
-            <>
-              <View style={styles.iconContainer}>
-                <LinearGradient
-                  colors={[colors.primary, colors.primary700]}
-                  style={styles.iconGradient}
-                >
-                  <Ionicons name="wifi" size={64} color="#fff" style={styles.nfcIcon} />
-                </LinearGradient>
-              </View>
-              <Text style={styles.slideTitle}>Enable {TAP_TO_PAY_NAME}</Text>
-              <Text style={styles.slideDescription}>
-                Turn your device into a payment terminal. Accept contactless cards and digital wallets instantly.
-              </Text>
-
-              {/* Features list */}
-              <View style={styles.tipsContainer}>
-                {[
-                  { icon: 'shield-checkmark', text: 'Secure & encrypted payments' },
-                  { icon: 'card', text: 'All major cards & wallets' },
-                  { icon: 'flash', text: 'No extra hardware needed' },
-                ].map((feature, index) => (
-                  <View key={index} style={styles.tipRow}>
-                    <View style={styles.featureIconBg}>
-                      <Ionicons name={feature.icon as any} size={16} color={colors.primary} />
-                    </View>
-                    <Text style={styles.tipText}>{feature.text}</Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.slideScrollContent}
+          >
+            {isEnabling ? (
+              /* Configuration Progress State - Apple TTPOi 3.9.1 */
+              <>
+                <View style={styles.progressIconContainer}>
+                  <View style={styles.progressRing}>
+                    <ActivityIndicator size="large" color={colors.primary} />
                   </View>
-                ))}
-              </View>
-
-              {/* Error message */}
-              {(enableError || terminalError) && (
-                <View style={styles.errorContainer}>
-                  <Ionicons name="alert-circle" size={18} color={colors.error} />
-                  <Text style={styles.errorText}>{enableError || terminalError}</Text>
-                  {isConnectSetupError && (
-                    <TouchableOpacity
-                      style={styles.setupPaymentsButton}
-                      onPress={handleGoToPaymentSetup}
-                    >
-                      <Ionicons name="card-outline" size={18} color="#fff" />
-                      <Text style={styles.setupPaymentsButtonText}>Set Up Payments</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
-              )}
-            </>
-          )}
+                <Text style={styles.progressPercent}>{Math.round(configurationProgress)}%</Text>
+                <View style={styles.progressBarContainer}>
+                  <View style={[styles.progressBarFill, { width: `${configurationProgress}%` }]}>
+                    <LinearGradient
+                      colors={[colors.primary, colors.primary500]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.slideTitle}>Setting Up</Text>
+                <Text style={styles.stageText}>
+                  {STAGE_MESSAGES[configurationStage] || 'Please wait...'}
+                </Text>
+                {configurationStage === 'connecting_reader' && (
+                  <Text style={styles.hintText}>
+                    You may be prompted to accept Terms & Conditions
+                  </Text>
+                )}
+              </>
+            ) : isEnabled || isConnected ? (
+              /* Success State */
+              <>
+                <View style={styles.successIconContainer}>
+                  <Ionicons name="checkmark-circle" size={80} color={colors.success} />
+                </View>
+                <Text style={styles.slideTitle}>You're All Set!</Text>
+                <Text style={styles.slideDescription}>
+                  {TAP_TO_PAY_NAME} is now enabled. Let's show you how it works.
+                </Text>
+              </>
+            ) : (
+              /* Initial Enable State */
+              <>
+                <View style={styles.iconContainer}>
+                  <LinearGradient
+                    colors={[colors.primary, colors.primary700]}
+                    style={styles.iconGradient}
+                  >
+                    <Ionicons name="wifi" size={64} color="#fff" style={styles.nfcIcon} />
+                  </LinearGradient>
+                </View>
+                <Text style={styles.slideTitle}>Enable {TAP_TO_PAY_NAME}</Text>
+                <Text style={styles.slideDescription}>
+                  Turn your device into a payment terminal. Accept contactless cards and digital wallets instantly.
+                </Text>
+
+                {/* Features list */}
+                <View style={styles.tipsContainer}>
+                  {[
+                    { icon: 'shield-checkmark', text: 'Secure & encrypted payments' },
+                    { icon: 'card', text: 'All major cards & wallets' },
+                    { icon: 'flash', text: 'No extra hardware needed' },
+                  ].map((feature, index) => (
+                    <View key={index} style={styles.tipRow}>
+                      <View style={styles.featureIconBg}>
+                        <Ionicons name={feature.icon as any} size={16} color={colors.primary} />
+                      </View>
+                      <Text style={styles.tipText}>{feature.text}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Error message */}
+                {(enableError || terminalError) && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={18} color={colors.error} />
+                    <Text style={styles.errorText}>{enableError || terminalError}</Text>
+                    {isConnectSetupError && (
+                      <TouchableOpacity
+                        style={styles.setupPaymentsButton}
+                        onPress={handleGoToPaymentSetup}
+                      >
+                        <Ionicons name="card-outline" size={18} color="#fff" />
+                        <Text style={styles.setupPaymentsButtonText}>Set Up Payments</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              </>
+            )}
+          </ScrollView>
         </View>
 
         {/* Education Slides */}
         {EDUCATION_SLIDES.map((slide) => (
           <View key={slide.id} style={styles.slide}>
-            {/* Icon */}
-            <View style={styles.iconContainer}>
-              <LinearGradient
-                colors={[colors.primary, colors.primary700]}
-                style={styles.iconGradient}
-              >
-                <Ionicons name={slide.icon} size={64} color="#fff" />
-              </LinearGradient>
-            </View>
-
-            {/* Content */}
-            <Text style={styles.slideTitle}>{slide.title}</Text>
-            <Text style={styles.slideDescription}>{slide.description}</Text>
-
-            {/* Tips */}
-            {slide.tips && (
-              <View style={styles.tipsContainer}>
-                {slide.tips.map((tip, tipIndex) => (
-                  <View key={tipIndex} style={styles.tipRow}>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                    <Text style={styles.tipText}>{tip}</Text>
-                  </View>
-                ))}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.slideScrollContent}
+            >
+              {/* Icon */}
+              <View style={styles.iconContainer}>
+                <LinearGradient
+                  colors={[colors.primary, colors.primary700]}
+                  style={styles.iconGradient}
+                >
+                  <Ionicons name={slide.icon} size={64} color="#fff" />
+                </LinearGradient>
               </View>
-            )}
 
-            {/* Help link on help slide */}
-            {slide.id === 'help' && (
-              <TouchableOpacity style={styles.helpLink} onPress={openStripeHelp}>
-                <Ionicons name="open-outline" size={18} color={colors.primary} />
-                <Text style={styles.helpLinkText}>Visit Stripe Help Center</Text>
-              </TouchableOpacity>
-            )}
+              {/* Content */}
+              <Text style={styles.slideTitle}>{slide.title}</Text>
+              <Text style={styles.slideDescription}>{slide.description}</Text>
 
-            {/* Vendor Portal link on portal slide */}
-            {slide.id === 'portal' && (
-              <TouchableOpacity style={styles.portalLink} onPress={openVendorPortal}>
-                <Ionicons name="laptop-outline" size={20} color="#fff" />
-                <Text style={styles.portalLinkText}>Open Vendor Portal</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </TouchableOpacity>
-            )}
+              {/* Tips */}
+              {slide.tips && (
+                <View style={styles.tipsContainer}>
+                  {slide.tips.map((tip, tipIndex) => (
+                    <View key={tipIndex} style={styles.tipRow}>
+                      <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                      <Text style={styles.tipText}>{tip}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Help link on help slide */}
+              {slide.id === 'help' && (
+                <TouchableOpacity style={styles.helpLink} onPress={openStripeHelp}>
+                  <Ionicons name="open-outline" size={18} color={colors.primary} />
+                  <Text style={styles.helpLinkText}>Visit Stripe Help Center</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Vendor Portal link on portal slide */}
+              {slide.id === 'portal' && (
+                <TouchableOpacity style={styles.portalLink} onPress={openVendorPortal}>
+                  <Ionicons name="laptop-outline" size={20} color="#fff" />
+                  <Text style={styles.portalLinkText}>Open Vendor Portal</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </ScrollView>
           </View>
         ))}
       </ScrollView>
@@ -564,8 +587,12 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     slide: {
       width: SCREEN_WIDTH,
+      flex: 1,
+    },
+    slideScrollContent: {
       paddingHorizontal: 32,
       paddingTop: 40,
+      paddingBottom: 40,
       alignItems: 'center',
     },
     iconContainer: {

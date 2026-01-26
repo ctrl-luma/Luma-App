@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '../context/AuthContext';
@@ -45,7 +46,7 @@ export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { user, organization, subscription, signOut, connectStatus, isPaymentReady, refreshAuth } = useAuth();
+  const { user, organization, subscription, signOut, connectStatus, connectLoading, isPaymentReady, refreshAuth } = useAuth();
   const { selectedCatalog, clearCatalog } = useCatalog();
   const {
     deviceCompatibility,
@@ -276,35 +277,41 @@ export function SettingsScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.contentContainer}>
-        {/* Appearance Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Appearance</Text>
-          <View style={styles.card}>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons
-                    name={isDark ? 'moon' : 'sunny'}
-                    size={18}
-                    color={colors.primary}
-                  />
+        {/* 1. Vendor Portal - Featured section for owners/admins */}
+        {(user?.role === 'owner' || user?.role === 'admin') && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.vendorPortalCard}
+              onPress={handleOpenVendorPortal}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.primary, colors.primary700 || '#4338ca']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.vendorPortalGradient}
+              >
+                <View style={styles.vendorPortalContent}>
+                  <View style={styles.vendorPortalIcon}>
+                    <Ionicons name="storefront" size={24} color="#fff" />
+                  </View>
+                  <View style={styles.vendorPortalText}>
+                    <Text style={styles.vendorPortalTitle}>Vendor Portal</Text>
+                    <Text style={styles.vendorPortalSubtitle}>Manage products, catalogs & reports</Text>
+                  </View>
                 </View>
-                <Text style={styles.label}>Dark Mode</Text>
-              </View>
-              <Toggle
-                value={isDark}
-                onValueChange={toggleTheme}
-              />
-            </View>
+                <View style={styles.vendorPortalArrow}>
+                  <Ionicons name="arrow-forward" size={20} color="rgba(255,255,255,0.8)" />
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
 
-        {/* Catalog Section */}
+        {/* 2. Catalog Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Catalog</Text>
-
           <View style={styles.card}>
-            {/* Active Catalog */}
             <View style={styles.activeCatalogRow}>
               <View style={styles.activeCatalogInfo}>
                 <View style={styles.activeCatalogBadge}>
@@ -323,162 +330,156 @@ export function SettingsScreen() {
                 <Text style={styles.switchButtonText}>Switch</Text>
               </TouchableOpacity>
             </View>
-
-            <View style={styles.divider} />
-
-            {/* Payment Settings - for selected catalog */}
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => navigation.navigate('TapToPaySettings')}
-            >
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="card-outline" size={18} color={colors.primary} />
-                </View>
-                <Text style={styles.label}>Payment Settings</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Subscription Section */}
+        {/* 3. Business Section - Subscription + Banking combined */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Subscription</Text>
+          <Text style={styles.sectionTitle}>Business</Text>
           <View style={styles.card}>
-            {/* Current Plan - prefer API response (fresh) over AuthContext (may be stale) */}
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="diamond-outline" size={18} color={colors.primary} />
-                </View>
-                <View style={styles.labelContainer}>
+            {/* Subscription Plan */}
+            {!isPro ? (
+              <TouchableOpacity
+                style={styles.row}
+                onPress={() => {
+                  if (Platform.OS === 'web' || isStripePlatformUser) {
+                    createVendorDashboardUrl('/billing').then(url => {
+                      if (url) {
+                        Linking.openURL(url);
+                      } else {
+                        Linking.openURL(`${config.vendorDashboardUrl}/billing`);
+                      }
+                    });
+                  } else {
+                    navigation.navigate('Upgrade');
+                  }
+                }}
+              >
+                <View style={styles.rowLeft}>
+                  <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+                    <Ionicons name="diamond-outline" size={18} color={colors.primary} />
+                  </View>
                   <Text style={styles.label}>
-                    {tier === 'pro' ? 'Pro Plan' :
-                     tier === 'enterprise' ? 'Enterprise Plan' :
-                     subscriptionInfo?.current_plan?.name || 'Starter Plan'}
+                    {subscriptionInfo?.current_plan?.name || 'Starter Plan'}
                   </Text>
-                  {isPro && subscriptionInfo?.current_plan?.price ? (
-                    <Text style={styles.sublabel}>
-                      ${(subscriptionInfo.current_plan.price / 100).toFixed(2)}/month
+                </View>
+                <View style={styles.upgradeButton}>
+                  <Ionicons name="rocket" size={14} color="#fff" />
+                  <Text style={styles.upgradeButtonText}>Upgrade</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.row}>
+                <View style={styles.rowLeft}>
+                  <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+                    <Ionicons name="diamond" size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.labelContainer}>
+                    <Text style={styles.label}>
+                      {tier === 'pro' ? 'Pro Plan' :
+                       tier === 'enterprise' ? 'Enterprise Plan' :
+                       subscriptionInfo?.current_plan?.name || 'Starter Plan'}
                     </Text>
-                  ) : null}
+                    {subscriptionInfo?.current_plan?.price ? (
+                      <Text style={styles.sublabel}>
+                        ${(subscriptionInfo.current_plan.price / 100).toFixed(2)}/month
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
-              {isPro && subscriptionLoading ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <View style={[
-                  styles.statusBadgeSuccess,
-                  status === 'past_due' && styles.statusBadgeError,
-                  subscriptionInfo?.cancel_at && styles.statusBadgeWarning,
-                ]}>
-                  <Ionicons
-                    name={
-                      status === 'past_due' ? 'warning' :
-                      subscriptionInfo?.cancel_at ? 'time-outline' : 'checkmark-circle'
-                    }
-                    size={14}
-                    color={
-                      status === 'past_due' ? colors.error :
-                      subscriptionInfo?.cancel_at ? colors.warning : colors.success
-                    }
-                  />
-                  <Text style={[
-                    styles.statusBadgeText,
-                    {
-                      color: status === 'past_due' ? colors.error :
-                        subscriptionInfo?.cancel_at ? colors.warning : colors.success
-                    }
+                {subscriptionLoading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <View style={[
+                    styles.statusBadgeSuccess,
+                    status === 'past_due' && styles.statusBadgeError,
+                    subscriptionInfo?.cancel_at && styles.statusBadgeWarning,
                   ]}>
-                    {getSubscriptionStatusText()}
-                  </Text>
-                </View>
-              )}
-            </View>
+                    <Ionicons
+                      name={
+                        status === 'past_due' ? 'warning' :
+                        subscriptionInfo?.cancel_at ? 'time-outline' : 'checkmark-circle'
+                      }
+                      size={14}
+                      color={
+                        status === 'past_due' ? colors.error :
+                        subscriptionInfo?.cancel_at ? colors.warning : colors.success
+                      }
+                    />
+                    <Text style={[
+                      styles.statusBadgeText,
+                      {
+                        color: status === 'past_due' ? colors.error :
+                          subscriptionInfo?.cancel_at ? colors.warning : colors.success
+                      }
+                    ]}>
+                      {getSubscriptionStatusText()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
 
-            {/* Manage Subscription - Only show for Pro/Enterprise users with active subscription */}
+            {/* Manage Subscription - for Pro users */}
             {isPro && subscriptionInfo && subscriptionInfo.status !== 'none' && (
               <>
                 <View style={styles.divider} />
-                <TouchableOpacity
-                  style={styles.row}
-                  onPress={handleManageSubscription}
-                >
+                <TouchableOpacity style={styles.row} onPress={handleManageSubscription}>
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
                       <Ionicons name={getSubscriptionPlatformIcon() as any} size={18} color={colors.textSecondary} />
                     </View>
-                    <View style={styles.labelContainer}>
-                      <Text style={styles.label}>Manage Subscription</Text>
-                      <Text style={styles.sublabel}>
-                        {subscriptionInfo?.platform === 'stripe'
-                          ? 'Open billing portal'
-                          : `Manage via ${getSubscriptionPlatformName()}`
-                        }
-                      </Text>
-                    </View>
+                    <Text style={styles.label}>Manage Subscription</Text>
                   </View>
                   <Ionicons name="open-outline" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
               </>
             )}
 
-            {/* Upgrade prompt for free users */}
-            {/* Stripe platform users are directed to vendor portal, others use in-app purchase */}
-            {/* Only show if NOT Pro (checks both AuthContext and API response) */}
-            {!isPro && (
+            {/* Banking - for owners/admins */}
+            {(user?.role === 'owner' || user?.role === 'admin') && (
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.row}
-                  onPress={() => {
-                    // Stripe platform users must upgrade via vendor portal (website signups are locked to Stripe)
-                    // Other users (app signups) can use in-app purchase
-                    if (Platform.OS === 'web' || isStripePlatformUser) {
-                      createVendorDashboardUrl('/billing').then(url => {
-                        if (url) {
-                          Linking.openURL(url);
-                        } else {
-                          Linking.openURL(`${config.vendorDashboardUrl}/billing`);
-                        }
-                      });
-                    } else {
-                      navigation.navigate('Upgrade');
-                    }
-                  }}
+                  onPress={() => navigation.navigate('StripeOnboarding', { returnTo: 'settings' })}
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                      <Ionicons name="rocket-outline" size={18} color={colors.primary} />
+                      <Ionicons name="business-outline" size={18} color={colors.primary} />
                     </View>
                     <View style={styles.labelContainer}>
-                      <Text style={styles.label}>Upgrade to Pro</Text>
-                      <Text style={styles.sublabel}>
-                        {Platform.OS === 'web' || isStripePlatformUser
-                          ? 'Upgrade on the vendor portal'
-                          : 'Unlock all Pro features'}
-                      </Text>
+                      <Text style={styles.label}>Banking</Text>
+                      {connectLoading ? (
+                        <Text style={styles.sublabel}>Loading...</Text>
+                      ) : connectStatus?.chargesEnabled ? (
+                        <Text style={styles.sublabel}>Payments & payouts active</Text>
+                      ) : (
+                        <Text style={styles.sublabel}>Setup required</Text>
+                      )}
                     </View>
                   </View>
-                  <Ionicons
-                    name={Platform.OS === 'web' || isStripePlatformUser ? 'open-outline' : 'chevron-forward'}
-                    size={18}
-                    color={colors.textMuted}
-                  />
+                  {connectLoading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : connectStatus?.chargesEnabled ? (
+                    <View style={styles.statusBadgeSuccess}>
+                      <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                      <Text style={[styles.statusBadgeText, { color: colors.success }]}>Active</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.statusBadgeWarning}>
+                      <Ionicons name="alert-circle" size={14} color={colors.warning} />
+                      <Text style={[styles.statusBadgeText, { color: colors.warning }]}>Setup</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </>
             )}
-          </View>
-        </View>
 
-        {/* Management Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Management</Text>
-          <View style={styles.card}>
-            {/* Payment Setup - Show when charges not enabled */}
-            {connectStatus && !connectStatus.chargesEnabled && (
+            {/* Payment Setup - for non-admins when not enabled */}
+            {connectStatus && !connectStatus.chargesEnabled && user?.role !== 'owner' && user?.role !== 'admin' && (
               <>
+                <View style={styles.divider} />
                 <TouchableOpacity
                   style={styles.row}
                   onPress={() => navigation.navigate('StripeOnboarding', { returnTo: 'settings' })}
@@ -488,28 +489,18 @@ export function SettingsScreen() {
                       <Ionicons name="card-outline" size={18} color={colors.warning} />
                     </View>
                     <View style={styles.labelContainer}>
-                      <Text style={styles.label}>Complete Payment Setup</Text>
+                      <Text style={styles.label}>Payment Setup</Text>
                       <Text style={styles.sublabel}>Required to accept payments</Text>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
-                <View style={styles.divider} />
               </>
             )}
-            <TouchableOpacity style={styles.row} onPress={handleOpenVendorPortal}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="storefront" size={18} color={colors.primary} />
-                </View>
-                <Text style={styles.label}>Open Vendor Portal</Text>
-              </View>
-              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Account Section */}
+        {/* 4. Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.card}>
@@ -528,13 +519,13 @@ export function SettingsScreen() {
             <View style={styles.divider} />
 
             <View style={styles.row}>
-              <View style={styles.rowLeft}>
+              <View style={styles.rowLeftCompact}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
                   <Ionicons name="mail" size={18} color={colors.textSecondary} />
                 </View>
                 <Text style={styles.label}>Email</Text>
               </View>
-              <Text style={styles.value} numberOfLines={1}>
+              <Text style={styles.valueWide} numberOfLines={1}>
                 {user?.email}
               </Text>
             </View>
@@ -551,7 +542,7 @@ export function SettingsScreen() {
               <Text style={styles.value}>{organization?.name}</Text>
             </View>
 
-            {/* Biometric Login Toggle - Only show if device supports biometrics */}
+            {/* Biometric Login */}
             {biometricCapabilities?.isAvailable && (
               <>
                 <View style={styles.divider} />
@@ -568,10 +559,7 @@ export function SettingsScreen() {
                         color={colors.primary}
                       />
                     </View>
-                    <View style={styles.labelContainer}>
-                      <Text style={styles.label}>{biometricCapabilities.biometricName} Login</Text>
-                      <Text style={styles.sublabel}>Sign in faster using {biometricCapabilities.biometricName}</Text>
-                    </View>
+                    <Text style={styles.label}>{biometricCapabilities.biometricName}</Text>
                   </View>
                   {biometricLoading ? (
                     <ActivityIndicator size="small" color={colors.primary} />
@@ -587,138 +575,81 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Tap to Pay Section - Apple TTPOi 3.6 */}
+        {/* 5. Device Section - Simplified Tap to Pay */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{TAP_TO_PAY_NAME}</Text>
+          <Text style={styles.sectionTitle}>Device</Text>
           <View style={styles.card}>
-            {/* Device Status */}
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="phone-portrait-outline" size={18} color={colors.primary} />
-                </View>
-                <Text style={styles.label}>Device Status</Text>
-              </View>
-              {Platform.OS === 'web' ? (
-                <View style={styles.statusBadgeMuted}>
-                  <Ionicons name="desktop-outline" size={14} color={colors.textMuted} />
-                  <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>Not Available</Text>
-                </View>
-              ) : Platform.OS === 'ios' ? (
-                deviceCompatibility.isCompatible ? (
-                  <View style={styles.statusBadgeSuccess}>
-                    <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                    <Text style={[styles.statusBadgeText, { color: colors.success }]}>Compatible</Text>
+            {/* Tap to Pay Status - Only tappable when needs configuration */}
+            {(() => {
+              const needsSetup = Platform.OS !== 'web' && deviceCompatibility.isCompatible && !isInitialized && !isWarming;
+              const RowComponent = needsSetup ? TouchableOpacity : View;
+              const rowProps = needsSetup ? { onPress: () => navigation.navigate('TapToPaySettings') } : {};
+
+              return (
+                <RowComponent style={styles.row} {...rowProps}>
+                  <View style={styles.rowLeft}>
+                    <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+                      <Ionicons name="phone-portrait-outline" size={18} color={colors.primary} />
+                    </View>
+                    <View style={styles.labelContainer}>
+                      <Text style={styles.label}>{TAP_TO_PAY_NAME}</Text>
+                      <Text style={styles.sublabel}>
+                        {Platform.OS === 'web'
+                          ? 'Not available on web'
+                          : !deviceCompatibility.isCompatible
+                            ? 'Device not supported'
+                            : isInitialized
+                              ? 'Ready to accept payments'
+                              : isWarming
+                                ? 'Initializing...'
+                                : 'Tap to configure'}
+                      </Text>
+                    </View>
                   </View>
-                ) : (
-                  <View style={styles.statusBadgeError}>
-                    <Ionicons name="close-circle" size={14} color={colors.error} />
-                    <Text style={[styles.statusBadgeText, { color: colors.error }]}>Not Supported</Text>
-                  </View>
-                )
-              ) : (
-                <View style={styles.statusBadgeSuccess}>
-                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                  <Text style={[styles.statusBadgeText, { color: colors.success }]}>Ready</Text>
-                </View>
-              )}
-            </View>
+                  {Platform.OS === 'web' ? (
+                    <View style={styles.statusBadgeMuted}>
+                      <Ionicons name="desktop-outline" size={14} color={colors.textMuted} />
+                      <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>N/A</Text>
+                    </View>
+                  ) : !deviceCompatibility.isCompatible ? (
+                    <View style={styles.statusBadgeError}>
+                      <Ionicons name="close-circle" size={14} color={colors.error} />
+                    </View>
+                  ) : isInitialized ? (
+                    <View style={styles.statusBadgeSuccess}>
+                      <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                      <Text style={[styles.statusBadgeText, { color: colors.success }]}>Ready</Text>
+                    </View>
+                  ) : isWarming ? (
+                    <View style={styles.statusBadgeWarning}>
+                      <ActivityIndicator size="small" color={colors.warning} />
+                    </View>
+                  ) : (
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  )}
+                </RowComponent>
+              );
+            })()}
 
             <View style={styles.divider} />
 
-            {/* Terminal Status - Apple TTPOi 3.9.1: Configuration progress indicator */}
+            {/* Dark Mode */}
             <View style={styles.row}>
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="hardware-chip-outline" size={18} color={colors.primary} />
+                  <Ionicons name={isDark ? 'moon' : 'sunny'} size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.label}>Terminal Status</Text>
+                <Text style={styles.label}>Dark Mode</Text>
               </View>
-              {Platform.OS === 'web' ? (
-                <View style={styles.statusBadgeMuted}>
-                  <Ionicons name="close-circle-outline" size={14} color={colors.textMuted} />
-                  <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>N/A</Text>
-                </View>
-              ) : readerUpdateProgress !== null ? (
-                <View style={styles.statusBadgeWarning}>
-                  <ActivityIndicator size="small" color={colors.warning} />
-                  <Text style={[styles.statusBadgeText, { color: colors.warning }]}>
-                    Updating {readerUpdateProgress}%
-                  </Text>
-                </View>
-              ) : isWarming ? (
-                <View style={styles.statusBadgeWarning}>
-                  <ActivityIndicator size="small" color={colors.warning} />
-                  <Text style={[styles.statusBadgeText, { color: colors.warning }]}>
-                    {configurationProgress}%
-                  </Text>
-                </View>
-              ) : isInitialized ? (
-                <View style={styles.statusBadgeSuccess}>
-                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                  <Text style={[styles.statusBadgeText, { color: colors.success }]}>Ready</Text>
-                </View>
-              ) : (
-                <View style={styles.statusBadgeMuted}>
-                  <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                  <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>Not Initialized</Text>
-                </View>
-              )}
+              <Toggle value={isDark} onValueChange={toggleTheme} />
             </View>
-
-            {/* Web platform info box */}
-            {Platform.OS === 'web' && (
-              <View style={styles.infoBox}>
-                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-                <Text style={styles.infoBoxText}>
-                  {TAP_TO_PAY_NAME} requires a physical iPhone or Android device with NFC capability. Use the mobile app to accept contactless payments.
-                </Text>
-              </View>
-            )}
-
-            {/* Configuration Progress Bar - Apple TTPOi 3.9.1 */}
-            {Platform.OS !== 'web' && (isWarming || readerUpdateProgress !== null) && (
-              <View style={styles.progressSection}>
-                <View style={styles.progressBarBackground}>
-                  <View style={[styles.progressBarFill, { width: `${readerUpdateProgress ?? configurationProgress}%`, backgroundColor: colors.primary }]} />
-                </View>
-                <Text style={styles.progressStageText}>
-                  {readerUpdateProgress !== null && 'Installing reader software update...'}
-                  {readerUpdateProgress === null && configurationStage === 'checking_compatibility' && 'Checking device compatibility...'}
-                  {readerUpdateProgress === null && configurationStage === 'initializing' && 'Initializing payment terminal...'}
-                  {readerUpdateProgress === null && configurationStage === 'fetching_location' && 'Fetching location...'}
-                  {readerUpdateProgress === null && configurationStage === 'discovering_reader' && 'Discovering reader...'}
-                  {readerUpdateProgress === null && configurationStage === 'connecting_reader' && 'Connecting to reader...'}
-                  {readerUpdateProgress === null && configurationStage === 'ready' && 'Ready to accept payments!'}
-                  {readerUpdateProgress === null && configurationStage === 'idle' && 'Preparing...'}
-                </Text>
-              </View>
-            )}
-
-            {/* Error message when device not compatible or terminal not ready */}
-            {Platform.OS !== 'web' && (!deviceCompatibility.isCompatible && deviceCompatibility.errorMessage) && (
-              <View style={styles.errorBox}>
-                <Ionicons name="warning-outline" size={18} color={colors.error} />
-                <Text style={styles.errorBoxText}>{deviceCompatibility.errorMessage}</Text>
-              </View>
-            )}
-
-            {Platform.OS !== 'web' && (!isInitialized && !isWarming && deviceCompatibility.isCompatible) && (
-              <View style={styles.warningBox}>
-                <Ionicons name="information-circle-outline" size={18} color={colors.warning} />
-                <Text style={styles.warningBoxText}>
-                  Terminal not initialized. Try opening the checkout screen to initialize the payment terminal.
-                </Text>
-              </View>
-            )}
           </View>
         </View>
 
-        {/* Help & Education Section - Apple TTPOi 4.1, 4.2 */}
+        {/* 6. Support Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Help & Education</Text>
+          <Text style={styles.sectionTitle}>Support</Text>
           <View style={styles.card}>
-            {/* Learn About Tap to Pay */}
             <TouchableOpacity
               style={styles.row}
               onPress={() => navigation.navigate('TapToPayEducation')}
@@ -727,39 +658,22 @@ export function SettingsScreen() {
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="school-outline" size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.label}>Learn About {TAP_TO_PAY_NAME}</Text>
+                <Text style={styles.label}>Learn {TAP_TO_PAY_NAME}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
 
             <View style={styles.divider} />
 
-            {/* Stripe Help Center */}
             <TouchableOpacity
               style={styles.row}
-              onPress={() => Linking.openURL('https://support.stripe.com/')}
+              onPress={() => Linking.openURL('mailto:support@lumapos.com?subject=Luma Support')}
             >
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="card-outline" size={18} color={colors.primary} />
+                  <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.label}>Stripe Help Center</Text>
-              </View>
-              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-
-            <View style={styles.divider} />
-
-            {/* Contact Luma Support */}
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => Linking.openURL('mailto:support@lumapos.com?subject=Tap to Pay Support')}
-            >
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="mail-outline" size={18} color={colors.primary} />
-                </View>
-                <Text style={styles.label}>Contact Luma Support</Text>
+                <Text style={styles.label}>Contact Support</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
@@ -904,6 +818,10 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       alignItems: 'center',
       flex: 1,
     },
+    rowLeftCompact: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
     rowRight: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -940,8 +858,16 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontSize: 15,
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      maxWidth: 150,
+      flexShrink: 1,
       textAlign: 'right',
+    },
+    valueWide: {
+      fontSize: 15,
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      flex: 1,
+      textAlign: 'right',
+      marginLeft: 12,
     },
     // Status badge styles for Tap to Pay section
     statusBadgeSuccess: {
@@ -983,6 +909,68 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     statusBadgeText: {
       fontSize: 12,
       fontFamily: fonts.semiBold,
+    },
+    upgradeButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      backgroundColor: colors.primary,
+      borderRadius: 10,
+    },
+    upgradeButtonText: {
+      fontSize: 13,
+      fontFamily: fonts.semiBold,
+      color: '#fff',
+    },
+    vendorPortalCard: {
+      borderRadius: 16,
+      overflow: 'hidden',
+      ...shadows.md,
+    },
+    vendorPortalGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 18,
+      paddingHorizontal: 18,
+    },
+    vendorPortalContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    vendorPortalIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    vendorPortalText: {
+      flex: 1,
+    },
+    vendorPortalTitle: {
+      fontSize: 17,
+      fontFamily: fonts.semiBold,
+      color: '#fff',
+      marginBottom: 2,
+    },
+    vendorPortalSubtitle: {
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      color: 'rgba(255,255,255,0.8)',
+    },
+    vendorPortalArrow: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     errorBox: {
       flexDirection: 'row',
