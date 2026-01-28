@@ -1,14 +1,29 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
+import logger from '../logger';
 
-const { ProximityReaderDiscoveryModule } = NativeModules;
+// Try TurboModuleRegistry first (new arch), fallback to NativeModules (old arch)
+const ProximityReaderDiscoveryModule =
+  TurboModuleRegistry?.get?.('ProximityReaderDiscoveryModule') ||
+  NativeModules.ProximityReaderDiscoveryModule;
+
+logger.log('[ProximityReader] Module lookup:', {
+  fromTurbo: !!TurboModuleRegistry?.get?.('ProximityReaderDiscoveryModule'),
+  fromNativeModules: !!NativeModules.ProximityReaderDiscoveryModule,
+  resolved: !!ProximityReaderDiscoveryModule,
+  platform: Platform.OS,
+});
 
 export async function isProximityReaderDiscoveryAvailable(): Promise<boolean> {
   if (Platform.OS !== 'ios' || !ProximityReaderDiscoveryModule) {
+    logger.log('[ProximityReader] Not available:', { platform: Platform.OS, hasModule: !!ProximityReaderDiscoveryModule });
     return false;
   }
   try {
-    return await ProximityReaderDiscoveryModule.isAvailable();
-  } catch {
+    const result = await ProximityReaderDiscoveryModule.isAvailable();
+    logger.log('[ProximityReader] isAvailable result:', result);
+    return result;
+  } catch (err) {
+    logger.log('[ProximityReader] isAvailable error:', err);
     return false;
   }
 }

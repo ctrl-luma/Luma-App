@@ -240,6 +240,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     collectPaymentMethod,
     confirmPaymentIntent,
     cancelCollectPaymentMethod,
+    connectedReader: sdkConnectedReader,
   } = useStripeTerminal({
     onUpdateDiscoveredReaders: (readers: any[]) => {
       logger.log('[StripeTerminal] Discovered readers via callback:', readers.length);
@@ -272,6 +273,16 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       }
     },
   });
+
+  // Sync isConnected with SDK's connectedReader state
+  // This catches auto-reconnects that don't fire onDidChangeConnectionStatus
+  useEffect(() => {
+    const sdkHasReader = !!sdkConnectedReader;
+    if (sdkHasReader !== isConnected) {
+      logger.log('[StripeTerminal] Syncing isConnected from SDK connectedReader:', sdkHasReader);
+      setIsConnected(sdkHasReader);
+    }
+  }, [sdkConnectedReader, isConnected]);
 
   // Request Android permissions on mount
   useEffect(() => {
