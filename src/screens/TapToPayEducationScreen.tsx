@@ -293,6 +293,7 @@ export function TapToPayEducationScreen() {
   // Check if ProximityReaderDiscovery is available (iOS 18+)
   const [proximityDiscoveryAvailable, setProximityDiscoveryAvailable] = useState<boolean | null>(null);
   const [showingAppleEducation, setShowingAppleEducation] = useState(false);
+  const [appleEducationActive, setAppleEducationActive] = useState(false);
 
   useEffect(() => {
     if (isIOS) {
@@ -402,6 +403,7 @@ export function TapToPayEducationScreen() {
   // iOS 18+: Show Apple's native education UI after T&C acceptance
   const showAppleNativeEducation = async () => {
     setShowingAppleEducation(true);
+    setAppleEducationActive(true);
     try {
       const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
       // Fire off the native education — don't await yet
@@ -415,6 +417,7 @@ export function TapToPayEducationScreen() {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
       setShowingAppleEducation(false);
     }
+    setAppleEducationActive(false);
     markEducationSeen();
     navigateBack();
   };
@@ -627,10 +630,15 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show starry loading screen while checking availability or showing Apple's native education
-  if (proximityDiscoveryAvailable === null || showingAppleEducation) {
+  // iOS: Show starry loading while checking availability, showing loader, or Apple education is active
+  if (proximityDiscoveryAvailable === null || showingAppleEducation || appleEducationActive) {
+    // When Apple's sheet is open (appleEducationActive but not showingAppleEducation),
+    // render an empty screen so our slides don't flash behind it
+    if (appleEducationActive && !showingAppleEducation) {
+      return <View style={{ flex: 1, backgroundColor: isDark ? '#09090b' : colors.background }} />;
+    }
     return (
-      <View style={{ flex: 1, backgroundColor: isDark ? '#09090b' : colors.background }}>
+      <View style={StyleSheet.absoluteFill}>
         <FullScreenStarLoader />
       </View>
     );
