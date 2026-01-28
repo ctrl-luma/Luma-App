@@ -4,19 +4,34 @@ import { Product } from '../lib/api/products';
 export interface CartItem {
   product: Product;
   quantity: number;
+  notes?: string; // per-item special instructions
+  cartKey: string; // unique key for cart (productId + notes hash)
+}
+
+// Generate a unique cart key for an item based on product ID and notes
+function generateCartKey(productId: string, notes?: string): string {
+  if (!notes || notes.trim() === '') {
+    return productId;
+  }
+  // Simple hash of notes to create unique key
+  return `${productId}::${notes.trim().toLowerCase()}`;
 }
 
 interface CartContextType {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
-  incrementItem: (productId: string) => void;
-  decrementItem: (productId: string) => void;
+  orderNotes: string;
+  setOrderNotes: (notes: string) => void;
+  addItem: (product: Product, quantity?: number, notes?: string) => void;
+  removeItem: (cartKey: string) => void;
+  updateQuantity: (cartKey: string, quantity: number) => void;
+  updateItemNotes: (cartKey: string, notes: string) => void;
+  incrementItem: (cartKey: string) => void;
+  decrementItem: (cartKey: string) => void;
   clearCart: () => void;
   getItemQuantity: (productId: string) => number;
+  getItemByCartKey: (cartKey: string) => CartItem | undefined;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -27,6 +42,7 @@ interface CartProviderProps {
 
 export function CartProvider({ children }: CartProviderProps) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [orderNotes, setOrderNotes] = useState<string>('');
 
   // Calculate total item count
   const itemCount = useMemo(() => {
@@ -38,15 +54,19 @@ export function CartProvider({ children }: CartProviderProps) {
     return items.reduce((total, item) => total + item.product.price * item.quantity, 0);
   }, [items]);
 
-  // Add item to cart
-  const addItem = useCallback((product: Product, quantity: number = 1) => {
+  // Add item to cart (with optional notes)
+  // If same product with same notes exists, increment quantity
+  // If same product with different notes, add as new item
+  const addItem = useCallback((product: Product, quantity: number = 1, notes?: string) => {
+    const cartKey = generateCartKey(product.id, notes);
+
     setItems((currentItems) => {
       const existingIndex = currentItems.findIndex(
-        (item) => item.product.id === product.id
+        (item) => item.cartKey === cartKey
       );
 
       if (existingIndex >= 0) {
-        // Item exists, increment quantity
+        // Item with same product AND notes exists, increment quantity
         const newItems = [...currentItems];
         newItems[existingIndex] = {
           ...newItems[existingIndex],
@@ -54,71 +74,123 @@ export function CartProvider({ children }: CartProviderProps) {
         };
         return newItems;
       } else {
-        // New item
-        return [...currentItems, { product, quantity }];
+        // New item (different product or different notes)
+        return [...currentItems, {
+          product,
+          quantity,
+          notes: notes?.trim() || undefined,
+          cartKey,
+        }];
       }
     });
   }, []);
 
-  // Remove item from cart
-  const removeItem = useCallback((productId: string) => {
+  // Remove item from cart by cartKey
+  const removeItem = useCallback((cartKey: string) => {
     setItems((currentItems) =>
-      currentItems.filter((item) => item.product.id !== productId)
+      currentItems.filter((item) => item.cartKey !== cartKey)
     );
   }, []);
 
-  // Update item quantity
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
+  // Update item quantity by cartKey
+  const updateQuantity = useCallback((cartKey: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(productId);
+      removeItem(cartKey);
       return;
     }
 
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.cartKey === cartKey ? { ...item, quantity } : item
       )
     );
   }, [removeItem]);
 
-  // Increment item quantity by 1
-  const incrementItem = useCallback((productId: string) => {
+  // Update item notes - this will change the cartKey
+  const updateItemNotes = useCallback((cartKey: string, notes: string) => {
+    setItems((currentItems) => {
+      const itemIndex = currentItems.findIndex((item) => item.cartKey === cartKey);
+      if (itemIndex < 0) return currentItems;
+
+      const item = currentItems[itemIndex];
+      const newCartKey = generateCartKey(item.product.id, notes);
+
+      // Check if there's already an item with this new cartKey
+      const existingWithNewKey = currentItems.findIndex(
+        (i, idx) => idx !== itemIndex && i.cartKey === newCartKey
+      );
+
+      if (existingWithNewKey >= 0) {
+        // Merge with existing item that has same product + notes
+        const newItems = [...currentItems];
+        newItems[existingWithNewKey] = {
+          ...newItems[existingWithNewKey],
+          quantity: newItems[existingWithNewKey].quantity + item.quantity,
+        };
+        // Remove the original item
+        newItems.splice(itemIndex, 1);
+        return newItems;
+      } else {
+        // Just update the notes and cartKey
+        const newItems = [...currentItems];
+        newItems[itemIndex] = {
+          ...item,
+          notes: notes.trim() || undefined,
+          cartKey: newCartKey,
+        };
+        return newItems;
+      }
+    });
+  }, []);
+
+  // Increment item quantity by 1 using cartKey
+  const incrementItem = useCallback((cartKey: string) => {
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.product.id === productId
+        item.cartKey === cartKey
           ? { ...item, quantity: item.quantity + 1 }
           : item
       )
     );
   }, []);
 
-  // Decrement item quantity by 1
-  const decrementItem = useCallback((productId: string) => {
+  // Decrement item quantity by 1 using cartKey
+  const decrementItem = useCallback((cartKey: string) => {
     setItems((currentItems) => {
-      const item = currentItems.find((i) => i.product.id === productId);
+      const item = currentItems.find((i) => i.cartKey === cartKey);
       if (!item) return currentItems;
 
       if (item.quantity <= 1) {
         // Remove item if quantity would become 0
-        return currentItems.filter((i) => i.product.id !== productId);
+        return currentItems.filter((i) => i.cartKey !== cartKey);
       }
 
       return currentItems.map((i) =>
-        i.product.id === productId ? { ...i, quantity: i.quantity - 1 } : i
+        i.cartKey === cartKey ? { ...i, quantity: i.quantity - 1 } : i
       );
     });
   }, []);
 
-  // Clear all items
+  // Clear all items and order notes
   const clearCart = useCallback(() => {
     setItems([]);
+    setOrderNotes('');
   }, []);
 
-  // Get quantity of specific item
+  // Get total quantity of specific product (across all notes variations)
   const getItemQuantity = useCallback(
     (productId: string) => {
-      const item = items.find((i) => i.product.id === productId);
-      return item?.quantity || 0;
+      return items
+        .filter((i) => i.product.id === productId)
+        .reduce((sum, item) => sum + item.quantity, 0);
+    },
+    [items]
+  );
+
+  // Get item by cartKey
+  const getItemByCartKey = useCallback(
+    (cartKey: string) => {
+      return items.find((i) => i.cartKey === cartKey);
     },
     [items]
   );
@@ -129,13 +201,17 @@ export function CartProvider({ children }: CartProviderProps) {
         items,
         itemCount,
         subtotal,
+        orderNotes,
+        setOrderNotes,
         addItem,
         removeItem,
         updateQuantity,
+        updateItemNotes,
         incrementItem,
         decrementItem,
         clearCart,
         getItemQuantity,
+        getItemByCartKey,
       }}
     >
       {children}

@@ -13,10 +13,17 @@ import * as SplashScreen from 'expo-splash-screen';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Stripe React Native only works on native platforms
-const StripeProvider = Platform.OS === 'web'
-  ? ({ children }: { children: React.ReactNode }) => <>{children}</>
-  : require('@stripe/stripe-react-native').StripeProvider;
+// Stripe React Native only works on native platforms with dev builds (not Expo Go)
+import Constants from 'expo-constants';
+const isExpoGo = Constants.appOwnership === 'expo';
+let StripeProvider: any = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+if (Platform.OS !== 'web' && !isExpoGo) {
+  try {
+    StripeProvider = require('@stripe/stripe-react-native').StripeProvider;
+  } catch {
+    // Native module not available
+  }
+}
 import {
   useFonts,
   Inter_400Regular,
@@ -31,6 +38,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { CatalogProvider, useCatalog } from './src/context/CatalogContext';
 import { CartProvider } from './src/context/CartContext';
+import { DeviceProvider } from './src/context/DeviceContext';
 import { SocketProvider } from './src/context/SocketContext';
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
 import { StripeTerminalContextProvider } from './src/context/StripeTerminalContext';
@@ -58,6 +66,8 @@ import { StripeOnboardingScreen } from './src/screens/StripeOnboardingScreen';
 import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { PaymentProcessingScreen } from './src/screens/PaymentProcessingScreen';
 import { PaymentResultScreen } from './src/screens/PaymentResultScreen';
+import { CashPaymentScreen } from './src/screens/CashPaymentScreen';
+import { SplitPaymentScreen } from './src/screens/SplitPaymentScreen';
 
 // Education screens
 import { TapToPayEducationScreen } from './src/screens/TapToPayEducationScreen';
@@ -454,7 +464,7 @@ function TabIcon({
       iconName = focused ? 'receipt' : 'receipt-outline';
       break;
     case 'Settings':
-      iconName = focused ? 'cog' : 'cog-outline';
+      iconName = focused ? 'settings' : 'settings-outline';
       break;
     default:
       iconName = 'ellipse';
@@ -684,6 +694,22 @@ function AuthenticatedNavigator() {
           gestureEnabled: false,
         }}
       />
+      <Stack.Screen
+        name="CashPayment"
+        component={CashPaymentScreen}
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
+      <Stack.Screen
+        name="SplitPayment"
+        component={SplitPaymentScreen}
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+        }}
+      />
     </Stack.Navigator>
     </StripeTerminalContextProvider>
   );
@@ -799,12 +825,14 @@ export default function App() {
                 <AuthProvider>
                   <SocketProvider>
                     <SocketEventHandlers />
-                    <CatalogProvider>
-                      <CartProvider>
-                        <NetworkStatus />
-                        <AppNavigator />
-                      </CartProvider>
-                    </CatalogProvider>
+                    <DeviceProvider>
+                      <CatalogProvider>
+                        <CartProvider>
+                          <NetworkStatus />
+                          <AppNavigator />
+                        </CartProvider>
+                      </CatalogProvider>
+                    </DeviceProvider>
                   </SocketProvider>
                 </AuthProvider>
               </ThemeProvider>

@@ -1,0 +1,485 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { apiClient } from '../lib/api/client';
+import { glass } from '../lib/colors';
+import { fonts } from '../lib/fonts';
+import { shadows } from '../lib/shadows';
+import logger from '../lib/logger';
+
+interface ProfileEditModalProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
+export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
+  const { colors, isDark } = useTheme();
+  const { user, refreshAuth } = useAuth();
+  const insets = useSafeAreaInsets();
+  const glassColors = isDark ? glass.dark : glass.light;
+
+  const [firstName, setFirstName] = useState(user?.firstName || '');
+  const [lastName, setLastName] = useState(user?.lastName || '');
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (visible && user) {
+      setFirstName(user.firstName || '');
+      setLastName(user.lastName || '');
+      setPhone(formatPhoneNumber(user.phone || ''));
+      setAvatarPreview(null);
+    }
+  }, [visible, user]);
+
+  const formatPhoneNumber = (value: string): string => {
+    const cleaned = value.replace(/\D/g, '');
+    if (cleaned.length >= 6) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+    } else if (cleaned.length >= 3) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+    } else if (cleaned.length > 0) {
+      return `(${cleaned}`;
+    }
+    return '';
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(formatPhoneNumber(value));
+  };
+
+  const pickImage = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your photo library to change your profile picture.');
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setAvatarPreview(asset.uri);
+        await uploadAvatar(asset.uri);
+      }
+    } catch (error) {
+      logger.error('[ProfileEditModal] Error picking image:', error);
+      Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      // Request permission
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please allow access to your camera to take a photo.');
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setAvatarPreview(asset.uri);
+        await uploadAvatar(asset.uri);
+      }
+    } catch (error) {
+      logger.error('[ProfileEditModal] Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const uploadAvatar = async (uri: string) => {
+    setIsUploadingAvatar(true);
+    try {
+      // Create form data
+      const formData = new FormData();
+      const filename = uri.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+      formData.append('file', {
+        uri: Platform.OS === 'ios' ? uri.replace('file://', '') : uri,
+        name: filename,
+        type,
+      } as any);
+
+      await apiClient.postForm('/auth/avatar', formData);
+      await refreshAuth();
+
+      logger.log('[ProfileEditModal] Avatar uploaded successfully');
+    } catch (error: any) {
+      logger.error('[ProfileEditModal] Error uploading avatar:', error);
+      Alert.alert('Upload Failed', error.message || 'Failed to upload profile picture.');
+      setAvatarPreview(null);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const showImageOptions = () => {
+    Alert.alert(
+      'Change Profile Picture',
+      'Choose an option',
+      [
+        { text: 'Take Photo', onPress: takePhoto },
+        { text: 'Choose from Library', onPress: pickImage },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updateData: any = {};
+
+      if (firstName !== (user?.firstName || '')) {
+        updateData.firstName = firstName;
+      }
+      if (lastName !== (user?.lastName || '')) {
+        updateData.lastName = lastName;
+      }
+
+      const cleanPhone = phone.replace(/\D/g, '');
+      const originalPhone = (user?.phone || '').replace(/\D/g, '');
+      if (cleanPhone !== originalPhone) {
+        if (cleanPhone.length === 10) {
+          updateData.phone = cleanPhone;
+        } else if (cleanPhone.length > 0) {
+          Alert.alert('Invalid Phone', 'Phone number must be 10 digits.');
+          setIsSaving(false);
+          return;
+        } else {
+          updateData.phone = null;
+        }
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await apiClient.patch('/auth/profile', updateData);
+        await refreshAuth();
+      }
+
+      onClose();
+    } catch (error: any) {
+      logger.error('[ProfileEditModal] Error saving profile:', error);
+      Alert.alert('Save Failed', error.message || 'Failed to save profile.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const hasChanges = () => {
+    return (
+      firstName !== (user?.firstName || '') ||
+      lastName !== (user?.lastName || '') ||
+      phone.replace(/\D/g, '') !== (user?.phone || '').replace(/\D/g, '')
+    );
+  };
+
+  const getInitials = () => {
+    const first = user?.firstName?.charAt(0)?.toUpperCase() || '';
+    const last = user?.lastName?.charAt(0)?.toUpperCase() || '';
+    return `${first}${last}` || user?.email?.charAt(0)?.toUpperCase() || 'U';
+  };
+
+  const displayAvatarUrl = avatarPreview || user?.avatarUrl;
+
+  const styles = createStyles(colors, glassColors, isDark);
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Edit Profile</Text>
+          <TouchableOpacity
+            onPress={handleSave}
+            style={styles.headerButton}
+            disabled={isSaving || !hasChanges()}
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={[styles.saveText, !hasChanges() && styles.saveTextDisabled]}>
+                Save
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <TouchableOpacity
+              style={styles.avatarContainer}
+              onPress={showImageOptions}
+              disabled={isUploadingAvatar}
+            >
+              {displayAvatarUrl ? (
+                <Image source={{ uri: displayAvatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarInitials}>{getInitials()}</Text>
+                </View>
+              )}
+              {isUploadingAvatar ? (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator size="small" color="#fff" />
+                </View>
+              ) : (
+                <View style={styles.cameraButton}>
+                  <Ionicons name="camera" size={16} color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity onPress={showImageOptions} disabled={isUploadingAvatar}>
+              <Text style={styles.changePhotoText}>
+                {isUploadingAvatar ? 'Uploading...' : 'Change Photo'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Form Fields */}
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>First Name</Text>
+              <TextInput
+                style={styles.input}
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="First name"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Last Name</Text>
+              <TextInput
+                style={styles.input}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Last name"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="words"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Phone Number</Text>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={handlePhoneChange}
+                placeholder="(555) 123-4567"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="phone-pad"
+                maxLength={14}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Email</Text>
+              <View style={styles.emailContainer}>
+                <Text style={styles.emailText}>{user?.email}</Text>
+                <Ionicons name="lock-closed" size={16} color={colors.textMuted} />
+              </View>
+              <Text style={styles.emailHint}>Email cannot be changed</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boolean) => {
+  const cardBackground = isDark ? '#181819' : 'rgba(255,255,255,0.95)';
+  const inputBackground = isDark ? '#0f0f10' : '#f5f5f5';
+
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? '#09090b' : colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      height: 56,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    },
+    headerButton: {
+      minWidth: 60,
+    },
+    title: {
+      fontSize: 17,
+      fontFamily: fonts.semiBold,
+      color: colors.text,
+    },
+    cancelText: {
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.primary,
+    },
+    saveText: {
+      fontSize: 16,
+      fontFamily: fonts.semiBold,
+      color: colors.primary,
+      textAlign: 'right',
+    },
+    saveTextDisabled: {
+      opacity: 0.4,
+    },
+    content: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: 24,
+    },
+    avatarSection: {
+      alignItems: 'center',
+      marginBottom: 32,
+    },
+    avatarContainer: {
+      position: 'relative',
+      marginBottom: 12,
+    },
+    avatar: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+    },
+    avatarPlaceholder: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: colors.primary + '25',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarInitials: {
+      fontSize: 36,
+      fontFamily: fonts.semiBold,
+      color: colors.primary,
+    },
+    avatarOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 50,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cameraButton: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 3,
+      borderColor: isDark ? '#09090b' : colors.background,
+    },
+    changePhotoText: {
+      fontSize: 15,
+      fontFamily: fonts.medium,
+      color: colors.primary,
+    },
+    form: {
+      gap: 20,
+    },
+    inputGroup: {
+      gap: 8,
+    },
+    label: {
+      fontSize: 14,
+      fontFamily: fonts.medium,
+      color: colors.textSecondary,
+      marginLeft: 4,
+    },
+    input: {
+      backgroundColor: cardBackground,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: isDark ? '#1d1d1f' : 'rgba(0,0,0,0.08)',
+    },
+    emailContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: inputBackground,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderWidth: 1,
+      borderColor: isDark ? '#1d1d1f' : 'rgba(0,0,0,0.08)',
+    },
+    emailText: {
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
+    },
+    emailHint: {
+      fontSize: 12,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
+      marginLeft: 4,
+      marginTop: 4,
+    },
+  });
+};

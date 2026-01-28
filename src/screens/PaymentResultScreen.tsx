@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   Keyboard,
   TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
@@ -28,6 +29,9 @@ import { shadows } from '../lib/shadows';
 import { stripeTerminalApi, ordersApi } from '../lib/api';
 import logger from '../lib/logger';
 import { isValidEmail } from '../lib/validation';
+import { StarBackground } from '../components/StarBackground';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type RouteParams = {
   PaymentResult: {
@@ -341,7 +345,7 @@ export function PaymentResultScreen() {
   if (showCardEntry) {
     return (
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={styles.container}>
+        <StarBackground colors={colors} isDark={isDark}>
           <SafeAreaView style={styles.safeArea}>
             {/* Header */}
             <View style={styles.cardPageHeader}>
@@ -429,14 +433,14 @@ export function PaymentResultScreen() {
               </TouchableOpacity>
             </View>
           </SafeAreaView>
-        </View>
+        </StarBackground>
       </TouchableWithoutFeedback>
     );
   }
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={styles.container}>
+      <StarBackground colors={colors} isDark={isDark}>
         {/* Background Gradient */}
         {success && (
         <View style={styles.backgroundGradients}>
@@ -627,18 +631,13 @@ export function PaymentResultScreen() {
           )}
         </Animated.View>
       </SafeAreaView>
-      </View>
+      </StarBackground>
     </TouchableWithoutFeedback>
   );
 }
 
 const createStyles = (colors: any, glassColors: typeof glass.dark, success: boolean) => {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-      overflow: 'hidden',
-    },
     backgroundGradients: {
       ...StyleSheet.absoluteFillObject,
       overflow: 'hidden',

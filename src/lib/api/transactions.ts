@@ -35,6 +35,7 @@ export interface TransactionsListParams {
   starting_after?: string;
   status?: string;
   catalog_id?: string;
+  device_id?: string;
 }
 
 export interface TransactionsListResponse {
@@ -49,6 +50,7 @@ export interface RefundParams {
 export const transactionsApi = {
   /**
    * List transactions for the organization
+   * Optionally filter by device_id to show only transactions from a specific device
    */
   list: (params?: TransactionsListParams) => {
     const searchParams = new URLSearchParams();
@@ -56,6 +58,7 @@ export const transactionsApi = {
     if (params?.starting_after) searchParams.append('starting_after', params.starting_after);
     if (params?.status) searchParams.append('status', params.status);
     if (params?.catalog_id) searchParams.append('catalog_id', params.catalog_id);
+    if (params?.device_id) searchParams.append('device_id', params.device_id);
 
     const query = searchParams.toString();
     return apiClient.get<TransactionsListResponse>(

@@ -10,8 +10,13 @@ interface SetupRequiredBannerProps {
 }
 
 export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProps) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+
+  // Solid colors for dark mode to prevent stars showing through
+  const compactBg = isDark ? '#09090b' : colors.warning + '15';
+  const containerBg = isDark ? '#09090b' : colors.warning + '10';
+  const containerBorder = isDark ? '#3d2a0d' : colors.warning + '30';
 
   const handleSetup = () => {
     navigation.navigate('StripeOnboarding');
@@ -20,7 +25,7 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
   if (compact) {
     return (
       <TouchableOpacity
-        style={[styles.compactContainer, { backgroundColor: colors.warning + '15' }]}
+        style={[styles.compactContainer, { backgroundColor: compactBg }]}
         onPress={handleSetup}
         activeOpacity={0.7}
         accessibilityRole="button"
@@ -38,7 +43,7 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
 
   return (
     <View
-      style={[styles.container, { backgroundColor: colors.warning + '10', borderColor: colors.warning + '30' }]}
+      style={[styles.container, { backgroundColor: containerBg, borderColor: containerBorder }]}
       accessibilityRole="alert"
     >
       <View style={styles.content}>

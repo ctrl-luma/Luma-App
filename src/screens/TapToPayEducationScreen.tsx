@@ -9,9 +9,13 @@
  * - 4.4: Educate on moving device closer for weak signal
  * - 4.5: Educate that consumer may need to try again
  * - 4.6: PIN entry education for Ireland
+ *
+ * iOS 18+ uses ProximityReaderDiscovery for Apple's compliant native education UI.
+ * iOS 16-17 uses custom education slides.
+ * Android skips education (not required by Google).
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -184,10 +188,35 @@ export function TapToPayEducationScreen() {
     error: terminalError,
   } = useTerminal();
 
-  // Android doesn't require the enable flow (no Apple ToS acceptance needed)
-  // Skip directly to education slides on Android
+  // Platform-specific behavior:
+  // - iOS 18+: Use ProximityReaderDiscovery for Apple's native education UI
+  // - iOS 16-17: Use custom education slides
+  // - Android: Skip education entirely (not required by Google)
   const isAndroid = Platform.OS === 'android';
-  const showEnableSlide = !isAndroid;
+  const isIOS = Platform.OS === 'ios';
+
+  // Check if ProximityReaderDiscovery is available (iOS 18+)
+  const [proximityDiscoveryAvailable, setProximityDiscoveryAvailable] = useState<boolean | null>(null);
+  const [showingAppleEducation, setShowingAppleEducation] = useState(false);
+
+  useEffect(() => {
+    if (isIOS) {
+      // Dynamically import to avoid loading native module on Android/Expo Go
+      import('../lib/native/ProximityReaderDiscovery')
+        .then(module => module.isProximityReaderDiscoveryAvailable())
+        .then(setProximityDiscoveryAvailable)
+        .catch(() => setProximityDiscoveryAvailable(false));
+    } else {
+      setProximityDiscoveryAvailable(false);
+    }
+  }, [isIOS]);
+
+  // Android: Skip education entirely, just enable TTP and navigate back
+  // iOS: Show enable slide first (for T&C acceptance)
+  const showEnableSlide = isIOS;
+  // iOS 18+: After enabling, show Apple's native education UI
+  // iOS 16-17: After enabling, show custom slides
+  const useAppleNativeEducation = isIOS && proximityDiscoveryAvailable === true;
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isEnabling, setIsEnabling] = useState(false);
@@ -196,6 +225,64 @@ export function TapToPayEducationScreen() {
   const [isEnabled, setIsEnabled] = useState(false);
 
   const styles = createStyles(colors, glassColors, isDark);
+
+  // Android auto-enable on mount: Connect reader and navigate back immediately
+  useEffect(() => {
+    if (isAndroid) {
+      // If already connected, just mark as seen and navigate back
+      if (isConnected) {
+        markEducationSeen();
+        navigation.goBack();
+        return;
+      }
+      // Otherwise, auto-enable
+      if (!isEnabling) {
+        handleAndroidAutoEnable();
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAndroid, isConnected]);
+
+  const handleAndroidAutoEnable = async () => {
+    setIsEnabling(true);
+    try {
+      if (!isInitialized) {
+        await initializeTerminal();
+      }
+      const connected = await connectReader();
+      if (connected) {
+        markEducationSeen();
+        navigation.goBack();
+      } else {
+        setEnableError('Failed to enable Tap to Pay. Please try again.');
+      }
+    } catch (err: any) {
+      logger.error('[TapToPayEducation] Android enable failed:', err);
+      setEnableError(err.message || 'Failed to enable Tap to Pay');
+    } finally {
+      setIsEnabling(false);
+    }
+  };
+
+  // iOS 18+: Show Apple's native education UI after T&C acceptance
+  const showAppleNativeEducation = async () => {
+    setShowingAppleEducation(true);
+    try {
+      // Dynamically import to avoid loading native module on Android/Expo Go
+      const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
+      await showProximityReaderDiscoveryEducation();
+      // User completed Apple's education - mark as seen and exit
+      markEducationSeen();
+      navigation.goBack();
+    } catch (err: any) {
+      logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
+      // User dismissed Apple's UI - still mark as seen so they can proceed
+      markEducationSeen();
+      navigation.goBack();
+    } finally {
+      setShowingAppleEducation(false);
+    }
+  };
 
   // Check if device is not compatible
   const isDeviceIncompatible = !deviceCompatibility.isCompatible;
@@ -228,7 +315,14 @@ export function TapToPayEducationScreen() {
 
       if (connected) {
         setIsEnabled(true);
-        // Auto-advance to next slide after brief success display
+
+        // iOS 18+: Show Apple's native education UI after T&C acceptance
+        if (useAppleNativeEducation) {
+          await showAppleNativeEducation();
+          return;
+        }
+
+        // Auto-advance to education slides after brief success display
         setTimeout(() => {
           goToSlide(1);
         }, 1000);
@@ -330,6 +424,92 @@ export function TapToPayEducationScreen() {
   // Determine if we should disable scrolling on enable slide until enabled
   // On Android, no enable slide so always allow scrolling
   const canScrollPastEnable = !showEnableSlide || isEnabled || isConnected;
+
+  // Android: Show simple enabling/success UI (no education slides needed)
+  if (isAndroid) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleSkip}>
+            <Ionicons name="close" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Setting Up Tap to Pay</Text>
+          <View style={styles.skipButton} />
+        </View>
+        <View style={styles.androidCenterContent}>
+          {isEnabling ? (
+            <>
+              <View style={styles.progressIconContainer}>
+                <View style={styles.progressRing}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              </View>
+              <Text style={styles.slideTitle}>Enabling Tap to Pay</Text>
+              <Text style={styles.slideDescription}>
+                Please wait while we set up contactless payments...
+              </Text>
+            </>
+          ) : enableError ? (
+            <>
+              <View style={[styles.iconContainer, { marginBottom: 24 }]}>
+                <LinearGradient
+                  colors={[colors.error, colors.error]}
+                  style={styles.iconGradient}
+                >
+                  <Ionicons name="alert-circle" size={64} color="#fff" />
+                </LinearGradient>
+              </View>
+              <Text style={styles.slideTitle}>Setup Failed</Text>
+              <Text style={styles.slideDescription}>{enableError}</Text>
+              <TouchableOpacity
+                onPress={handleAndroidAutoEnable}
+                activeOpacity={0.9}
+                style={{ marginTop: 32 }}
+              >
+                <LinearGradient
+                  colors={[colors.primary, colors.primary700]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.nextButton}
+                >
+                  <Text style={styles.nextButtonText}>Try Again</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.successIconContainer}>
+                <Ionicons name="checkmark-circle" size={80} color={colors.success} />
+              </View>
+              <Text style={styles.slideTitle}>Ready to Go!</Text>
+              <Text style={styles.slideDescription}>
+                Tap to Pay is now enabled on your device.
+              </Text>
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // iOS: Show loading state while checking ProximityReaderDiscovery availability
+  if (proximityDiscoveryAvailable === null || showingAppleEducation) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <View style={styles.closeButton} />
+          <Text style={styles.headerTitle}>Tap to Pay</Text>
+          <View style={styles.skipButton} />
+        </View>
+        <View style={styles.androidCenterContent}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.slideDescription, { marginTop: 16 }]}>
+            {showingAppleEducation ? 'Loading education...' : 'Please wait...'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -823,5 +1003,12 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontSize: 14,
       fontWeight: '600',
       color: '#fff',
+    },
+    // Android-specific centered content layout
+    androidCenterContent: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 32,
     },
   });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -37,10 +40,12 @@ const TAP_TO_PAY_NAME = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to
 import { createVendorDashboardUrl } from '../lib/auth-handoff';
 import { config } from '../lib/config';
 import { Toggle } from '../components/Toggle';
+import { ProfileEditModal } from '../components/ProfileEditModal';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
 import logger from '../lib/logger';
+import { StarBackground } from '../components/StarBackground';
 
 export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -106,6 +111,9 @@ export function SettingsScreen() {
     isStripePlatformUser,
     subscriptionLoading,
   });
+
+  // Profile edit modal
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   // Biometric login state
   const [biometricCapabilities, setBiometricCapabilities] = useState<BiometricCapabilities | null>(null);
@@ -266,12 +274,13 @@ export function SettingsScreen() {
   const styles = createStyles(colors, glassColors, isDark);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
-      </View>
+    <StarBackground colors={colors} isDark={isDark}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Settings</Text>
+        </View>
 
-      <ScrollView
+        <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -504,48 +513,42 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.card}>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
-                  <Ionicons name="person" size={18} color={colors.textSecondary} />
+            {/* Profile Card */}
+            <TouchableOpacity
+              style={styles.profileCard}
+              onPress={() => setShowProfileEdit(true)}
+              activeOpacity={0.7}
+            >
+              {user?.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.profileAvatarImage} />
+              ) : (
+                <View style={styles.profileAvatar}>
+                  <Text style={styles.profileInitials}>
+                    {user?.firstName?.charAt(0)?.toUpperCase() || ''}{user?.lastName?.charAt(0)?.toUpperCase() || ''}
+                  </Text>
                 </View>
-                <Text style={styles.label}>Name</Text>
-              </View>
-              <Text style={styles.value}>
-                {user?.firstName} {user?.lastName}
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.row}>
-              <View style={styles.rowLeftCompact}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
-                  <Ionicons name="mail" size={18} color={colors.textSecondary} />
+              )}
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName} numberOfLines={1}>
+                  {user?.firstName} {user?.lastName}
+                </Text>
+                <Text style={styles.profileEmail} numberOfLines={1}>
+                  {user?.email}
+                </Text>
+                <View style={styles.profileOrgRow}>
+                  <Ionicons name="business-outline" size={12} color={colors.textMuted} />
+                  <Text style={styles.profileOrg} numberOfLines={1}>
+                    {organization?.name}
+                  </Text>
                 </View>
-                <Text style={styles.label}>Email</Text>
               </View>
-              <Text style={styles.valueWide} numberOfLines={1}>
-                {user?.email}
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
-                  <Ionicons name="business" size={18} color={colors.textSecondary} />
-                </View>
-                <Text style={styles.label}>Organization</Text>
-              </View>
-              <Text style={styles.value}>{organization?.name}</Text>
-            </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
 
             {/* Biometric Login */}
             {biometricCapabilities?.isAvailable && (
               <>
-                <View style={styles.divider} />
+                <View style={styles.dividerFull} />
                 <View style={styles.row}>
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -650,20 +653,25 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
           <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => navigation.navigate('TapToPayEducation')}
-            >
-              <View style={styles.rowLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                  <Ionicons name="school-outline" size={18} color={colors.primary} />
-                </View>
-                <Text style={styles.label}>Learn {TAP_TO_PAY_NAME}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
+            {/* Learn Tap to Pay - iOS only (Android auto-enables without education) */}
+            {Platform.OS === 'ios' && (
+              <>
+                <TouchableOpacity
+                  style={styles.row}
+                  onPress={() => navigation.navigate('TapToPayEducation')}
+                >
+                  <View style={styles.rowLeft}>
+                    <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+                      <Ionicons name="school-outline" size={18} color={colors.primary} />
+                    </View>
+                    <Text style={styles.label}>Learn {TAP_TO_PAY_NAME}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </TouchableOpacity>
 
-            <View style={styles.divider} />
+                <View style={styles.divider} />
+              </>
+            )}
 
             <TouchableOpacity
               style={styles.row}
@@ -694,25 +702,35 @@ export function SettingsScreen() {
         </View>
         </View>
       </ScrollView>
-    </View>
+      </View>
+
+      {/* Profile Edit Modal */}
+      <ProfileEditModal
+        visible={showProfileEdit}
+        onClose={() => setShowProfileEdit(false)}
+      />
+    </StarBackground>
   );
 }
 
 const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boolean) => {
+  const headerBackground = isDark ? '#09090b' : colors.background;
+  const cardBackground = isDark ? '#181819' : 'rgba(255,255,255,0.95)';
+  const cardBorder = isDark ? '#1d1d1f' : 'rgba(0,0,0,0.08)';
 
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
       height: 56,
       paddingHorizontal: 16,
-      backgroundColor: glassColors.backgroundSubtle,
+      backgroundColor: headerBackground,
       borderBottomWidth: 1,
-      borderBottomColor: glassColors.borderSubtle,
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
     },
     title: {
       fontSize: 18,
@@ -721,10 +739,12 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     content: {
       flex: 1,
+      backgroundColor: 'transparent',
     },
     scrollContent: {
       flexGrow: 1,
       alignItems: 'center',
+      backgroundColor: 'transparent',
     },
     contentContainer: {
       width: '100%',
@@ -744,10 +764,10 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       marginLeft: 4,
     },
     card: {
-      backgroundColor: glassColors.backgroundElevated,
+      backgroundColor: cardBackground,
       borderRadius: 20,
       borderWidth: 1,
-      borderColor: glassColors.border,
+      borderColor: cardBorder,
       overflow: 'hidden',
       ...shadows.sm,
     },
@@ -837,8 +857,62 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     divider: {
       height: 1,
-      backgroundColor: glassColors.border,
+      backgroundColor: cardBorder,
       marginLeft: 64,
+    },
+    dividerFull: {
+      height: 1,
+      backgroundColor: cardBorder,
+    },
+    profileCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+    },
+    profileAvatar: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: colors.primary + '20',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 14,
+    },
+    profileAvatarImage: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      marginRight: 14,
+    },
+    profileInitials: {
+      fontSize: 20,
+      fontFamily: fonts.semiBold,
+      color: colors.primary,
+    },
+    profileInfo: {
+      flex: 1,
+    },
+    profileName: {
+      fontSize: 18,
+      fontFamily: fonts.semiBold,
+      color: colors.text,
+      marginBottom: 2,
+    },
+    profileEmail: {
+      fontSize: 14,
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: 4,
+    },
+    profileOrgRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    profileOrg: {
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
     },
     label: {
       fontSize: 16,
@@ -1045,17 +1119,14 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     signOutButton: {
       flexDirection: 'row',
-      backgroundColor: colors.errorBg,
+      backgroundColor: isDark ? '#2a1212' : colors.errorBg,
       borderRadius: 20,
       paddingVertical: 18,
       alignItems: 'center',
       justifyContent: 'center',
       gap: 10,
-      ...(isDark && {
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.2)',
-        ...shadows.sm,
-      }),
+      borderWidth: 1,
+      borderColor: isDark ? '#3d1f1f' : 'transparent',
     },
     signOutText: {
       fontSize: 16,

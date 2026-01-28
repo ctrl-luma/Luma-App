@@ -471,7 +471,8 @@ export function CatalogSelectScreen() {
     );
   }
 
-  const activeCatalogs = catalogs.filter((c) => c.isActive);
+  // Filter to only show active catalogs that are not locked (subscription tier restriction)
+  const activeCatalogs = catalogs.filter((c) => c.isActive && !c.isLocked);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

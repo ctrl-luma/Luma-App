@@ -12,13 +12,30 @@ export type {
 } from './auth';
 
 export { catalogsApi } from './catalogs';
-export type { Catalog, CatalogLayoutType, UpdateCatalogData } from './catalogs';
+export type {
+  Catalog,
+  CatalogLayoutType,
+  CreateCatalogData,
+  UpdateCatalogData,
+} from './catalogs';
 
-export { productsApi } from './products';
-export type { Product } from './products';
+export { productsApi, catalogProductsApi, libraryProductsApi, flattenCatalogProduct } from './products';
+export type {
+  Product,
+  CatalogProduct,
+  LibraryProduct,
+  CreateLibraryProductData,
+  UpdateLibraryProductData,
+  CreateCatalogProductData,
+  UpdateCatalogProductData,
+} from './products';
 
 export { categoriesApi } from './categories';
-export type { Category } from './categories';
+export type {
+  Category,
+  CreateCategoryData,
+  UpdateCategoryData,
+} from './categories';
 
 export { transactionsApi } from './transactions';
 export type {
@@ -46,6 +63,12 @@ export type {
   OrderItem,
   CreateOrderParams,
   OrdersListResponse,
+  HeldOrdersResponse,
+  CashPaymentResponse,
+  OrderPayment,
+  AddPaymentParams,
+  AddPaymentResponse,
+  OrderPaymentsResponse,
 } from './orders';
 
 export { stripeConnectApi } from './stripe-connect';

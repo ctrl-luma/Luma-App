@@ -5,6 +5,7 @@ import { config } from '../lib/config';
 import { authService } from '../lib/api';
 import { triggerSessionKicked } from '../lib/session-callbacks';
 import { useAuth } from './AuthContext';
+import { getDeviceId } from '../lib/device';
 import logger from '../lib/logger';
 
 // Socket event types
@@ -31,9 +32,12 @@ export const SocketEvents = {
   // Transaction events
   TRANSACTION_CREATED: 'transaction:created',
   TRANSACTION_UPDATED: 'transaction:updated',
-  // Order events (from webhook handlers)
+  // Order events
+  ORDER_CREATED: 'order:created',
+  ORDER_UPDATED: 'order:updated',
   ORDER_COMPLETED: 'order:completed',
   ORDER_FAILED: 'order:failed',
+  ORDER_DELETED: 'order:deleted',
   PAYMENT_RECEIVED: 'payment:received',
   ORDER_REFUNDED: 'order:refunded',
 } as const;
@@ -124,9 +128,20 @@ export function SocketProvider({ children }: SocketProviderProps) {
         reconnectionDelayMax: 5000,
       });
 
-      socketRef.current.on('connect', () => {
+      socketRef.current.on('connect', async () => {
         logger.log('[Socket] Connected successfully:', socketRef.current?.id);
         setIsConnected(true);
+
+        // Join device room for device-specific events
+        try {
+          const deviceId = await getDeviceId();
+          if (deviceId && socketRef.current) {
+            logger.log('[Socket] Joining device room:', deviceId);
+            socketRef.current.emit('join:device', deviceId);
+          }
+        } catch (err) {
+          logger.error('[Socket] Failed to join device room:', err);
+        }
       });
 
       socketRef.current.on('disconnect', (reason) => {

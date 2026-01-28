@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,13 @@ import {
   Alert,
   Animated,
   useWindowDimensions,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +23,7 @@ import { glass } from '../lib/colors';
 import { shadows, glow } from '../lib/shadows';
 import { PayoutsSetupBanner } from '../components/PayoutsSetupBanner';
 import { SetupRequiredBanner } from '../components/SetupRequiredBanner';
+import { StarBackground } from '../components/StarBackground';
 
 // Responsive sizing constants
 const MIN_BUTTON_SIZE = 56;
@@ -139,6 +142,19 @@ export function ChargeScreen() {
   const [description, setDescription] = useState('');
   const [showDescription, setShowDescription] = useState(false);
 
+  // Reset amount when leaving the screen
+  useFocusEffect(
+    useCallback(() => {
+      // Called when screen gains focus - do nothing
+      return () => {
+        // Cleanup called when screen loses focus - reset the form
+        setAmount('');
+        setDescription('');
+        setShowDescription(false);
+      };
+    }, [])
+  );
+
   // Calculate responsive sizes based on screen dimensions
   const responsiveSizes = useMemo(() => {
     const minDimension = Math.min(screenWidth, screenHeight);
@@ -226,7 +242,7 @@ export function ChargeScreen() {
     setShowDescription(false);
   };
 
-  const styles = createStyles(colors, glassColors, responsiveSizes);
+  const styles = createStyles(colors, glassColors, responsiveSizes, isDark);
 
   // Show setup required banner when charges aren't enabled
   const showSetupBanner = !connectLoading && connectStatus && !connectStatus.chargesEnabled;
@@ -239,16 +255,17 @@ export function ChargeScreen() {
   const chargeDisabled = cents < 50;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Setup Required Banner (charges not enabled) */}
-      {showSetupBanner && <SetupRequiredBanner compact />}
+    <StarBackground colors={colors} isDark={isDark}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        {/* Setup Required Banner (charges not enabled) */}
+        {showSetupBanner && <SetupRequiredBanner compact />}
 
-      {/* Payouts Setup Banner (can accept payments but no payouts yet) */}
-      {showPayoutsBanner && <PayoutsSetupBanner compact />}
+        {/* Payouts Setup Banner (can accept payments but no payouts yet) */}
+        {showPayoutsBanner && <PayoutsSetupBanner compact />}
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Quick Charge</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Quick Charge</Text>
         <Pressable
           style={styles.noteButton}
           onPress={() => {
@@ -331,7 +348,8 @@ export function ChargeScreen() {
           Minimum charge is $0.50
         </Text>
       </View>
-    </View>
+      </View>
+    </StarBackground>
   );
 }
 
@@ -342,11 +360,15 @@ interface ResponsiveSizes {
   currencyFontSize: number;
 }
 
-const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: ResponsiveSizes) => {
+const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: ResponsiveSizes, isDark: boolean) => {
+  const headerBackground = isDark ? '#09090b' : colors.background;
+  const cardBackground = isDark ? '#181819' : 'rgba(255,255,255,0.85)';
+  const cardBorder = isDark ? '#1d1d1f' : 'rgba(0,0,0,0.08)';
+
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
     },
     mainContent: {
       flex: 1,
@@ -359,9 +381,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: Respon
       justifyContent: 'space-between',
       height: 56,
       paddingHorizontal: 16,
-      backgroundColor: glassColors.backgroundSubtle,
+      backgroundColor: headerBackground,
       borderBottomWidth: 1,
-      borderBottomColor: glassColors.borderSubtle,
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
     },
     title: {
       fontSize: 18,
@@ -373,19 +395,20 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: Respon
       height: 44,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: glassColors.backgroundElevated,
+      backgroundColor: cardBackground,
       borderRadius: 14,
       borderWidth: 1,
-      borderColor: glassColors.border,
+      borderColor: cardBorder,
     },
     descriptionContainer: {
       paddingHorizontal: 20,
       paddingVertical: 12,
+      backgroundColor: 'transparent',
     },
     descriptionInput: {
-      backgroundColor: glassColors.backgroundElevated,
+      backgroundColor: cardBackground,
       borderWidth: 1,
-      borderColor: glassColors.border,
+      borderColor: cardBorder,
       borderRadius: 16,
       paddingHorizontal: 18,
       paddingVertical: 14,

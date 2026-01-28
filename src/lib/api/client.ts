@@ -257,6 +257,41 @@ class ApiClient {
   async patch<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
     return this.makeRequest<T>('PATCH', endpoint, data, options);
   }
+
+  /**
+   * POST with FormData (for file uploads)
+   * Does not set Content-Type header - let browser set it with boundary
+   */
+  async postForm<T>(endpoint: string, formData: FormData): Promise<T> {
+    if (this.isRefreshing && endpoint !== '/auth/refresh') {
+      return new Promise((resolve, reject) => {
+        this.requestQueue.push({
+          resolve,
+          reject,
+          request: () => this.postForm(endpoint, formData)
+        });
+      });
+    }
+
+    const token = await this.getAuthToken();
+    const sessionVersion = await this.getSessionVersion();
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (sessionVersion) {
+      headers['X-Session-Version'] = sessionVersion;
+    }
+
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    return this.handleResponse<T>(response, endpoint, 0, 'POST', undefined, { headers });
+  }
 }
 
 export const apiClient = new ApiClient();

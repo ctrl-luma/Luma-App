@@ -16,8 +16,23 @@ export interface Catalog {
   allowCustomTip: boolean;
   taxRate: number;
   layoutType: CatalogLayoutType;
+  isLocked?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CreateCatalogData {
+  name: string;
+  description?: string | null;
+  location?: string | null;
+  date?: string | null;
+  isActive?: boolean;
+  showTipScreen?: boolean;
+  promptForEmail?: boolean;
+  tipPercentages?: number[];
+  allowCustomTip?: boolean;
+  taxRate?: number;
+  layoutType?: CatalogLayoutType;
 }
 
 export interface UpdateCatalogData {
@@ -30,6 +45,7 @@ export interface UpdateCatalogData {
   promptForEmail?: boolean;
   tipPercentages?: number[];
   allowCustomTip?: boolean;
+  taxRate?: number;
   layoutType?: CatalogLayoutType;
 }
 
@@ -45,7 +61,23 @@ export const catalogsApi = {
   get: (id: string) => apiClient.get<Catalog>(`/catalogs/${id}`),
 
   /**
+   * Create a new catalog
+   */
+  create: (data: CreateCatalogData) => apiClient.post<Catalog>('/catalogs', data),
+
+  /**
    * Update a catalog
    */
   update: (id: string, data: UpdateCatalogData) => apiClient.put<Catalog>(`/catalogs/${id}`, data),
+
+  /**
+   * Delete a catalog
+   */
+  delete: (id: string) => apiClient.delete<{ success: boolean }>(`/catalogs/${id}`),
+
+  /**
+   * Duplicate a catalog (copies all products and settings)
+   */
+  duplicate: (id: string, name?: string) =>
+    apiClient.post<Catalog>(`/catalogs/${id}/duplicate`, name ? { name } : {}),
 };

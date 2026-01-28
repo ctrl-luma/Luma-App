@@ -12,8 +12,15 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from 'react';
 import { Platform, Alert, AppState, AppStateStatus } from 'react-native';
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+
+// Conditionally import expo-device (safe for Expo Go)
+let Device: typeof import('expo-device') | null = null;
+try {
+  Device = require('expo-device');
+} catch {
+  Device = null;
+}
 import { stripeTerminalApi } from '../lib/api';
 import { useAuth } from './AuthContext';
 import logger from '../lib/logger';
@@ -153,13 +160,13 @@ function checkDeviceCompatibilitySync(): DeviceCompatibility {
       iosVersionSupported: true,
       deviceSupported: true,
       iosVersion: null,
-      deviceModel: Device.modelId,
+      deviceModel: Device?.modelId || null,
       errorMessage: null,
     };
   }
 
-  const osVersion = Device.osVersion;
-  const modelId = Device.modelId;
+  const osVersion = Device?.osVersion || null;
+  const modelId = Device?.modelId || null;
 
   // Parse iOS version
   const iosVersionNum = osVersion ? parseFloat(osVersion) : 0;
@@ -371,6 +378,9 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
   }, [initialize, isInitialized]);
 
+  // Track if we've already attempted auto-connect on Android
+  const hasAutoConnectedRef = useRef(false);
+
   // Auto-warm terminal on mount and when app comes to foreground (Apple TTPOi 1.4)
   // Only warm if Stripe Connect is set up (chargesEnabled)
   useEffect(() => {
@@ -410,6 +420,24 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       subscription.remove();
     };
   }, [warmTerminal, deviceCompatibility.isCompatible, isInitialized, chargesEnabled]);
+
+  // Android: Auto-connect reader after terminal is initialized
+  useEffect(() => {
+    if (
+      Platform.OS === 'android' &&
+      isInitialized &&
+      !isConnected &&
+      !hasAutoConnectedRef.current &&
+      chargesEnabled
+    ) {
+      logger.log('[StripeTerminal] Android auto-connect: Terminal initialized, auto-connecting reader...');
+      hasAutoConnectedRef.current = true;
+      connectReader().catch(err => {
+        logger.warn('[StripeTerminal] Android auto-connect failed (non-fatal):', err.message);
+        hasAutoConnectedRef.current = false;
+      });
+    }
+  }, [isInitialized, isConnected, chargesEnabled, connectReader]);
 
   // Fetch terminal location on mount (only if Stripe Connect is set up)
   useEffect(() => {

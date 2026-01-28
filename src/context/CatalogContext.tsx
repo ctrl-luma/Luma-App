@@ -50,32 +50,43 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
   const fetchAndValidateCatalogs = useCallback(async (hadCachedData: boolean) => {
     try {
       const fetchedCatalogs = await catalogsApi.list();
+      logger.log('[CatalogContext] Fetched catalogs:', fetchedCatalogs.map(c => ({ id: c.id, name: c.name, isLocked: c.isLocked, createdAt: c.createdAt })));
       setCatalogs(fetchedCatalogs);
+
+      // Filter to only unlocked, active catalogs for auto-selection
+      const availableCatalogs = fetchedCatalogs.filter(c => c.isActive && !c.isLocked);
+      logger.log('[CatalogContext] Available (unlocked) catalogs:', availableCatalogs.map(c => ({ id: c.id, name: c.name })));
 
       // Get current selected catalog (might have been loaded from cache)
       const savedCatalogJson = await AsyncStorage.getItem(CATALOG_STORAGE_KEY);
       const savedCatalog = savedCatalogJson ? JSON.parse(savedCatalogJson) as Catalog : null;
+      logger.log('[CatalogContext] Saved catalog from storage:', savedCatalog ? { id: savedCatalog.id, name: savedCatalog.name } : null);
 
       if (savedCatalog) {
-        // Verify saved catalog still exists in the list
+        // Verify saved catalog still exists and is not locked
         const stillExists = fetchedCatalogs.find(c => c.id === savedCatalog.id);
-        if (stillExists) {
+        logger.log('[CatalogContext] Saved catalog still exists?', !!stillExists, 'isLocked?', stillExists?.isLocked);
+        if (stillExists && !stillExists.isLocked) {
           // Use the fresh data from API in case name/details changed
+          logger.log('[CatalogContext] Keeping saved catalog (not locked):', stillExists.name);
           setSelectedCatalogState(stillExists);
           await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(stillExists));
-        } else if (fetchedCatalogs.length > 0) {
-          // Saved catalog no longer exists, default to first
-          setSelectedCatalogState(fetchedCatalogs[0]);
-          await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(fetchedCatalogs[0]));
+        } else if (availableCatalogs.length > 0) {
+          // Saved catalog no longer exists or is locked, select first available
+          logger.log('[CatalogContext] Saved catalog is locked/missing, switching to:', availableCatalogs[0].name);
+          setSelectedCatalogState(availableCatalogs[0]);
+          await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(availableCatalogs[0]));
         } else {
           // No catalogs available, clear selection
+          logger.log('[CatalogContext] No available catalogs, clearing selection');
           setSelectedCatalogState(null);
           await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);
         }
-      } else if (fetchedCatalogs.length > 0) {
-        // No saved catalog, auto-select the first one
-        setSelectedCatalogState(fetchedCatalogs[0]);
-        await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(fetchedCatalogs[0]));
+      } else if (availableCatalogs.length > 0) {
+        // No saved catalog, auto-select the first available one
+        logger.log('[CatalogContext] No saved catalog, auto-selecting:', availableCatalogs[0].name);
+        setSelectedCatalogState(availableCatalogs[0]);
+        await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(availableCatalogs[0]));
       }
     } catch (error) {
       logger.error('Failed to fetch catalogs:', error);
@@ -140,13 +151,25 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
       const fetchedCatalogs = await catalogsApi.list();
       setCatalogs(fetchedCatalogs);
 
+      // Filter to only unlocked, active catalogs for auto-selection
+      const availableCatalogs = fetchedCatalogs.filter(c => c.isActive && !c.isLocked);
+
       // Update selected catalog if it was updated (use ref to avoid dependency cycle)
       const currentSelected = selectedCatalogRef.current;
       if (currentSelected) {
         const updated = fetchedCatalogs.find(c => c.id === currentSelected.id);
-        if (updated) {
+        if (updated && !updated.isLocked) {
+          // Current catalog still exists and is not locked
           setSelectedCatalogState(updated);
           await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(updated));
+        } else if (availableCatalogs.length > 0) {
+          // Current catalog is locked or deleted, switch to first available
+          setSelectedCatalogState(availableCatalogs[0]);
+          await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(availableCatalogs[0]));
+        } else {
+          // No available catalogs
+          setSelectedCatalogState(null);
+          await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);
         }
       }
     } catch (error) {
@@ -169,12 +192,15 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
         const fetchedCatalogs = await catalogsApi.list();
         setCatalogs(fetchedCatalogs);
 
-        // If the deleted catalog was selected, auto-select the first remaining one (use ref)
+        // Filter to only unlocked, active catalogs for auto-selection
+        const availableCatalogs = fetchedCatalogs.filter(c => c.isActive && !c.isLocked);
+
+        // If the deleted catalog was selected, auto-select the first available one (use ref)
         const currentSelected = selectedCatalogRef.current;
         if (data?.catalogId && currentSelected?.id === data.catalogId) {
-          if (fetchedCatalogs.length > 0) {
-            setSelectedCatalogState(fetchedCatalogs[0]);
-            await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(fetchedCatalogs[0]));
+          if (availableCatalogs.length > 0) {
+            setSelectedCatalogState(availableCatalogs[0]);
+            await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(availableCatalogs[0]));
           } else {
             setSelectedCatalogState(null);
             await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);

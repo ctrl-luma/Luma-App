@@ -18,8 +18,8 @@ interface PayoutsSetupBannerProps {
  * This is a non-blocking informational banner - they can still use Tap to Pay.
  */
 export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps) {
-  const { colors } = useTheme();
-  const styles = createStyles(colors, compact);
+  const { colors, isDark } = useTheme();
+  const styles = createStyles(colors, compact, isDark);
 
   if (compact) {
     return (
@@ -68,14 +68,14 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
   );
 }
 
-const createStyles = (colors: any, compact: boolean) =>
+const createStyles = (colors: any, compact: boolean, isDark: boolean) =>
   StyleSheet.create({
     // Full banner styles
     container: {
-      backgroundColor: colors.card,
+      backgroundColor: isDark ? '#181819' : colors.card,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: colors.success,
+      borderColor: isDark ? '#0f2a17' : colors.success,
       padding: 16,
       marginHorizontal: 16,
       marginVertical: 12,
@@ -89,7 +89,7 @@ const createStyles = (colors: any, compact: boolean) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: colors.successBg || colors.success + '20',
+      backgroundColor: isDark ? '#0a1a0f' : (colors.successBg || colors.success + '20'),
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: 12,
@@ -127,7 +127,7 @@ const createStyles = (colors: any, compact: boolean) =>
     compactContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.infoBg || colors.info + '15',
+      backgroundColor: isDark ? '#0d1420' : (colors.infoBg || colors.info + '15'),
       paddingVertical: 10,
       paddingHorizontal: 14,
       borderRadius: 8,

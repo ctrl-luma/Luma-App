@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -17,6 +18,8 @@ import { config } from '../lib/config';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
+import { StarBackground } from '../components/StarBackground';
+
 
 type RouteParams = {
   PaymentProcessing: {
@@ -160,7 +163,7 @@ export function PaymentProcessingScreen() {
   const styles = createStyles(colors, glassColors);
 
   return (
-    <View style={styles.container}>
+    <StarBackground colors={colors} isDark={isDark}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           {/* Amount Display */}
@@ -206,16 +209,12 @@ export function PaymentProcessingScreen() {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
-    </View>
+    </StarBackground>
   );
 }
 
 const createStyles = (colors: any, glassColors: typeof glass.dark) => {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
     safeArea: {
       flex: 1,
     },
