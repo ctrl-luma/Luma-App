@@ -188,9 +188,11 @@ export function LoadingWithStars({ message = 'Loading...' }: LoadingWithStarsPro
             <View style={[styles.loadingDot, { backgroundColor: isDark ? '#fff' : colors.primary, marginHorizontal: 8 }]} />
             <View style={[styles.loadingDot, { backgroundColor: isDark ? '#fff' : colors.primary }]} />
           </Animated.View>
-          <Animated.Text style={[styles.loadingText, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary, opacity: pulseAnim }]}>
-            {message}
-          </Animated.Text>
+          {message ? (
+            <Animated.Text style={[styles.loadingText, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary, opacity: pulseAnim }]}>
+              {message}
+            </Animated.Text>
+          ) : null}
         </Animated.View>
       </StarryBackground>
     </View>
