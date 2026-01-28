@@ -406,22 +406,20 @@ export function TapToPayEducationScreen() {
     setAppleEducationActive(true);
     try {
       const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
-      // Fire off the native education — don't await yet
       const educationPromise = showProximityReaderDiscoveryEducation();
-      // Wait for Apple's sheet to animate in, then navigate back
-      // so our modal is already gone when Apple's sheet dismisses
+      // Wait for Apple's sheet to animate in, then hide our loader
       await new Promise(resolve => setTimeout(resolve, 500));
       setShowingAppleEducation(false);
-      markEducationSeen();
-      navigateBack();
-      // Still wait for the promise to settle
-      await educationPromise.catch(() => {});
+      // Wait for user to dismiss Apple's sheet
+      await educationPromise;
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
       setShowingAppleEducation(false);
-      markEducationSeen();
-      navigateBack();
     }
+    // Apple's sheet is now fully dismissed — navigate back
+    setAppleEducationActive(false);
+    markEducationSeen();
+    navigateBack();
   };
 
   // Check if device is not compatible
