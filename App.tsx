@@ -43,6 +43,7 @@ import { SocketProvider } from './src/context/SocketContext';
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
 import { StripeTerminalContextProvider } from './src/context/StripeTerminalContext';
 import { NetworkStatus } from './src/components/NetworkStatus';
+import { DataPrefetcher } from './src/components/DataPrefetcher';
 import { config } from './src/lib/config';
 
 // Auth screens
@@ -492,6 +493,8 @@ function TabIcon({
 function TabNavigatorWithOnboarding() {
   return (
     <View style={{ flex: 1 }}>
+      {/* Prefetch data for Settings, Menu, and Transactions on app load */}
+      <DataPrefetcher />
       {/* Tap to Pay Onboarding Modal - Apple TTPOi 3.2, 3.3, 3.5 */}
       {/* Rendered here so it has access to the correct navigation context */}
       <TapToPayOnboardingWrapper />

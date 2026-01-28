@@ -51,6 +51,17 @@ export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
+  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollOffsetRef = useRef(0);
+
+  // Restore scroll position after theme change re-render
+  useEffect(() => {
+    if (scrollOffsetRef.current > 0) {
+      requestAnimationFrame(() => {
+        scrollViewRef.current?.scrollTo({ y: scrollOffsetRef.current, animated: false });
+      });
+    }
+  }, [isDark]);
   const { user, organization, subscription, signOut, connectStatus, connectLoading, isPaymentReady, refreshAuth } = useAuth();
   const { selectedCatalog, clearCatalog } = useCatalog();
   const {
@@ -281,9 +292,12 @@ export function SettingsScreen() {
         </View>
 
         <ScrollView
+        ref={scrollViewRef}
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        onScroll={(e) => { scrollOffsetRef.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={16}
       >
         <View style={styles.contentContainer}>
         {/* 1. Vendor Portal - Featured section for owners/admins */}
