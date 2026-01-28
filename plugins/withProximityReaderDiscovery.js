@@ -60,12 +60,19 @@ class ProximityReaderDiscoveryModule: NSObject {
   func checkDeviceSupport(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     if #available(iOS 18.0, *) {
       Task {
-        let discovery = ProximityReaderDiscovery()
-        let contentList = discovery.contentList
-        resolve([
-          "isSupported": !contentList.isEmpty,
-          "iosVersion": ProcessInfo.processInfo.operatingSystemVersionString
-        ])
+        do {
+          let discovery = ProximityReaderDiscovery()
+          let contentList = try await discovery.contentList
+          resolve([
+            "isSupported": !contentList.isEmpty,
+            "iosVersion": ProcessInfo.processInfo.operatingSystemVersionString
+          ])
+        } catch {
+          resolve([
+            "isSupported": false,
+            "reason": error.localizedDescription
+          ])
+        }
       }
     } else {
       resolve([
