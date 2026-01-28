@@ -211,9 +211,8 @@ export function TapToPayEducationScreen() {
     }
   }, [isIOS]);
 
-  // Android: Skip education entirely, just enable TTP and navigate back
-  // iOS: Show enable slide first (for T&C acceptance)
-  const showEnableSlide = isIOS;
+  // Only show the enable slide if not already connected
+  const showEnableSlide = isIOS && !isConnected;
   // iOS 18+: After enabling, show Apple's native education UI
   // iOS 16-17: After enabling, show custom slides
   const useAppleNativeEducation = isIOS && proximityDiscoveryAvailable === true;
@@ -225,6 +224,14 @@ export function TapToPayEducationScreen() {
   const [isEnabled, setIsEnabled] = useState(false);
 
   const styles = createStyles(colors, glassColors, isDark);
+
+  // iOS 18+ already connected: Jump straight to Apple's native education
+  useEffect(() => {
+    if (isIOS && isConnected && useAppleNativeEducation && !showingAppleEducation) {
+      showAppleNativeEducation();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIOS, isConnected, useAppleNativeEducation]);
 
   // Android auto-enable on mount: Connect reader and navigate back immediately
   useEffect(() => {
