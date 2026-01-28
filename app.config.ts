@@ -57,6 +57,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     plugins: [
       'expo-font',
+      './plugins/withProximityReaderDiscovery',
       [
         'expo-alternate-app-icons',
         {
