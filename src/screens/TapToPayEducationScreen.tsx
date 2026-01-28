@@ -204,18 +204,40 @@ export function TapToPayEducationScreen() {
       // Dynamically import to avoid loading native module on Android/Expo Go
       import('../lib/native/ProximityReaderDiscovery')
         .then(module => module.isProximityReaderDiscoveryAvailable())
-        .then(setProximityDiscoveryAvailable)
-        .catch(() => setProximityDiscoveryAvailable(false));
+        .then((available) => {
+          logger.log('[TapToPayEducation] ProximityReaderDiscovery available:', available);
+          setProximityDiscoveryAvailable(available);
+        })
+        .catch((err) => {
+          logger.log('[TapToPayEducation] ProximityReaderDiscovery check failed:', err);
+          setProximityDiscoveryAvailable(false);
+        });
     } else {
       setProximityDiscoveryAvailable(false);
     }
   }, [isIOS]);
+
+  logger.log('[TapToPayEducation] State:', {
+    isIOS,
+    isAndroid,
+    isConnected,
+    isInitialized,
+    proximityDiscoveryAvailable,
+    showingAppleEducation,
+    platform: Platform.OS,
+    platformVersion: Platform.Version,
+  });
 
   // Only show the enable slide if not already connected
   const showEnableSlide = isIOS && !isConnected;
   // iOS 18+: After enabling, show Apple's native education UI
   // iOS 16-17: After enabling, show custom slides
   const useAppleNativeEducation = isIOS && proximityDiscoveryAvailable === true;
+
+  logger.log('[TapToPayEducation] Computed:', {
+    showEnableSlide,
+    useAppleNativeEducation,
+  });
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isEnabling, setIsEnabling] = useState(false);
@@ -227,7 +249,9 @@ export function TapToPayEducationScreen() {
 
   // iOS 18+ already connected: Jump straight to Apple's native education
   useEffect(() => {
+    logger.log('[TapToPayEducation] Auto-launch effect:', { isIOS, isConnected, useAppleNativeEducation, showingAppleEducation });
     if (isIOS && isConnected && useAppleNativeEducation && !showingAppleEducation) {
+      logger.log('[TapToPayEducation] Auto-launching Apple native education');
       showAppleNativeEducation();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
