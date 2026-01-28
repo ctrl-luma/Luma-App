@@ -1,8 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Image } from 'react-native';
 import { authService, User, Organization, Subscription, stripeConnectApi, ConnectStatus } from '../lib/api';
 import { setOnSessionKicked } from '../lib/api/client';
 import { setOnSocketSessionKicked } from '../lib/session-callbacks';
+import {
+  checkBiometricCapabilities,
+  isBiometricLoginEnabled,
+  BiometricCapabilities,
+} from '../lib/biometricAuth';
 import logger from '../lib/logger';
 
 interface AuthState {
@@ -14,6 +19,8 @@ interface AuthState {
   connectStatus: ConnectStatus | null;
   isPaymentReady: boolean;
   connectLoading: boolean;
+  biometricCapabilities: BiometricCapabilities | null;
+  biometricEnabled: boolean;
 }
 
 interface AuthContextType extends AuthState {
@@ -22,6 +29,8 @@ interface AuthContextType extends AuthState {
   refreshAuth: () => Promise<void>;
   refreshConnectStatus: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  setBiometricEnabled: (enabled: boolean) => void;
+  refreshBiometricStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -36,6 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     connectStatus: null,
     isPaymentReady: false,
     connectLoading: true,
+    biometricCapabilities: null,
+    biometricEnabled: false,
   });
 
   // Track if we're already showing a session kicked alert
@@ -68,6 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       connectStatus: null,
       isPaymentReady: false,
       connectLoading: false,
+      biometricCapabilities: null,
+      biometricEnabled: false,
     });
 
     // Show alert to user
@@ -169,6 +182,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             connectStatus: null,
             isPaymentReady: false,
             connectLoading: false,
+            biometricCapabilities: null,
+            biometricEnabled: false,
           });
         } else {
           // For other errors (network, 404, 500, etc.), keep the user logged in with cached data
@@ -224,6 +239,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       connectStatus: null,
       isPaymentReady: false,
       connectLoading: false,
+      biometricCapabilities: null,
+      biometricEnabled: false,
     });
   };
 
@@ -282,8 +299,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.isAuthenticated, state.isLoading, refreshConnectStatus]);
 
+  // Load biometric capabilities and status on startup
+  const refreshBiometricStatus = useCallback(async () => {
+    const capabilities = await checkBiometricCapabilities();
+    let enabled = false;
+    if (capabilities.isAvailable) {
+      enabled = await isBiometricLoginEnabled();
+    }
+    setState(prev => ({
+      ...prev,
+      biometricCapabilities: capabilities,
+      biometricEnabled: enabled,
+    }));
+  }, []);
+
+  const setBiometricEnabled = useCallback((enabled: boolean) => {
+    setState(prev => ({ ...prev, biometricEnabled: enabled }));
+  }, []);
+
+  useEffect(() => {
+    if (state.isAuthenticated && !state.isLoading) {
+      refreshBiometricStatus();
+    }
+  }, [state.isAuthenticated, state.isLoading, refreshBiometricStatus]);
+
+  // Prefetch avatar image into native cache
+  useEffect(() => {
+    if (state.user?.avatarUrl) {
+      Image.prefetch(state.user.avatarUrl).catch(() => {});
+    }
+  }, [state.user?.avatarUrl]);
+
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, refreshAuth, refreshConnectStatus, completeOnboarding }}>
+    <AuthContext.Provider value={{ ...state, signIn, signOut, refreshAuth, refreshConnectStatus, completeOnboarding, setBiometricEnabled, refreshBiometricStatus }}>
       {children}
     </AuthContext.Provider>
   );

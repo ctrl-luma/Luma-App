@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Image } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '../context/AuthContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useDevice } from '../context/DeviceContext';
 import { productsApi, categoriesApi, transactionsApi } from '../lib/api';
@@ -14,7 +12,6 @@ import logger from '../lib/logger';
  */
 export function DataPrefetcher() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   const { selectedCatalog } = useCatalog();
   const { deviceId } = useDevice();
   const hasPrefetched = useRef(false);
@@ -25,11 +22,6 @@ export function DataPrefetcher() {
 
     hasPrefetched.current = true;
     logger.log('[DataPrefetcher] Prefetching data');
-
-    // Settings: prefetch avatar image
-    if (user?.avatarUrl) {
-      Image.prefetch(user.avatarUrl).catch(() => {});
-    }
 
     // Settings: subscription info
     queryClient.prefetchQuery({

@@ -28,11 +28,8 @@ import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { billingService, SubscriptionInfo } from '../lib/api/billing';
 import { Subscription } from '../lib/api';
 import {
-  checkBiometricCapabilities,
-  isBiometricLoginEnabled,
   enableBiometricLogin,
   disableBiometricLogin,
-  BiometricCapabilities,
 } from '../lib/biometricAuth';
 
 // Apple TTPOi 5.4: Region-correct terminology
@@ -62,7 +59,7 @@ export function SettingsScreen() {
       });
     }
   }, [isDark]);
-  const { user, organization, subscription, signOut, connectStatus, connectLoading, isPaymentReady, refreshAuth } = useAuth();
+  const { user, organization, subscription, signOut, connectStatus, connectLoading, isPaymentReady, refreshAuth, biometricCapabilities, biometricEnabled, setBiometricEnabled, refreshBiometricStatus } = useAuth();
   const { selectedCatalog, clearCatalog } = useCatalog();
   const {
     deviceCompatibility,
@@ -126,31 +123,14 @@ export function SettingsScreen() {
   // Profile edit modal
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
-  // Biometric login state
-  const [biometricCapabilities, setBiometricCapabilities] = useState<BiometricCapabilities | null>(null);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  // Biometric toggle loading state (values come from AuthContext)
   const [biometricLoading, setBiometricLoading] = useState(false);
-
-  // Check biometric capabilities and status on mount and when screen is focused
-  const checkBiometricStatus = useCallback(async () => {
-    const capabilities = await checkBiometricCapabilities();
-    setBiometricCapabilities(capabilities);
-
-    if (capabilities.isAvailable) {
-      const enabled = await isBiometricLoginEnabled();
-      setBiometricEnabled(enabled);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkBiometricStatus();
-  }, [checkBiometricStatus]);
 
   // Refresh biometric status when screen is focused
   useFocusEffect(
     useCallback(() => {
-      checkBiometricStatus();
-    }, [checkBiometricStatus])
+      refreshBiometricStatus();
+    }, [refreshBiometricStatus])
   );
 
   // Handle biometric toggle
@@ -534,7 +514,7 @@ export function SettingsScreen() {
               activeOpacity={0.7}
             >
               {user?.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.profileAvatarImage} />
+                <Image source={{ uri: user.avatarUrl }} style={styles.profileAvatarImage} fadeDuration={0} />
               ) : (
                 <View style={styles.profileAvatar}>
                   <Text style={styles.profileInitials}>
