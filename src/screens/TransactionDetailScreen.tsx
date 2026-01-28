@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
+import { StarBackground } from '../components/StarBackground';
 import { transactionsApi } from '../lib/api';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
@@ -351,6 +352,7 @@ export function TransactionDetailScreen() {
     transaction.status === 'succeeded' && transaction.amountRefunded === 0;
 
   return (
+    <StarBackground colors={colors} isDark={isDark}>
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
@@ -567,6 +569,7 @@ export function TransactionDetailScreen() {
         </View>
       </Modal>
     </SafeAreaView>
+    </StarBackground>
   );
 }
 
