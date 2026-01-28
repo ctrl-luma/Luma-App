@@ -323,8 +323,8 @@ export function TapToPayEducationScreen() {
     platformVersion: Platform.Version,
   });
 
-  // Only show the enable slide if not already connected
-  const showEnableSlide = isIOS && !isConnected;
+  // Only show the enable slide if not already connected or initialized
+  const showEnableSlide = isIOS && !isConnected && !isInitialized;
   // iOS 18+: After enabling, show Apple's native education UI
   // iOS 16-17: After enabling, show custom slides
   const useAppleNativeEducation = isIOS && proximityDiscoveryAvailable === true;
@@ -354,12 +354,12 @@ export function TapToPayEducationScreen() {
   // iOS 18+ already connected: Jump straight to Apple's native education
   useEffect(() => {
     logger.log('[TapToPayEducation] Auto-launch effect:', { isIOS, isConnected, useAppleNativeEducation, appleEducationActive });
-    if (isIOS && isConnected && useAppleNativeEducation && !appleEducationActive) {
+    if (isIOS && (isConnected || isInitialized) && useAppleNativeEducation && !appleEducationActive) {
       logger.log('[TapToPayEducation] Auto-launching Apple native education');
       showAppleNativeEducation();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isIOS, isConnected, useAppleNativeEducation]);
+  }, [isIOS, isConnected, isInitialized, useAppleNativeEducation]);
 
   // Android auto-enable on mount: Connect reader and navigate back immediately
   useEffect(() => {
@@ -623,7 +623,7 @@ export function TapToPayEducationScreen() {
 
   // iOS: Show starry loading while checking availability, Apple education is active,
   // or about to auto-launch (iOS 18+ already connected)
-  const pendingAutoLaunch = useAppleNativeEducation && isConnected && !appleEducationActive;
+  const pendingAutoLaunch = useAppleNativeEducation && (isConnected || isInitialized) && !appleEducationActive;
   if (proximityDiscoveryAvailable === null || appleEducationActive || pendingAutoLaunch) {
     return (
       <View style={StyleSheet.absoluteFill}>
@@ -813,20 +813,6 @@ export function TapToPayEducationScreen() {
         ))}
       </ScrollView>
 
-      {/* Pagination */}
-      <View style={styles.pagination}>
-        {Array.from({ length: totalSlides }).map((_, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.paginationDot,
-              currentSlide === index && styles.paginationDotActive,
-            ]}
-            onPress={() => canScrollPastEnable && goToSlide(index)}
-            disabled={!canScrollPastEnable && index > 0}
-          />
-        ))}
-      </View>
 
       {/* Footer */}
       <View style={styles.footer}>
