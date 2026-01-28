@@ -120,7 +120,7 @@ function FullScreenStarLoader() {
   const glowColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(99,102,241,0.2)';
 
   return (
-    <Animated.View style={[{ flex: 1, position: 'relative' as const, overflow: 'hidden' as const }, { backgroundColor: isDark ? '#09090b' : colors.background, opacity: fadeAnim }]}>
+    <Animated.View style={[StyleSheet.absoluteFill, { overflow: 'hidden' as const, backgroundColor: isDark ? '#09090b' : colors.background, opacity: fadeAnim }]}>
       <LinearGradient
         colors={isDark
           ? ['transparent', 'rgba(99, 102, 241, 0.08)', 'rgba(139, 92, 246, 0.05)', 'transparent']
@@ -404,12 +404,17 @@ export function TapToPayEducationScreen() {
     setShowingAppleEducation(true);
     try {
       const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
-      await showProximityReaderDiscoveryEducation();
+      // Fire off the native education — don't await yet
+      const educationPromise = showProximityReaderDiscoveryEducation();
+      // Wait for Apple's sheet to animate in, then hide our loader behind it
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setShowingAppleEducation(false);
+      // Now wait for user to dismiss Apple's sheet
+      await educationPromise;
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
+      setShowingAppleEducation(false);
     }
-    // Apple's sheet dismissed — hide loader and navigate back immediately
-    setShowingAppleEducation(false);
     markEducationSeen();
     navigateBack();
   };
@@ -624,7 +629,11 @@ export function TapToPayEducationScreen() {
 
   // iOS: Show starry loading screen while checking availability or showing Apple's native education
   if (proximityDiscoveryAvailable === null || showingAppleEducation) {
-    return <FullScreenStarLoader />;
+    return (
+      <View style={{ flex: 1, backgroundColor: isDark ? '#09090b' : colors.background }}>
+        <FullScreenStarLoader />
+      </View>
+    );
   }
 
   return (
