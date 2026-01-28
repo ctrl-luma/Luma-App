@@ -21,7 +21,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
-import { useCart, CartItem } from '../context/CartContext';
+import { useCart, CartItem, PaymentMethodType } from '../context/CartContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useAuth } from '../context/AuthContext';
 import { useTerminal } from '../context/StripeTerminalContext';
@@ -36,7 +36,6 @@ import { StarBackground } from '../components/StarBackground';
 import logger from '../lib/logger';
 import { isValidEmailOrEmpty } from '../lib/validation';
 
-type PaymentMethodType = 'tap_to_pay' | 'cash' | 'split';
 
 // Apple TTPOi 5.4: Use region-correct copy
 const TAP_TO_PAY_LABEL = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
@@ -62,22 +61,15 @@ export function CheckoutScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'Checkout'>>();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { items, clearCart, incrementItem, decrementItem, removeItem, subtotal: cartSubtotal, orderNotes, setOrderNotes } = useCart();
+  const { items, clearCart, incrementItem, decrementItem, removeItem, subtotal: cartSubtotal, orderNotes, setOrderNotes, customerEmail, setCustomerEmail, paymentMethod, setPaymentMethod, selectedTipIndex, setSelectedTipIndex, customTipAmount, setCustomTipAmount, showCustomTipInput, setShowCustomTipInput } = useCart();
   const { selectedCatalog } = useCatalog();
   const { isPaymentReady, connectLoading, connectStatus } = useAuth();
   const { deviceCompatibility, isInitialized: isTerminalInitialized, isWarming } = useTerminal();
 
   // Catalog data is automatically updated via socket events in CatalogContext
 
-  const [customerEmail, setCustomerEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedTipIndex, setSelectedTipIndex] = useState<number | null>(null);
-  const [customTipAmount, setCustomTipAmount] = useState('');
-  const [showCustomTipInput, setShowCustomTipInput] = useState(false);
-
-  // Payment method selection
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('tap_to_pay');
 
   // Hold order modal
   const [showHoldModal, setShowHoldModal] = useState(false);
@@ -113,14 +105,7 @@ export function CheckoutScreen() {
     cartItemCount: items.length,
   });
 
-  // Clean up cart context when leaving a resumed order checkout
-  useEffect(() => {
-    if (resumedOrder) {
-      return () => {
-        clearCart();
-      };
-    }
-  }, [resumedOrder, clearCart]);
+  // NOTE: Do NOT clear cart on unmount — only clear after explicit hold/delete/complete actions
 
   // Initialize state from resumed order
   useEffect(() => {
@@ -208,6 +193,7 @@ export function CheckoutScreen() {
             onPress: async () => {
               try {
                 await ordersApi.cancel(resumedOrderId);
+                clearCart();
                 allowNavigationRef.current = true;
                 navigation.dispatch(e.data.action);
               } catch (error: any) {
@@ -221,19 +207,21 @@ export function CheckoutScreen() {
             onPress: async () => {
               try {
                 const vals = currentValuesRef.current;
+                const emailValid = vals.customerEmail.trim() && isValidEmailOrEmpty(vals.customerEmail) ? vals.customerEmail.trim() : undefined;
                 const holdUpdates = {
                   tipAmount: vals.tipAmount,
                   taxAmount: vals.taxAmount,
                   subtotal: vals.subtotal,
                   totalAmount: vals.grandTotal,
                   paymentMethod: vals.paymentMethod,
-                  customerEmail: vals.customerEmail.trim() || undefined,
+                  customerEmail: emailValid,
                   notes: vals.orderNotes || null,
                 };
                 logger.log('[RE-HOLD DEBUG] beforeRemove hold updates:', JSON.stringify(holdUpdates, null, 2));
                 logger.log('[RE-HOLD DEBUG] holdName:', vals.holdName || resumedOrder.holdName);
                 const result = await ordersApi.hold(resumedOrderId, vals.holdName || resumedOrder.holdName, holdUpdates);
                 logger.log('[RE-HOLD DEBUG] hold API result:', JSON.stringify({ id: result.id, paymentMethod: result.paymentMethod, tipAmount: result.tipAmount, totalAmount: result.totalAmount }));
+                clearCart();
                 allowNavigationRef.current = true;
                 navigation.dispatch(e.data.action);
               } catch (error: any) {
@@ -354,6 +342,12 @@ export function CheckoutScreen() {
   // Handle hold order
   const handleHoldOrder = async () => {
     if (isQuickCharge) return; // Can't hold quick charges
+
+    // Validate email if provided
+    if (customerEmail.trim() && !isValidEmailOrEmpty(customerEmail)) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
 
     logger.log('Hold order: Starting hold process', { isResumedOrder: !!resumedOrderId });
     setIsHolding(true);
@@ -674,7 +668,13 @@ export function CheckoutScreen() {
             {!isQuickCharge && !resumedOrder && items.length > 0 && (
               <TouchableOpacity
                 style={styles.holdButton}
-                onPress={() => setShowHoldModal(true)}
+                onPress={() => {
+                  if (customerEmail.trim() && !isValidEmailOrEmpty(customerEmail)) {
+                    setEmailError('Please enter a valid email address');
+                    return;
+                  }
+                  setShowHoldModal(true);
+                }}
                 disabled={isProcessing}
               >
                 <Ionicons name="pause-circle-outline" size={22} color={colors.textSecondary} />

@@ -17,12 +17,24 @@ function generateCartKey(productId: string, notes?: string): string {
   return `${productId}::${notes.trim().toLowerCase()}`;
 }
 
+export type PaymentMethodType = 'tap_to_pay' | 'cash' | 'split';
+
 interface CartContextType {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
   orderNotes: string;
   setOrderNotes: (notes: string) => void;
+  customerEmail: string;
+  setCustomerEmail: (email: string) => void;
+  paymentMethod: PaymentMethodType;
+  setPaymentMethod: (method: PaymentMethodType) => void;
+  selectedTipIndex: number | null;
+  setSelectedTipIndex: (index: number | null) => void;
+  customTipAmount: string;
+  setCustomTipAmount: (amount: string) => void;
+  showCustomTipInput: boolean;
+  setShowCustomTipInput: (show: boolean) => void;
   addItem: (product: Product, quantity?: number, notes?: string) => void;
   removeItem: (cartKey: string) => void;
   updateQuantity: (cartKey: string, quantity: number) => void;
@@ -43,6 +55,11 @@ interface CartProviderProps {
 export function CartProvider({ children }: CartProviderProps) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [orderNotes, setOrderNotes] = useState<string>('');
+  const [customerEmail, setCustomerEmail] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('tap_to_pay');
+  const [selectedTipIndex, setSelectedTipIndex] = useState<number | null>(null);
+  const [customTipAmount, setCustomTipAmount] = useState<string>('');
+  const [showCustomTipInput, setShowCustomTipInput] = useState<boolean>(false);
 
   // Calculate total item count
   const itemCount = useMemo(() => {
@@ -171,10 +188,15 @@ export function CartProvider({ children }: CartProviderProps) {
     });
   }, []);
 
-  // Clear all items and order notes
+  // Clear all items, order notes, email, and payment method
   const clearCart = useCallback(() => {
     setItems([]);
     setOrderNotes('');
+    setCustomerEmail('');
+    setPaymentMethod('tap_to_pay');
+    setSelectedTipIndex(null);
+    setCustomTipAmount('');
+    setShowCustomTipInput(false);
   }, []);
 
   // Get total quantity of specific product (across all notes variations)
@@ -203,6 +225,16 @@ export function CartProvider({ children }: CartProviderProps) {
         subtotal,
         orderNotes,
         setOrderNotes,
+        customerEmail,
+        setCustomerEmail,
+        paymentMethod,
+        setPaymentMethod,
+        selectedTipIndex,
+        setSelectedTipIndex,
+        customTipAmount,
+        setCustomTipAmount,
+        showCustomTipInput,
+        setShowCustomTipInput,
         addItem,
         removeItem,
         updateQuantity,
