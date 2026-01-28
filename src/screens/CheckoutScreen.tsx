@@ -705,7 +705,7 @@ export function CheckoutScreen() {
 
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.content}>
         {/* 1. Tip Selection (first) - hide for resumed orders since tip is already set */}
-        {showTipScreen && !resumedOrder && !isQuickCharge && (
+        {showTipScreen && !resumedOrder && (
           <View style={styles.tipSection}>
             <Text style={styles.tipTitle}>Add a Tip</Text>
             <View style={styles.tipOptions}>
@@ -767,7 +767,6 @@ export function CheckoutScreen() {
         )}
 
         {/* 2. Customer Info (Email + Notes) - Collapsible */}
-        {!isQuickCharge && (
           <View style={styles.customerInfoSection}>
             <TouchableOpacity
               style={styles.customerInfoHeader}
@@ -820,10 +819,8 @@ export function CheckoutScreen() {
               </View>
             )}
           </View>
-        )}
 
         {/* 3. Payment Method Selection */}
-        {!isQuickCharge && (
           <View style={styles.paymentMethodSection}>
             <Text style={styles.paymentMethodTitle}>Payment Method</Text>
             <View style={styles.paymentMethodOptions}>
@@ -892,15 +889,34 @@ export function CheckoutScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        )}
 
         {/* 4. Order Summary with Totals */}
         <View style={styles.summaryCard}>
           {isQuickCharge ? (
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Quick Charge</Text>
-              <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
-            </View>
+            <>
+              <View style={styles.totalsSection}>
+                <View style={styles.totalsRow}>
+                  <Text style={styles.totalsLabel}>Quick Charge</Text>
+                  <Text style={styles.totalsValue}>${(subtotal / 100).toFixed(2)}</Text>
+                </View>
+                {taxAmount > 0 && (
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>Tax ({taxRate}%)</Text>
+                    <Text style={styles.totalsValue}>${(taxAmount / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+                {tipAmount > 0 && (
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>Tip ({tipPercentage}%)</Text>
+                    <Text style={styles.totalsValue}>${(tipAmount / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
+                </View>
+              </View>
+            </>
           ) : resumedOrder ? (
             <>
               {/* Resumed order items (read-only) */}

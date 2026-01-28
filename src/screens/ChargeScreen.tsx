@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  TextInput,
   Alert,
   Animated,
   useWindowDimensions,
@@ -139,8 +138,6 @@ export function ChargeScreen() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [showDescription, setShowDescription] = useState(false);
 
   // Reset amount when leaving the screen
   useFocusEffect(
@@ -149,8 +146,6 @@ export function ChargeScreen() {
       return () => {
         // Cleanup called when screen loses focus - reset the form
         setAmount('');
-        setDescription('');
-        setShowDescription(false);
       };
     }, [])
   );
@@ -233,13 +228,11 @@ export function ChargeScreen() {
     navigation.navigate('Checkout', {
       total: cents,
       isQuickCharge: true,
-      quickChargeDescription: description || `Quick Charge - $${displayAmount}`,
+      quickChargeDescription: `Quick Charge - $${displayAmount}`,
     });
 
     // Reset form after navigation
     setAmount('');
-    setDescription('');
-    setShowDescription(false);
   };
 
   const styles = createStyles(colors, glassColors, responsiveSizes, isDark);
@@ -361,32 +354,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, sizes: Respon
     title: {
       fontSize: 18,
       fontFamily: fonts.semiBold,
-      color: colors.text,
-    },
-    noteButton: {
-      width: 44,
-      height: 44,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: cardBackground,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: cardBorder,
-    },
-    descriptionContainer: {
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      backgroundColor: 'transparent',
-    },
-    descriptionInput: {
-      backgroundColor: cardBackground,
-      borderWidth: 1,
-      borderColor: cardBorder,
-      borderRadius: 16,
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      fontSize: 16,
-      fontFamily: fonts.regular,
       color: colors.text,
     },
     amountContainer: {
