@@ -266,34 +266,7 @@ export function ChargeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Quick Charge</Text>
-        <Pressable
-          style={styles.noteButton}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowDescription(!showDescription);
-          }}
-        >
-          <Ionicons
-            name={showDescription ? 'document-text' : 'document-text-outline'}
-            size={22}
-            color={showDescription ? colors.primary : colors.textSecondary}
-          />
-        </Pressable>
       </View>
-
-      {/* Description Input (Optional) */}
-      {showDescription && (
-        <View style={styles.descriptionContainer}>
-          <TextInput
-            style={styles.descriptionInput}
-            placeholder="Add a note (optional)"
-            placeholderTextColor={colors.inputPlaceholder}
-            value={description}
-            onChangeText={setDescription}
-            maxLength={100}
-          />
-        </View>
-      )}
 
       {/* Centered Content - Amount & Keypad */}
       <View style={styles.mainContent}>
