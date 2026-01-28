@@ -292,7 +292,6 @@ export function TapToPayEducationScreen() {
 
   // Check if ProximityReaderDiscovery is available (iOS 18+)
   const [proximityDiscoveryAvailable, setProximityDiscoveryAvailable] = useState<boolean | null>(null);
-  const [showingAppleEducation, setShowingAppleEducation] = useState(false);
   const [appleEducationActive, setAppleEducationActive] = useState(false);
 
   useEffect(() => {
@@ -319,7 +318,7 @@ export function TapToPayEducationScreen() {
     isConnected,
     isInitialized,
     proximityDiscoveryAvailable,
-    showingAppleEducation,
+    appleEducationActive,
     platform: Platform.OS,
     platformVersion: Platform.Version,
   });
@@ -354,8 +353,8 @@ export function TapToPayEducationScreen() {
 
   // iOS 18+ already connected: Jump straight to Apple's native education
   useEffect(() => {
-    logger.log('[TapToPayEducation] Auto-launch effect:', { isIOS, isConnected, useAppleNativeEducation, showingAppleEducation });
-    if (isIOS && isConnected && useAppleNativeEducation && !showingAppleEducation) {
+    logger.log('[TapToPayEducation] Auto-launch effect:', { isIOS, isConnected, useAppleNativeEducation, appleEducationActive });
+    if (isIOS && isConnected && useAppleNativeEducation && !appleEducationActive) {
       logger.log('[TapToPayEducation] Auto-launching Apple native education');
       showAppleNativeEducation();
     }
@@ -402,22 +401,14 @@ export function TapToPayEducationScreen() {
 
   // iOS 18+: Show Apple's native education UI after T&C acceptance
   const showAppleNativeEducation = async () => {
-    setShowingAppleEducation(true);
     setAppleEducationActive(true);
     try {
       const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
-      const educationPromise = showProximityReaderDiscoveryEducation();
-      // Wait for Apple's sheet to animate in, then hide our loader
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setShowingAppleEducation(false);
-      // Wait for user to dismiss Apple's sheet
-      await educationPromise;
+      await showProximityReaderDiscoveryEducation();
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
-      setShowingAppleEducation(false);
     }
-    // Apple's sheet is now fully dismissed — navigate back
-    setAppleEducationActive(false);
+    // Apple's sheet dismissed — navigate back immediately
     markEducationSeen();
     navigateBack();
   };
@@ -630,11 +621,10 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show starry loading while checking availability, showing loader, or Apple education is active
-  if (proximityDiscoveryAvailable === null || showingAppleEducation || appleEducationActive) {
-    if (appleEducationActive && !showingAppleEducation) {
-      return null;
-    }
+  // iOS: Show starry loading while checking availability, Apple education is active,
+  // or about to auto-launch (iOS 18+ already connected)
+  const pendingAutoLaunch = useAppleNativeEducation && isConnected && !appleEducationActive;
+  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingAutoLaunch) {
     return (
       <View style={StyleSheet.absoluteFill}>
         <FullScreenStarLoader />
