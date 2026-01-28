@@ -170,11 +170,16 @@ export function HeldOrdersScreen() {
   const styles = createStyles(colors, glassColors, isDark);
 
   const fetchHeldOrders = useCallback(async () => {
+    console.log('[HeldOrdersScreen DEBUG] fetchHeldOrders called, deviceId:', deviceId);
     try {
       const response = await ordersApi.listHeld(deviceId || undefined);
+      console.log('[HeldOrdersScreen DEBUG] fetchHeldOrders response:', {
+        orderCount: response.orders.length,
+        orderIds: response.orders.map((o: Order) => o.id),
+      });
       setOrders(response.orders);
     } catch (error: any) {
-      console.error('Failed to fetch held orders:', error);
+      console.error('[HeldOrdersScreen DEBUG] Failed to fetch held orders:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -190,25 +195,32 @@ export function HeldOrdersScreen() {
 
   // Listen for order updates via socket (new held orders, resumed orders, etc.)
   useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
-    console.log('HeldOrdersScreen: ORDER_UPDATED event received', data);
+    console.log('[HeldOrdersScreen DEBUG] ORDER_UPDATED event received:', JSON.stringify(data, null, 2));
+    console.log('[HeldOrdersScreen DEBUG] Current orders count:', orders.length);
+    console.log('[HeldOrdersScreen DEBUG] Event status:', data.status);
     // Refresh held orders when any order is updated (held or resumed)
     if (data.status === 'held' || data.status === 'pending') {
+      console.log('[HeldOrdersScreen DEBUG] Status matches, fetching held orders...');
       fetchHeldOrders();
+    } else {
+      console.log('[HeldOrdersScreen DEBUG] Status does not match (held/pending), ignoring');
     }
-  }, [fetchHeldOrders]));
+  }, [fetchHeldOrders, orders.length]));
 
   useSocketEvent(SocketEvents.ORDER_CREATED, useCallback((data: any) => {
-    console.log('HeldOrdersScreen: ORDER_CREATED event received', data);
+    console.log('[HeldOrdersScreen DEBUG] ORDER_CREATED event received:', JSON.stringify(data, null, 2));
     // Refresh if a new held order is created
     if (data.status === 'held') {
+      console.log('[HeldOrdersScreen DEBUG] New held order created, fetching...');
       fetchHeldOrders();
     }
   }, [fetchHeldOrders]));
 
   useSocketEvent(SocketEvents.ORDER_DELETED, useCallback((data: any) => {
-    console.log('HeldOrdersScreen: ORDER_DELETED event received', data);
+    console.log('[HeldOrdersScreen DEBUG] ORDER_DELETED event received:', JSON.stringify(data, null, 2));
     // Remove the deleted order from the list
     if (data.orderId) {
+      console.log('[HeldOrdersScreen DEBUG] Removing order from list:', data.orderId);
       setOrders(prev => prev.filter(o => o.id !== data.orderId));
     }
   }, []));

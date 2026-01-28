@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -83,9 +83,22 @@ export function CheckoutScreen() {
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [holdName, setHoldName] = useState('');
   const [isHolding, setIsHolding] = useState(false);
+  const holdNameInputRef = useRef<any>(null);
 
-  // Order notes visibility
-  const [showOrderNotes, setShowOrderNotes] = useState(orderNotes.length > 0);
+  // Refs to track current values for the beforeRemove handler (avoids stale closures)
+  const currentValuesRef = useRef({
+    tipAmount: 0,
+    taxAmount: 0,
+    subtotal: 0,
+    grandTotal: 0,
+    paymentMethod: 'tap_to_pay' as PaymentMethodType,
+    customerEmail: '',
+    orderNotes: '',
+    holdName: '',
+  });
+
+  // Customer info section visibility (combines email + notes)
+  const [showCustomerInfo, setShowCustomerInfo] = useState(false);
 
   const { total: routeTotal, isQuickCharge, quickChargeDescription, resumedOrderId, resumedOrder } = route.params;
   const styles = createStyles(colors, glassColors, isDark);
@@ -99,6 +112,15 @@ export function CheckoutScreen() {
     resumedOrderItems: resumedOrder?.items?.length,
     cartItemCount: items.length,
   });
+
+  // Clean up cart context when leaving a resumed order checkout
+  useEffect(() => {
+    if (resumedOrder) {
+      return () => {
+        clearCart();
+      };
+    }
+  }, [resumedOrder, clearCart]);
 
   // Initialize state from resumed order
   useEffect(() => {
@@ -116,14 +138,20 @@ export function CheckoutScreen() {
       }
 
       // Set order notes
-      if (resumedOrder.notes) {
-        setOrderNotes(resumedOrder.notes);
-        setShowOrderNotes(true);
+      if (resumedOrder.notes || resumedOrder.customerEmail) {
+        if (resumedOrder.notes) setOrderNotes(resumedOrder.notes);
+        setShowCustomerInfo(true);
       }
 
       // Set payment method
       if (resumedOrder.paymentMethod) {
-        setPaymentMethod(resumedOrder.paymentMethod as PaymentMethodType);
+        const methodMap: Record<string, PaymentMethodType> = {
+          tap_to_pay: 'tap_to_pay',
+          cash: 'cash',
+          card: 'tap_to_pay',
+          split: 'split',
+        };
+        setPaymentMethod(methodMap[resumedOrder.paymentMethod] || 'tap_to_pay');
       }
 
       // Note: Tip is already handled via the tipAmount/grandTotal calculation
@@ -192,7 +220,20 @@ export function CheckoutScreen() {
             text: 'Hold Order',
             onPress: async () => {
               try {
-                await ordersApi.hold(resumedOrderId, resumedOrder.holdName);
+                const vals = currentValuesRef.current;
+                const holdUpdates = {
+                  tipAmount: vals.tipAmount,
+                  taxAmount: vals.taxAmount,
+                  subtotal: vals.subtotal,
+                  totalAmount: vals.grandTotal,
+                  paymentMethod: vals.paymentMethod,
+                  customerEmail: vals.customerEmail.trim() || undefined,
+                  notes: vals.orderNotes || null,
+                };
+                logger.log('[RE-HOLD DEBUG] beforeRemove hold updates:', JSON.stringify(holdUpdates, null, 2));
+                logger.log('[RE-HOLD DEBUG] holdName:', vals.holdName || resumedOrder.holdName);
+                const result = await ordersApi.hold(resumedOrderId, vals.holdName || resumedOrder.holdName, holdUpdates);
+                logger.log('[RE-HOLD DEBUG] hold API result:', JSON.stringify({ id: result.id, paymentMethod: result.paymentMethod, tipAmount: result.tipAmount, totalAmount: result.totalAmount }));
                 allowNavigationRef.current = true;
                 navigation.dispatch(e.data.action);
               } catch (error: any) {
@@ -219,7 +260,15 @@ export function CheckoutScreen() {
   const promptForEmail = selectedCatalog?.promptForEmail ?? true;
   const tipPercentages = selectedCatalog?.tipPercentages ?? [15, 18, 20, 25];
   const allowCustomTip = selectedCatalog?.allowCustomTip ?? true;
-  const taxRate = selectedCatalog?.taxRate ?? 0;
+  // Tax rate stored as whole number percentage (e.g., 5 for 5%)
+  // For resumed orders, calculate from stored values
+  const taxRate = useMemo(() => {
+    if (resumedOrder && resumedOrder.subtotal > 0) {
+      // Calculate tax rate from stored tax amount and subtotal
+      return Math.round((resumedOrder.taxAmount / resumedOrder.subtotal) * 100);
+    }
+    return selectedCatalog?.taxRate ?? 0;
+  }, [resumedOrder, selectedCatalog?.taxRate]);
 
   // Calculate tax amount (based on subtotal) - use resumed order's tax if available
   const taxAmount = useMemo(() => {
@@ -244,31 +293,52 @@ export function CheckoutScreen() {
   }, [tipPercentages, allowCustomTip]);
 
   // Calculate tip and grand total (subtotal + tax + tip) - use resumed order values if available
-  const { tipAmount, grandTotal } = useMemo(() => {
+  const { tipAmount, grandTotal, tipPercentage } = useMemo(() => {
     // For resumed orders, use the stored values
     if (resumedOrder) {
+      // Calculate tip percentage from stored values
+      const calcTipPct = resumedOrder.subtotal > 0
+        ? Math.round((resumedOrder.tipAmount / resumedOrder.subtotal) * 100)
+        : 0;
       return {
         tipAmount: resumedOrder.tipAmount,
         grandTotal: resumedOrder.totalAmount,
+        tipPercentage: calcTipPct,
       };
     }
 
     const subtotalWithTax = subtotal + taxAmount;
     if (!showTipScreen || selectedTipIndex === null) {
-      return { tipAmount: 0, grandTotal: subtotalWithTax };
+      return { tipAmount: 0, grandTotal: subtotalWithTax, tipPercentage: 0 };
     }
     const selectedOption = tipOptions[selectedTipIndex];
     if (selectedOption?.isCustom) {
       const customTip = parseInt(customTipAmount, 10) || 0;
       // Custom tip is entered in dollars, convert to cents
       const tipCents = customTip * 100;
-      return { tipAmount: tipCents, grandTotal: subtotalWithTax + tipCents };
+      // Calculate percentage for custom tip
+      const calcTipPct = subtotal > 0 ? Math.round((tipCents / subtotal) * 100) : 0;
+      return { tipAmount: tipCents, grandTotal: subtotalWithTax + tipCents, tipPercentage: calcTipPct };
     }
-    const tipPercentage = selectedOption?.value || 0;
+    const tipPct = selectedOption?.value || 0;
     // Tip is calculated on subtotal (before tax)
-    const tip = Math.round(subtotal * tipPercentage);
-    return { tipAmount: tip, grandTotal: subtotalWithTax + tip };
-  }, [subtotal, taxAmount, selectedTipIndex, showTipScreen, tipOptions, customTipAmount]);
+    const tip = Math.round(subtotal * tipPct);
+    return { tipAmount: tip, grandTotal: subtotalWithTax + tip, tipPercentage: Math.round(tipPct * 100) };
+  }, [subtotal, taxAmount, selectedTipIndex, showTipScreen, tipOptions, customTipAmount, resumedOrder]);
+
+  // Keep refs in sync for the beforeRemove handler
+  useEffect(() => {
+    currentValuesRef.current = {
+      tipAmount,
+      taxAmount,
+      subtotal,
+      grandTotal,
+      paymentMethod,
+      customerEmail,
+      orderNotes,
+      holdName,
+    };
+  }, [tipAmount, taxAmount, subtotal, grandTotal, paymentMethod, customerEmail, orderNotes, holdName]);
 
   const handleTipSelect = (index: number) => {
     setSelectedTipIndex(index);
@@ -285,53 +355,82 @@ export function CheckoutScreen() {
   const handleHoldOrder = async () => {
     if (isQuickCharge) return; // Can't hold quick charges
 
-    logger.log('Hold order: Starting hold process');
+    logger.log('Hold order: Starting hold process', { isResumedOrder: !!resumedOrderId });
     setIsHolding(true);
     try {
-      const deviceId = await getDeviceId();
-      logger.log('Hold order: Got device ID:', deviceId);
+      let orderId: string;
+      let orderNumber: string;
 
-      // Build order items with notes
-      const orderItems = items.map((item) => ({
-        productId: item.product.productId,
-        categoryId: item.product.categoryId || undefined,
-        name: item.product.name,
-        quantity: item.quantity,
-        unitPrice: item.product.price,
-        notes: item.notes,
-      }));
+      if (resumedOrderId) {
+        // Re-hold the existing resumed order with updated fields
+        const holdUpdates = {
+          tipAmount: tipAmount,
+          taxAmount: taxAmount,
+          subtotal: subtotal,
+          totalAmount: grandTotal,
+          paymentMethod: paymentMethod,
+          customerEmail: customerEmail.trim() || undefined,
+          notes: orderNotes || null,
+        };
+        logger.log('[RE-HOLD DEBUG] handleHoldOrder updates:', JSON.stringify(holdUpdates, null, 2));
+        logger.log('[RE-HOLD DEBUG] holdName:', holdName.trim() || resumedOrder?.holdName);
 
-      logger.log('Hold order: Creating order with', { itemCount: orderItems.length, holdName: holdName.trim() });
+        const heldOrder = await ordersApi.hold(resumedOrderId, holdName.trim() || resumedOrder?.holdName || undefined, holdUpdates);
+        logger.log('[RE-HOLD DEBUG] hold API result:', JSON.stringify({ id: heldOrder.id, paymentMethod: heldOrder.paymentMethod, tipAmount: heldOrder.tipAmount, totalAmount: heldOrder.totalAmount }));
 
-      // Create order first
-      const order = await ordersApi.create({
-        catalogId: selectedCatalog?.id,
-        items: orderItems,
-        subtotal: subtotal,
-        taxAmount: taxAmount,
-        tipAmount: tipAmount,
-        totalAmount: grandTotal,
-        customerEmail: customerEmail.trim() || undefined,
-        deviceId,
-        notes: orderNotes || undefined,
-        holdName: holdName.trim() || undefined,
-      });
+        orderId = heldOrder.id;
+        orderNumber = heldOrder.orderNumber;
 
-      logger.log('Hold order: Order created', { orderId: order.id, orderNumber: order.orderNumber, status: order.status });
+        logger.log('Hold order: Re-hold API returned', { orderId, status: heldOrder.status });
 
-      // Hold the order
-      logger.log('Hold order: Calling hold API for order', order.id);
-      const heldOrder = await ordersApi.hold(order.id, holdName.trim() || undefined);
+        if (heldOrder.status !== 'held') {
+          throw new Error(`Order hold failed - status is ${heldOrder.status}`);
+        }
+      } else {
+        // New order: create then hold
+        const deviceId = await getDeviceId();
+        logger.log('Hold order: Got device ID:', deviceId);
 
-      logger.log('Hold order: Hold API returned', { orderId: heldOrder.id, status: heldOrder.status });
+        const orderItems = items.map((item) => ({
+          productId: item.product.productId,
+          categoryId: item.product.categoryId || undefined,
+          name: item.product.name,
+          quantity: item.quantity,
+          unitPrice: item.product.price,
+          notes: item.notes,
+        }));
 
-      // Verify the order was actually held
-      if (heldOrder.status !== 'held') {
-        logger.error('Hold order: Status mismatch!', { expected: 'held', actual: heldOrder.status });
-        throw new Error(`Order hold failed - status is ${heldOrder.status}`);
+        const createOrderParams = {
+          catalogId: selectedCatalog?.id,
+          items: orderItems,
+          subtotal: subtotal,
+          taxAmount: taxAmount,
+          tipAmount: tipAmount,
+          totalAmount: grandTotal,
+          paymentMethod: paymentMethod,
+          customerEmail: customerEmail.trim() || undefined,
+          deviceId,
+          notes: orderNotes || undefined,
+          holdName: holdName.trim() || undefined,
+        };
+
+        logger.log('Hold order: Creating order with params:', JSON.stringify(createOrderParams, null, 2));
+
+        const order = await ordersApi.create(createOrderParams);
+        logger.log('Hold order: Order created', { orderId: order.id, orderNumber: order.orderNumber, status: order.status });
+
+        const heldOrder = await ordersApi.hold(order.id, holdName.trim() || undefined);
+        orderId = heldOrder.id;
+        orderNumber = heldOrder.orderNumber;
+
+        logger.log('Hold order: Hold API returned', { orderId, status: heldOrder.status });
+
+        if (heldOrder.status !== 'held') {
+          throw new Error(`Order hold failed - status is ${heldOrder.status}`);
+        }
       }
 
-      logger.log('Order held successfully:', { orderId: heldOrder.id, status: heldOrder.status });
+      logger.log('Order held successfully:', { orderId });
 
       // Close modal first
       setShowHoldModal(false);
@@ -339,13 +438,16 @@ export function CheckoutScreen() {
       // Clear cart before navigating
       clearCart();
 
+      // Allow navigation past the beforeRemove guard for resumed orders
+      allowNavigationRef.current = true;
+
       // Close checkout screen and go back to menu
       navigation.goBack();
 
       // Show confirmation
       Alert.alert(
         'Order Held',
-        `Order "${holdName.trim() || `#${order.orderNumber}`}" has been saved. You can resume it from the History tab.`
+        `Order "${holdName.trim() || resumedOrder?.holdName || `#${orderNumber}`}" has been saved. You can resume it from the History tab.`
       );
     } catch (error: any) {
       logger.error('Hold order error:', error);
@@ -354,8 +456,23 @@ export function CheckoutScreen() {
         error: error.error,
         statusCode: error.statusCode,
         code: error.code,
+        details: error.details,
       });
-      Alert.alert('Error', error.error || error.message || 'Failed to hold order');
+
+      // Extract error message properly - error.error might be an object (ZodError)
+      let errorMessage = 'Failed to hold order';
+      if (typeof error.error === 'string') {
+        errorMessage = error.error;
+      } else if (error.error?.issues) {
+        // Zod validation error - extract the issues
+        const issues = error.error.issues;
+        logger.error('Zod validation issues:', JSON.stringify(issues, null, 2));
+        errorMessage = issues.map((i: any) => `${i.path.join('.')}: ${i.message}`).join(', ');
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsHolding(false);
     }
@@ -449,7 +566,7 @@ export function CheckoutScreen() {
           taxAmount: taxAmount,
           tipAmount: tipAmount,
           totalAmount: grandTotal,
-          paymentMethod: paymentMethod === 'split' ? 'card' : paymentMethod,
+          paymentMethod: paymentMethod,
           customerEmail: receiptEmail,
           isQuickCharge: isQuickCharge || false,
           description: isQuickCharge ? quickChargeDescription : undefined,
@@ -548,24 +665,37 @@ export function CheckoutScreen() {
             onPress={handleClose}
           >
             <Ionicons name="close" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {resumedOrder ? 'Resume Order' : 'Checkout'}
-        </Text>
-        {!isQuickCharge && !resumedOrder && items.length > 0 ? (
-          <TouchableOpacity
-            style={styles.clearButton}
-            onPress={() => {
-              clearCart();
-              navigation.goBack();
-            }}
-          >
-            <Text style={styles.clearButtonText}>Clear</Text>
           </TouchableOpacity>
-        ) : (
-          <View style={{ width: 44 }} />
-        )}
-      </View>
+          <Text style={styles.headerTitle}>
+            {resumedOrder ? 'Resume Order' : 'Checkout'}
+          </Text>
+          <View style={styles.headerRight}>
+            {/* Hold Order Button (not for quick charge or resumed orders) */}
+            {!isQuickCharge && !resumedOrder && items.length > 0 && (
+              <TouchableOpacity
+                style={styles.holdButton}
+                onPress={() => setShowHoldModal(true)}
+                disabled={isProcessing}
+              >
+                <Ionicons name="pause-circle-outline" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            {/* Clear Cart Button */}
+            {!isQuickCharge && !resumedOrder && items.length > 0 ? (
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={() => {
+                  clearCart();
+                  navigation.goBack();
+                }}
+              >
+                <Text style={styles.clearButtonText}>Clear</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 44 }} />
+            )}
+          </View>
+        </View>
 
       {/* Setup Required Banner (charges not enabled) */}
       {showSetupBanner && <SetupRequiredBanner />}
@@ -574,187 +704,8 @@ export function CheckoutScreen() {
       {showPayoutsBanner && <PayoutsSetupBanner />}
 
       <ScrollView style={styles.scrollContent} contentContainerStyle={styles.content}>
-        {/* Order Summary */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>
-            {isQuickCharge
-              ? 'Quick Charge'
-              : resumedOrder?.holdName
-                ? `Order: ${resumedOrder.holdName}`
-                : 'Order Summary'}
-          </Text>
-
-          {isQuickCharge ? (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Amount</Text>
-              <Text style={styles.summaryValue}>${(subtotal / 100).toFixed(2)}</Text>
-            </View>
-          ) : resumedOrder ? (
-            <>
-              {/* Resumed order items (read-only) */}
-              {resumedOrder.items?.map((item: any) => (
-                <View key={item.id} style={styles.itemRow}>
-                  {/* Thumbnail */}
-                  <View style={styles.itemThumbnail}>
-                    {item.imageUrl ? (
-                      <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
-                    ) : (
-                      <View style={styles.itemImagePlaceholder}>
-                        <Ionicons name="cube-outline" size={14} color={colors.textMuted} />
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Item name and notes */}
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    {item.notes ? (
-                      <Text style={styles.itemNotes} numberOfLines={1}>
-                        {item.notes}
-                      </Text>
-                    ) : (
-                      <Text style={styles.itemUnitPrice}>
-                        ${(item.unitPrice / 100).toFixed(2)} each
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Quantity (read-only for resumed orders) */}
-                  <View style={styles.quantityControls}>
-                    <Text style={styles.quantityText}>x{item.quantity}</Text>
-                  </View>
-
-                  {/* Line total */}
-                  <Text style={styles.itemPrice} numberOfLines={1} adjustsFontSizeToFit>
-                    ${((item.unitPrice * item.quantity) / 100).toFixed(2)}
-                  </Text>
-                </View>
-              ))}
-
-              {/* Subtotal for resumed order */}
-              <View style={styles.subtotalRow}>
-                <Text style={styles.subtotalLabel}>
-                  Subtotal ({resumedOrder.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) || 0} items)
-                </Text>
-                <Text style={styles.subtotalValue}>${(subtotal / 100).toFixed(2)}</Text>
-              </View>
-            </>
-          ) : (
-            <>
-              {/* Itemized list with thumbnails and quantity controls */}
-              {items.map((item) => {
-                const renderRightActions = (
-                  progress: Animated.AnimatedInterpolation<number>,
-                  dragX: Animated.AnimatedInterpolation<number>
-                ) => {
-                  const scale = dragX.interpolate({
-                    inputRange: [-60, -30, 0],
-                    outputRange: [1, 0.9, 0.6],
-                    extrapolate: 'clamp',
-                  });
-                  const opacity = dragX.interpolate({
-                    inputRange: [-60, -30, 0],
-                    outputRange: [1, 0.8, 0],
-                    extrapolate: 'clamp',
-                  });
-                  return (
-                    <TouchableOpacity
-                      style={styles.deleteAction}
-                      onPress={() => removeItem(item.cartKey)}
-                      activeOpacity={0.8}
-                    >
-                      <Animated.View
-                        style={[
-                          styles.deleteActionContent,
-                          { transform: [{ scale }], opacity }
-                        ]}
-                      >
-                        <Ionicons name="trash" size={20} color="#fff" />
-                      </Animated.View>
-                    </TouchableOpacity>
-                  );
-                };
-
-                return (
-                  <Swipeable
-                    key={item.cartKey}
-                    renderRightActions={renderRightActions}
-                    rightThreshold={40}
-                    overshootRight={false}
-                  >
-                    <View style={styles.itemRow}>
-                      {/* Thumbnail */}
-                      <View style={styles.itemThumbnail}>
-                        {item.product.imageUrl ? (
-                          <Image source={{ uri: item.product.imageUrl }} style={styles.itemImage} />
-                        ) : (
-                          <View style={styles.itemImagePlaceholder}>
-                            <Ionicons name="image-outline" size={14} color={colors.textMuted} />
-                          </View>
-                        )}
-                      </View>
-
-                      {/* Item name, notes, and price */}
-                      <View style={styles.itemInfo}>
-                        <Text style={styles.itemName} numberOfLines={1}>
-                          {item.product.name}
-                        </Text>
-                        {item.notes ? (
-                          <Text style={styles.itemNotes} numberOfLines={1}>
-                            {item.notes}
-                          </Text>
-                        ) : (
-                          <Text style={styles.itemUnitPrice}>
-                            ${(item.product.price / 100).toFixed(2)} each
-                          </Text>
-                        )}
-                      </View>
-
-                      {/* Quantity controls */}
-                      <View style={styles.quantityControls}>
-                        <TouchableOpacity
-                          style={styles.quantityButton}
-                          onPress={() => decrementItem(item.cartKey)}
-                        >
-                          <Ionicons
-                            name={item.quantity === 1 ? 'trash-outline' : 'remove'}
-                            size={16}
-                            color={item.quantity === 1 ? colors.error : colors.text}
-                          />
-                        </TouchableOpacity>
-                        <Text style={styles.quantityText}>{item.quantity}</Text>
-                        <TouchableOpacity
-                          style={styles.quantityButton}
-                          onPress={() => incrementItem(item.cartKey)}
-                        >
-                          <Ionicons name="add" size={16} color={colors.text} />
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Line total */}
-                      <Text style={styles.itemPrice} numberOfLines={1} adjustsFontSizeToFit>
-                        ${((item.product.price * item.quantity) / 100).toFixed(2)}
-                      </Text>
-                    </View>
-                  </Swipeable>
-                );
-              })}
-
-              {/* Subtotal */}
-              <View style={styles.subtotalRow}>
-                <Text style={styles.subtotalLabel}>
-                  Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)
-                </Text>
-                <Text style={styles.subtotalValue}>${(subtotal / 100).toFixed(2)}</Text>
-              </View>
-            </>
-          )}
-        </View>
-
-        {/* Tip Selection - hide for resumed orders since tip is already set */}
-        {showTipScreen && !resumedOrder && (
+        {/* 1. Tip Selection (first) - hide for resumed orders since tip is already set */}
+        {showTipScreen && !resumedOrder && !isQuickCharge && (
           <View style={styles.tipSection}>
             <Text style={styles.tipTitle}>Add a Tip</Text>
             <View style={styles.tipOptions}>
@@ -797,7 +748,7 @@ export function CheckoutScreen() {
             {/* Custom Tip Input */}
             {showCustomTipInput && (
               <View style={styles.customTipContainer}>
-                <Text style={styles.customTipLabel}>Enter custom tip amount:</Text>
+                <Text style={styles.customTipLabel}>Custom amount:</Text>
                 <View style={styles.customTipInputRow}>
                   <Text style={styles.customTipDollar}>$</Text>
                   <TextInput
@@ -815,63 +766,63 @@ export function CheckoutScreen() {
           </View>
         )}
 
-        {/* Customer Email (Optional) */}
-        {promptForEmail && (
-          <View style={[styles.emailSection, emailError && styles.emailSectionError]}>
-            <Text style={styles.inputLabel}>Customer Email (Optional)</Text>
-            <TextInput
-              style={[styles.input, emailError && styles.inputError]}
-              placeholder="email@example.com"
-              placeholderTextColor={colors.inputPlaceholder}
-              value={customerEmail}
-              onChangeText={handleEmailChange}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {emailError ? (
-              <Text style={styles.inputErrorText}>{emailError}</Text>
-            ) : (
-              <Text style={styles.inputHint}>
-                Receipt will be sent to this email
-              </Text>
-            )}
-          </View>
-        )}
-
-        {/* Order Notes Section */}
+        {/* 2. Customer Info (Email + Notes) - Collapsible */}
         {!isQuickCharge && (
-          <View style={styles.orderNotesSection}>
+          <View style={styles.customerInfoSection}>
             <TouchableOpacity
-              style={styles.orderNotesHeader}
-              onPress={() => setShowOrderNotes(!showOrderNotes)}
+              style={styles.customerInfoHeader}
+              onPress={() => setShowCustomerInfo(!showCustomerInfo)}
             >
-              <View style={styles.orderNotesHeaderLeft}>
-                <Ionicons name="document-text-outline" size={18} color={colors.textSecondary} />
-                <Text style={styles.orderNotesTitle}>Order Notes</Text>
+              <View style={styles.customerInfoHeaderLeft}>
+                <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
+                <Text style={styles.customerInfoTitle}>
+                  {customerEmail || orderNotes ? 'Customer Info' : 'Add Customer Info'}
+                </Text>
+                {(customerEmail || orderNotes) && !showCustomerInfo && (
+                  <View style={styles.customerInfoBadge}>
+                    <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                  </View>
+                )}
               </View>
               <Ionicons
-                name={showOrderNotes ? 'chevron-up' : 'chevron-down'}
-                size={20}
+                name={showCustomerInfo ? 'chevron-up' : 'chevron-down'}
+                size={18}
                 color={colors.textSecondary}
               />
             </TouchableOpacity>
-            {showOrderNotes && (
-              <TextInput
-                style={styles.orderNotesInput}
-                placeholder="Add special instructions for this order..."
-                placeholderTextColor={colors.textMuted}
-                value={orderNotes}
-                onChangeText={setOrderNotes}
-                multiline
-                numberOfLines={3}
-                maxLength={500}
-              />
+            {showCustomerInfo && (
+              <View style={styles.customerInfoContent}>
+                {promptForEmail && (
+                  <View style={styles.customerInfoField}>
+                    <TextInput
+                      style={[styles.customerInfoInput, emailError && styles.inputError]}
+                      placeholder="Email for receipt (optional)"
+                      placeholderTextColor={colors.textMuted}
+                      value={customerEmail}
+                      onChangeText={handleEmailChange}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                    {emailError && <Text style={styles.inputErrorText}>{emailError}</Text>}
+                  </View>
+                )}
+                <TextInput
+                  style={styles.customerInfoNotesInput}
+                  placeholder="Order notes (optional)"
+                  placeholderTextColor={colors.textMuted}
+                  value={orderNotes}
+                  onChangeText={setOrderNotes}
+                  multiline
+                  numberOfLines={2}
+                  maxLength={500}
+                />
+              </View>
             )}
           </View>
         )}
 
-        {/* Payment Method Selector */}
+        {/* 3. Payment Method Selection */}
         {!isQuickCharge && (
           <View style={styles.paymentMethodSection}>
             <Text style={styles.paymentMethodTitle}>Payment Method</Text>
@@ -894,7 +845,7 @@ export function CheckoutScreen() {
                     paymentMethod === 'tap_to_pay' && styles.paymentMethodButtonTextSelected,
                   ]}
                 >
-                  Tap to Pay
+                  {Platform.OS === 'ios' ? 'Tap to Pay' : 'Card'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -943,51 +894,175 @@ export function CheckoutScreen() {
           </View>
         )}
 
-        {/* Payment Amount Display */}
-        <View style={styles.paymentAmount}>
-          {(tipAmount > 0 || taxAmount > 0) && (
-            <View style={styles.breakdownContainer}>
-              <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Subtotal</Text>
-                <Text style={styles.breakdownValue}>${(subtotal / 100).toFixed(2)}</Text>
-              </View>
-              {taxAmount > 0 && (
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>Tax ({taxRate}%)</Text>
-                  <Text style={styles.breakdownValue}>${(taxAmount / 100).toFixed(2)}</Text>
-                </View>
-              )}
-              {tipAmount > 0 && (
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>Tip</Text>
-                  <Text style={styles.breakdownValue}>${(tipAmount / 100).toFixed(2)}</Text>
-                </View>
-              )}
-              <View style={styles.breakdownDivider} />
+        {/* 4. Order Summary with Totals */}
+        <View style={styles.summaryCard}>
+          {isQuickCharge ? (
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Quick Charge</Text>
+              <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
             </View>
+          ) : resumedOrder ? (
+            <>
+              {/* Resumed order items (read-only) */}
+              {resumedOrder.items?.map((item: any) => (
+                <View key={item.id} style={styles.itemRow}>
+                  <View style={styles.itemThumbnail}>
+                    {item.imageUrl ? (
+                      <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
+                    ) : (
+                      <View style={styles.itemImagePlaceholder}>
+                        <Ionicons name="cube-outline" size={14} color={colors.textMuted} />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                    {item.notes ? (
+                      <Text style={styles.itemNotes} numberOfLines={1}>{item.notes}</Text>
+                    ) : (
+                      <Text style={styles.itemUnitPrice}>${(item.unitPrice / 100).toFixed(2)} each</Text>
+                    )}
+                  </View>
+                  <View style={styles.quantityControls}>
+                    <Text style={styles.quantityText}>x{item.quantity}</Text>
+                  </View>
+                  <Text style={styles.itemPrice} numberOfLines={1} adjustsFontSizeToFit>
+                    ${((item.unitPrice * item.quantity) / 100).toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+              {/* Totals */}
+              <View style={styles.totalsSection}>
+                <View style={styles.totalsRow}>
+                  <Text style={styles.totalsLabel}>Subtotal</Text>
+                  <Text style={styles.totalsValue}>${(subtotal / 100).toFixed(2)}</Text>
+                </View>
+                {taxAmount > 0 && (
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>Tax ({taxRate}%)</Text>
+                    <Text style={styles.totalsValue}>${(taxAmount / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+                {tipAmount > 0 && (
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>Tip ({tipPercentage}%)</Text>
+                    <Text style={styles.totalsValue}>${(tipAmount / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Itemized list with thumbnails and quantity controls */}
+              {items.map((item) => {
+                const renderRightActions = (
+                  progress: Animated.AnimatedInterpolation<number>,
+                  dragX: Animated.AnimatedInterpolation<number>
+                ) => {
+                  const scale = dragX.interpolate({
+                    inputRange: [-60, -30, 0],
+                    outputRange: [1, 0.9, 0.6],
+                    extrapolate: 'clamp',
+                  });
+                  const opacity = dragX.interpolate({
+                    inputRange: [-60, -30, 0],
+                    outputRange: [1, 0.8, 0],
+                    extrapolate: 'clamp',
+                  });
+                  return (
+                    <TouchableOpacity
+                      style={styles.deleteAction}
+                      onPress={() => removeItem(item.cartKey)}
+                      activeOpacity={0.8}
+                    >
+                      <Animated.View
+                        style={[styles.deleteActionContent, { transform: [{ scale }], opacity }]}
+                      >
+                        <Ionicons name="trash" size={20} color="#fff" />
+                      </Animated.View>
+                    </TouchableOpacity>
+                  );
+                };
+
+                return (
+                  <Swipeable
+                    key={item.cartKey}
+                    renderRightActions={renderRightActions}
+                    rightThreshold={40}
+                    overshootRight={false}
+                  >
+                    <View style={styles.itemRow}>
+                      <View style={styles.itemThumbnail}>
+                        {item.product.imageUrl ? (
+                          <Image source={{ uri: item.product.imageUrl }} style={styles.itemImage} />
+                        ) : (
+                          <View style={styles.itemImagePlaceholder}>
+                            <Ionicons name="image-outline" size={14} color={colors.textMuted} />
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.itemInfo}>
+                        <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
+                        {item.notes ? (
+                          <Text style={styles.itemNotes} numberOfLines={1}>{item.notes}</Text>
+                        ) : (
+                          <Text style={styles.itemUnitPrice}>${(item.product.price / 100).toFixed(2)} each</Text>
+                        )}
+                      </View>
+                      <View style={styles.quantityControls}>
+                        <TouchableOpacity style={styles.quantityButton} onPress={() => decrementItem(item.cartKey)}>
+                          <Ionicons
+                            name={item.quantity === 1 ? 'trash-outline' : 'remove'}
+                            size={16}
+                            color={item.quantity === 1 ? colors.error : colors.text}
+                          />
+                        </TouchableOpacity>
+                        <Text style={styles.quantityText}>{item.quantity}</Text>
+                        <TouchableOpacity style={styles.quantityButton} onPress={() => incrementItem(item.cartKey)}>
+                          <Ionicons name="add" size={16} color={colors.text} />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.itemPrice} numberOfLines={1} adjustsFontSizeToFit>
+                        ${((item.product.price * item.quantity) / 100).toFixed(2)}
+                      </Text>
+                    </View>
+                  </Swipeable>
+                );
+              })}
+              {/* Totals */}
+              <View style={styles.totalsSection}>
+                <View style={styles.totalsRow}>
+                  <Text style={styles.totalsLabel}>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)</Text>
+                  <Text style={styles.totalsValue}>${(subtotal / 100).toFixed(2)}</Text>
+                </View>
+                {taxAmount > 0 && (
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>Tax ({taxRate}%)</Text>
+                    <Text style={styles.totalsValue}>${(taxAmount / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+                {tipAmount > 0 && (
+                  <View style={styles.totalsRow}>
+                    <Text style={styles.totalsLabel}>Tip ({tipPercentage}%)</Text>
+                    <Text style={styles.totalsValue}>${(tipAmount / 100).toFixed(2)}</Text>
+                  </View>
+                )}
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Total</Text>
+                  <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
+                </View>
+              </View>
+            </>
           )}
-          <Text style={styles.paymentLabel}>Total to Charge</Text>
-          <Text style={styles.paymentValue} numberOfLines={1} adjustsFontSizeToFit>
-            ${(grandTotal / 100).toFixed(2)}
-          </Text>
         </View>
       </ScrollView>
 
-      {/* Footer with Pay Button and Hold Button */}
+      {/* Footer with Pay Button */}
       <View style={styles.footer}>
-        {/* Hold Order Button (not for quick charge or resumed orders) */}
-        {!isQuickCharge && !resumedOrder && (
-          <TouchableOpacity
-            style={styles.holdButton}
-            onPress={() => setShowHoldModal(true)}
-            disabled={isProcessing}
-          >
-            <Ionicons name="pause-circle-outline" size={20} color={colors.text} />
-            <Text style={styles.holdButtonText}>Hold Order</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Pay Button */}
         <TouchableOpacity
           onPress={handlePayment}
           disabled={isProcessing}
@@ -1035,6 +1110,9 @@ export function CheckoutScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setShowHoldModal(false)}
+        onShow={() => {
+          setTimeout(() => holdNameInputRef.current?.focus(), 100);
+        }}
       >
         <Pressable
           style={styles.modalOverlay}
@@ -1049,12 +1127,12 @@ export function CheckoutScreen() {
               Give this order a name so you can find it later
             </Text>
             <TextInput
+              ref={holdNameInputRef}
               style={styles.holdNameInput}
               placeholder="e.g., Table 5, John's order"
               placeholderTextColor={colors.textMuted}
               value={holdName}
               onChangeText={setHoldName}
-              autoFocus
               maxLength={50}
             />
             <View style={styles.modalButtons}>
@@ -1124,6 +1202,21 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       color: colors.text,
       letterSpacing: -0.3,
     },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    holdButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: glassColors.backgroundElevated,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: glassColors.border,
+    },
     clearButton: {
       paddingHorizontal: 16,
       paddingVertical: 10,
@@ -1139,39 +1232,14 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       flex: 1,
     },
     content: {
-      padding: 20,
-      paddingBottom: 40,
+      padding: 16,
+      paddingBottom: 20,
     },
     summaryCard: {
       backgroundColor: glassColors.backgroundElevated,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      padding: 20,
-      marginBottom: 24,
-      ...shadows.md,
-    },
-    summaryTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
+      borderRadius: 16,
+      padding: 16,
       marginBottom: 16,
-    },
-    summaryRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    summaryLabel: {
-      fontSize: 16,
-      color: colors.text,
-    },
-    summaryValue: {
-      fontSize: 20,
-      fontWeight: '700',
-      color: colors.text,
     },
     // Itemized receipt styles
     itemRow: {
@@ -1260,55 +1328,45 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       textAlign: 'right',
       flexShrink: 0,
     },
-    subtotalRow: {
+    // Totals section styles (at bottom of order summary)
+    totalsSection: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: glassColors.border,
+    },
+    totalsRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 12,
-      paddingTop: 4,
+      marginBottom: 6,
     },
-    subtotalLabel: {
+    totalsLabel: {
       fontSize: 14,
       color: colors.textSecondary,
     },
-    subtotalValue: {
+    totalsValue: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    totalRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 8,
+      paddingTop: 8,
+      borderTopWidth: 1,
+      borderTopColor: glassColors.border,
+    },
+    totalLabel: {
       fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    totalAmount: {
+      fontSize: 24,
       fontWeight: '700',
       color: colors.text,
-    },
-    inputSection: {
-      marginBottom: 32,
-    },
-    emailSection: {
-      marginTop: 8,
-      marginBottom: 24,
-      backgroundColor: glassColors.backgroundElevated,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      padding: 20,
-      ...shadows.sm,
-    },
-    inputLabel: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: colors.textSecondary,
-      marginBottom: 10,
-    },
-    input: {
-      backgroundColor: glassColors.background,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      borderRadius: 14,
-      paddingHorizontal: 18,
-      paddingVertical: 14,
-      fontSize: 16,
-      color: colors.text,
-    },
-    inputHint: {
-      fontSize: 13,
-      color: colors.textMuted,
-      marginTop: 8,
     },
     inputError: {
       borderColor: colors.error,
@@ -1319,39 +1377,21 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       color: colors.error,
       marginTop: 8,
     },
-    emailSectionError: {
-      borderColor: colors.error,
-    },
-    paymentAmount: {
-      alignItems: 'center',
-      paddingVertical: 24,
-      marginTop: 8,
-      paddingHorizontal: 20,
-      width: '100%',
-    },
-    paymentLabel: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      marginBottom: 8,
-    },
-    paymentValue: {
-      fontSize: 56,
-      fontWeight: '700',
-      color: colors.text,
-      width: '100%',
-      textAlign: 'center',
-    },
     footer: {
-      padding: 20,
-      paddingBottom: 36,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      paddingBottom: 32,
+      gap: 10,
     },
     payButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: 18,
-      borderRadius: 20,
-      gap: 10,
+      paddingVertical: 16,
+      borderRadius: 16,
+      gap: 8,
       ...shadows.md,
       shadowColor: colors.primary,
       shadowOpacity: 0.3,
@@ -1376,36 +1416,31 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     // Tip section styles
     tipSection: {
-      marginBottom: 24,
+      marginBottom: 16,
       backgroundColor: glassColors.backgroundElevated,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      padding: 20,
-      ...shadows.sm,
+      borderRadius: 16,
+      padding: 14,
     },
     tipTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 16,
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 12,
     },
     tipOptions: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      marginHorizontal: -6,
+      marginHorizontal: -4,
     },
     tipButton: {
       width: '33.33%',
-      paddingHorizontal: 6,
-      marginBottom: 12,
+      paddingHorizontal: 4,
+      marginBottom: 8,
     },
     tipButtonInner: {
       backgroundColor: glassColors.background,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      height: 95,
+      borderRadius: 12,
+      height: 70,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1463,31 +1498,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       borderWidth: 1,
       borderColor: glassColors.border,
     },
-    // Breakdown styles
-    breakdownContainer: {
-      width: '100%',
-      marginBottom: 16,
-    },
-    breakdownRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    breakdownLabel: {
-      fontSize: 15,
-      color: colors.textSecondary,
-    },
-    breakdownValue: {
-      fontSize: 15,
-      color: colors.text,
-    },
-    breakdownDivider: {
-      height: 1,
-      backgroundColor: glassColors.border,
-      marginTop: 8,
-      marginBottom: 8,
-    },
     // Item notes style
     itemNotes: {
       fontSize: 12,
@@ -1495,53 +1505,70 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       color: colors.primary,
       fontStyle: 'italic',
     },
-    // Order notes section styles
-    orderNotesSection: {
+    // Customer info section styles (combined email + notes)
+    customerInfoSection: {
       marginBottom: 16,
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: glassColors.border,
       overflow: 'hidden',
     },
-    orderNotesHeader: {
+    customerInfoHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: 16,
+      padding: 14,
     },
-    orderNotesHeaderLeft: {
+    customerInfoHeaderLeft: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
     },
-    orderNotesTitle: {
-      fontSize: 15,
+    customerInfoTitle: {
+      fontSize: 14,
       fontFamily: fonts.medium,
-      color: colors.text,
+      color: colors.textSecondary,
     },
-    orderNotesInput: {
-      paddingHorizontal: 16,
-      paddingBottom: 16,
-      fontSize: 15,
+    customerInfoBadge: {
+      marginLeft: 4,
+    },
+    customerInfoContent: {
+      paddingHorizontal: 14,
+      paddingBottom: 14,
+      gap: 10,
+    },
+    customerInfoField: {
+      gap: 4,
+    },
+    customerInfoInput: {
+      backgroundColor: glassColors.background,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 14,
       fontFamily: fonts.regular,
       color: colors.text,
-      minHeight: 60,
+    },
+    customerInfoNotesInput: {
+      backgroundColor: glassColors.background,
+      borderRadius: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 14,
+      fontFamily: fonts.regular,
+      color: colors.text,
+      minHeight: 50,
       textAlignVertical: 'top',
     },
-    // Payment method selector styles
+    // Payment method section styles
     paymentMethodSection: {
       marginBottom: 16,
       backgroundColor: glassColors.backgroundElevated,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      padding: 16,
-      ...shadows.sm,
+      borderRadius: 16,
+      padding: 14,
     },
     paymentMethodTitle: {
       fontSize: 14,
-      fontFamily: fonts.semiBold,
+      fontWeight: '600',
       color: colors.textSecondary,
       marginBottom: 12,
     },
@@ -1555,41 +1582,20 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      paddingVertical: 14,
-      borderRadius: 14,
+      paddingVertical: 12,
+      borderRadius: 12,
       backgroundColor: glassColors.background,
-      borderWidth: 1,
-      borderColor: glassColors.border,
     },
     paymentMethodButtonSelected: {
       backgroundColor: colors.primary,
-      borderColor: colors.primary,
     },
     paymentMethodButtonText: {
-      fontSize: 13,
-      fontFamily: fonts.medium,
+      fontSize: 14,
+      fontWeight: '500',
       color: colors.text,
     },
     paymentMethodButtonTextSelected: {
       color: '#fff',
-    },
-    // Hold button styles
-    holdButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 14,
-      borderRadius: 16,
-      backgroundColor: glassColors.backgroundElevated,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      marginBottom: 12,
-    },
-    holdButtonText: {
-      fontSize: 16,
-      fontFamily: fonts.medium,
-      color: colors.text,
     },
     // Pay button variants
     payButtonCash: {

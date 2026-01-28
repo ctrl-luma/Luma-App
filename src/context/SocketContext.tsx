@@ -142,6 +142,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
         } catch (err) {
           logger.error('[Socket] Failed to join device room:', err);
         }
+
+        // Log all rooms we should be in
+        logger.log('[Socket DEBUG] Socket connected and ready to receive events');
       });
 
       socketRef.current.on('disconnect', (reason) => {
@@ -222,6 +225,19 @@ export function SocketProvider({ children }: SocketProviderProps) {
       listenersRef.current.forEach((callbacks, event) => {
         callbacks.forEach((callback) => {
           socketRef.current?.on(event, callback);
+        });
+      });
+
+      // Debug: Log ALL order-related events
+      const orderEvents = [
+        SocketEvents.ORDER_CREATED,
+        SocketEvents.ORDER_UPDATED,
+        SocketEvents.ORDER_COMPLETED,
+        SocketEvents.ORDER_DELETED,
+      ];
+      orderEvents.forEach((eventName) => {
+        socketRef.current?.on(eventName, (data: any) => {
+          logger.log(`[Socket DEBUG] Received ${eventName}:`, JSON.stringify(data, null, 2));
         });
       });
     } catch (error) {

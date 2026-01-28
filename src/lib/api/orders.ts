@@ -14,7 +14,7 @@ export interface Order {
   id: string;
   orderNumber: string;
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'held';
-  paymentMethod: 'card' | 'cash' | 'tap_to_pay' | null;
+  paymentMethod: 'card' | 'cash' | 'tap_to_pay' | 'split' | null;
   subtotal: number; // in cents
   taxAmount: number;
   tipAmount: number;
@@ -49,7 +49,7 @@ export interface CreateOrderParams {
   taxAmount?: number;
   tipAmount?: number;
   totalAmount: number; // in cents
-  paymentMethod?: 'card' | 'cash' | 'tap_to_pay';
+  paymentMethod?: 'card' | 'cash' | 'tap_to_pay' | 'split';
   customerEmail?: string;
   stripePaymentIntentId?: string;
   isQuickCharge?: boolean;
@@ -161,9 +161,18 @@ export const ordersApi = {
 
   /**
    * Put an order on hold (open tab)
+   * Optionally update order fields when re-holding a resumed order
    */
-  hold: (orderId: string, holdName?: string) =>
-    apiClient.post<Order>(`/orders/${orderId}/hold`, { holdName }),
+  hold: (orderId: string, holdName?: string, updates?: {
+    tipAmount?: number;
+    taxAmount?: number;
+    subtotal?: number;
+    totalAmount?: number;
+    paymentMethod?: string;
+    customerEmail?: string;
+    notes?: string | null;
+  }) =>
+    apiClient.post<Order>(`/orders/${orderId}/hold`, { holdName, ...updates }),
 
   /**
    * Resume a held order

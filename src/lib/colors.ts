@@ -2,14 +2,14 @@
 
 // Glass/Glassmorphism colors
 export const glass = {
-  // Dark theme glass
+  // Dark theme glass - using solid colors to prevent star bleed-through
   dark: {
-    background: 'rgba(255, 255, 255, 0.05)',
-    backgroundElevated: 'rgba(255, 255, 255, 0.08)',
-    backgroundSubtle: 'rgba(255, 255, 255, 0.03)',
-    border: 'rgba(255, 255, 255, 0.1)',
-    borderLight: 'rgba(255, 255, 255, 0.15)',
-    borderSubtle: 'rgba(255, 255, 255, 0.06)',
+    background: '#0f1419',
+    backgroundElevated: '#1a1f26',
+    backgroundSubtle: '#0a0d10',
+    border: '#2a3140',
+    borderLight: '#3a4250',
+    borderSubtle: '#1a2030',
     highlight: 'rgba(255, 255, 255, 0.2)',
     overlay: 'rgba(0, 0, 0, 0.6)',
   },

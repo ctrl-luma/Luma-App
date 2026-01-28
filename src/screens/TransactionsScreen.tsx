@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -342,8 +342,13 @@ export function TransactionsScreen() {
 
   // Fetch held orders
   const fetchHeldOrders = useCallback(async () => {
+    console.log('[TransactionsScreen DEBUG] fetchHeldOrders called');
     try {
       const response = await ordersApi.listHeld(deviceId || undefined);
+      console.log('[TransactionsScreen DEBUG] fetchHeldOrders response:', {
+        orderCount: response.orders.length,
+        orderIds: response.orders.map((o: Order) => o.id),
+      });
       setHeldOrders(response.orders);
     } catch (error: any) {
       console.error('Failed to fetch held orders:', error);
@@ -361,14 +366,53 @@ export function TransactionsScreen() {
     }
   }, [activeTab, fetchHeldOrders]);
 
+  // Refresh held orders when screen focuses (user might have held an order from another screen)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('[TransactionsScreen DEBUG] Screen focused, activeTab:', activeTab);
+      if (activeTab === 'held') {
+        fetchHeldOrders();
+      }
+    }, [activeTab, fetchHeldOrders])
+  );
+
   // Auto-refresh transactions when payment events occur
-  const handlePaymentEvent = useCallback(() => {
+  const handlePaymentEvent = useCallback((data: any) => {
+    console.log('[TransactionsScreen DEBUG] Payment event received, invalidating transactions query:', data);
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
   }, [queryClient]);
 
   useSocketEvent(SocketEvents.ORDER_COMPLETED, handlePaymentEvent);
   useSocketEvent(SocketEvents.PAYMENT_RECEIVED, handlePaymentEvent);
   useSocketEvent(SocketEvents.ORDER_REFUNDED, handlePaymentEvent);
+
+  // Listen for held order updates via socket
+  useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
+    console.log('[TransactionsScreen DEBUG] ORDER_UPDATED event received:', JSON.stringify(data, null, 2));
+    // Refresh held orders when any order is held or resumed
+    if (data.status === 'held' || data.status === 'pending') {
+      console.log('[TransactionsScreen DEBUG] Refreshing held orders due to status:', data.status);
+      fetchHeldOrders();
+    }
+  }, [fetchHeldOrders]));
+
+  useSocketEvent(SocketEvents.ORDER_CREATED, useCallback((data: any) => {
+    console.log('[TransactionsScreen DEBUG] ORDER_CREATED event received:', JSON.stringify(data, null, 2));
+    // Refresh if a new held order is created
+    if (data.status === 'held') {
+      console.log('[TransactionsScreen DEBUG] New held order created, refreshing...');
+      fetchHeldOrders();
+    }
+  }, [fetchHeldOrders]));
+
+  useSocketEvent(SocketEvents.ORDER_DELETED, useCallback((data: any) => {
+    console.log('[TransactionsScreen DEBUG] ORDER_DELETED event received:', JSON.stringify(data, null, 2));
+    // Remove the deleted order from the list
+    if (data.orderId) {
+      console.log('[TransactionsScreen DEBUG] Removing order from held list:', data.orderId);
+      setHeldOrders(prev => prev.filter(o => o.id !== data.orderId));
+    }
+  }, []));
 
   const {
     data,

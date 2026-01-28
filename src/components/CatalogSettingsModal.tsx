@@ -80,7 +80,7 @@ export function CatalogSettingsModal({
       setTipPercentages(catalog.tipPercentages || [15, 18, 20, 25]);
       setAllowCustomTip(catalog.allowCustomTip);
       setPromptForEmail(catalog.promptForEmail);
-      setTaxRateString(((catalog.taxRate || 0) * 100).toFixed(2));
+      setTaxRateString(String(catalog.taxRate || 0));
       setLayoutType(catalog.layoutType);
       setShowDatePicker(false);
     }
@@ -117,8 +117,8 @@ export function CatalogSettingsModal({
       return;
     }
 
-    const taxRate = parseFloat(taxRateString) / 100;
-    if (isNaN(taxRate) || taxRate < 0 || taxRate > 1) {
+    const taxRate = parseFloat(taxRateString) || 0;
+    if (isNaN(taxRate) || taxRate < 0 || taxRate > 100) {
       Alert.alert('Error', 'Please enter a valid tax rate (0-100%)');
       return;
     }

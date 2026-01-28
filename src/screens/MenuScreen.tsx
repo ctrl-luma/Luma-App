@@ -31,11 +31,14 @@ if (!isExpoGo) {
     const draggable = require('react-native-draggable-flatlist');
     DraggableFlatList = draggable.default;
     ScaleDecorator = draggable.ScaleDecorator;
-  } catch {
+    console.log('DraggableFlatList loaded successfully');
+  } catch (e) {
+    console.log('DraggableFlatList failed to load:', e);
     DraggableFlatList = FlatList; // Fallback to regular FlatList
     ScaleDecorator = ({ children }: any) => children;
   }
 } else {
+  console.log('Running in Expo Go - using FlatList fallback');
   DraggableFlatList = FlatList; // Fallback to regular FlatList in Expo Go
   ScaleDecorator = ({ children }: any) => children;
 }
@@ -1072,6 +1075,7 @@ export function MenuScreen() {
 
   // Handle drag end for product reordering
   const handleDragEnd = useCallback(async ({ data }: { data: Product[] }) => {
+    console.log('handleDragEnd called with', data.length, 'products');
     if (!selectedCatalog) return;
 
     // Create the new order array
@@ -1079,6 +1083,7 @@ export function MenuScreen() {
       catalogProductId: product.id,
       sortOrder: index,
     }));
+    console.log('Reordering products:', productOrders);
 
     // Optimistically update the local query cache
     queryClient.setQueryData(['products', selectedCatalog.id], data);
@@ -1214,9 +1219,11 @@ export function MenuScreen() {
     const dragHandle = supportsDragAndDrop ? (
       <Pressable
         style={styles.dragHandle}
-        onLongPress={drag}
+        onLongPress={() => {
+          console.log('Drag handle long pressed for:', item.name);
+          drag();
+        }}
         delayLongPress={150}
-        onPressIn={(e) => e.stopPropagation()}
       >
         <Ionicons name="reorder-three" size={22} color={colors.textMuted} />
       </Pressable>
@@ -1643,11 +1650,6 @@ export function MenuScreen() {
                     />
                   </TouchableOpacity>
                 )}
-                {isEditMode && (
-                  <View style={styles.editModeBadge}>
-                    <Text style={styles.editModeBadgeText}>Editing</Text>
-                  </View>
-                )}
               </View>
               {selectedCatalog.location ? (
                 <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
@@ -1934,17 +1936,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       color: colors.textSecondary,
       marginTop: 2,
     },
-    editModeBadge: {
-      backgroundColor: colors.primary,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 6,
-    },
-    editModeBadgeText: {
-      fontSize: 11,
-      fontWeight: '600',
-      color: '#fff',
-    },
     headerButtons: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -2087,8 +2078,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       width: cardWidth,
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 20,
-      borderWidth: 1,
-      borderColor: glassColors.border,
       marginBottom: GRID_GAP,
       overflow: 'hidden',
       ...shadows.md,
@@ -2099,7 +2088,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
     productImageContainer: {
       width: '100%',
       aspectRatio: 1,
-      backgroundColor: glassColors.background,
+      backgroundColor: glassColors.backgroundElevated,
     },
     productImage: {
       width: '100%',
@@ -2206,8 +2195,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       flexDirection: 'row',
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 20,
-      borderWidth: 1,
-      borderColor: glassColors.border,
       marginBottom: 12,
       overflow: 'hidden',
       alignItems: 'center',
@@ -2218,7 +2205,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       width: 80,
       height: 80,
       borderRadius: 14,
-      backgroundColor: glassColors.background,
+      backgroundColor: glassColors.backgroundElevated,
       overflow: 'hidden',
     },
     listImage: {
@@ -2278,8 +2265,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       width: cardWidth,
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 24,
-      borderWidth: 1,
-      borderColor: glassColors.border,
       marginBottom: 16,
       overflow: 'hidden',
       ...shadows.lg,
@@ -2287,7 +2272,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
     largeImageContainer: {
       width: '100%',
       aspectRatio: 16 / 9,
-      backgroundColor: glassColors.background,
+      backgroundColor: glassColors.backgroundElevated,
     },
     largeImage: {
       width: '100%',
@@ -2359,8 +2344,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       alignItems: 'center',
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 14,
-      borderWidth: 1,
-      borderColor: glassColors.borderSubtle,
       paddingVertical: 12,
       paddingHorizontal: 16,
       marginBottom: 8,

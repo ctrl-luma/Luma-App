@@ -194,8 +194,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark }: { colors: any; glass
       return;
     }
 
-    const taxRate = parseFloat(taxRateString) / 100;
-    if (isNaN(taxRate) || taxRate < 0 || taxRate > 1) {
+    const taxRate = parseFloat(taxRateString) || 0;
+    if (isNaN(taxRate) || taxRate < 0 || taxRate > 100) {
       Alert.alert('Error', 'Please enter a valid tax rate (0-100%)');
       return;
     }
