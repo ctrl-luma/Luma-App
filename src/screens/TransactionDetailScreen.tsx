@@ -577,7 +577,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
     },
     header: {
       flexDirection: 'row',
