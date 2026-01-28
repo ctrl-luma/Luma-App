@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const SWIFT_FILE = `import Foundation
+import UIKit
 import React
 import ProximityReader
 
@@ -39,7 +40,12 @@ class ProximityReaderDiscoveryModule: NSObject {
       Task { @MainActor in
         do {
           let discovery = ProximityReaderDiscovery()
-          try await discovery.show()
+          let content = try await discovery.content(for: .payment(.howToTap))
+          guard let viewController = RCTPresentedViewController() else {
+            reject("NO_VIEW_CONTROLLER", "Could not find a presented view controller", nil)
+            return
+          }
+          try await discovery.presentContent(content, from: viewController)
           resolve(["success": true])
         } catch {
           reject("DISCOVERY_ERROR", "Failed to show education: \\(error.localizedDescription)", error)
@@ -54,9 +60,10 @@ class ProximityReaderDiscoveryModule: NSObject {
   func checkDeviceSupport(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     if #available(iOS 18.0, *) {
       Task {
-        let isSupported = await ProximityReaderDiscovery.isSupported
+        let discovery = ProximityReaderDiscovery()
+        let contentList = discovery.contentList
         resolve([
-          "isSupported": isSupported,
+          "isSupported": !contentList.isEmpty,
           "iosVersion": ProcessInfo.processInfo.operatingSystemVersionString
         ])
       }
