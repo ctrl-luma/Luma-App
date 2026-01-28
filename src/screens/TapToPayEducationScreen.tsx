@@ -247,6 +247,15 @@ export function TapToPayEducationScreen() {
 
   const styles = createStyles(colors, glassColors, isDark);
 
+  const navigateBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // Onboarding flow (came via replace) — go to main screen
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    }
+  };
+
   // iOS 18+ already connected: Jump straight to Apple's native education
   useEffect(() => {
     logger.log('[TapToPayEducation] Auto-launch effect:', { isIOS, isConnected, useAppleNativeEducation, showingAppleEducation });
@@ -263,7 +272,7 @@ export function TapToPayEducationScreen() {
       // If already connected, just mark as seen and navigate back
       if (isConnected) {
         markEducationSeen();
-        navigation.goBack();
+        navigateBack();
         return;
       }
       // Otherwise, auto-enable
@@ -283,7 +292,7 @@ export function TapToPayEducationScreen() {
       const connected = await connectReader();
       if (connected) {
         markEducationSeen();
-        navigation.goBack();
+        navigateBack();
       } else {
         setEnableError('Failed to enable Tap to Pay. Please try again.');
       }
@@ -304,12 +313,12 @@ export function TapToPayEducationScreen() {
       await showProximityReaderDiscoveryEducation();
       // User completed Apple's education - mark as seen and exit
       markEducationSeen();
-      navigation.goBack();
+      navigateBack();
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
       // User dismissed Apple's UI - still mark as seen so they can proceed
       markEducationSeen();
-      navigation.goBack();
+      navigateBack();
     } finally {
       setShowingAppleEducation(false);
     }
@@ -419,14 +428,14 @@ export function TapToPayEducationScreen() {
     } else {
       // User completed education - mark as seen so it doesn't show again
       markEducationSeen();
-      navigation.goBack();
+      navigateBack();
     }
   };
 
   const handleSkip = () => {
     // User skipped education - still mark as seen so it doesn't show again
     markEducationSeen();
-    navigation.goBack();
+    navigateBack();
   };
 
   // Total slides = 1 (enable, iOS only) + education slides
@@ -523,20 +532,21 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show loading state while checking ProximityReaderDiscovery availability
+  // iOS: Show branded loading screen while checking availability or showing Apple's native education
   if (proximityDiscoveryAvailable === null || showingAppleEducation) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.closeButton} />
-          <Text style={styles.headerTitle}>Tap to Pay</Text>
-          <View style={styles.skipButton} />
-        </View>
         <View style={styles.androidCenterContent}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.slideDescription, { marginTop: 16 }]}>
-            {showingAppleEducation ? 'Loading education...' : 'Please wait...'}
-          </Text>
+          <View style={styles.iconContainer}>
+            <LinearGradient
+              colors={[colors.primary, colors.primary700]}
+              style={styles.iconGradient}
+            >
+              <Ionicons name="wifi" size={64} color="#fff" style={styles.nfcIcon} />
+            </LinearGradient>
+          </View>
+          <Text style={styles.slideTitle}>{TAP_TO_PAY_NAME}</Text>
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 8 }} />
         </View>
       </SafeAreaView>
     );
