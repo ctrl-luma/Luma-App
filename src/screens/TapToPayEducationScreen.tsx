@@ -632,10 +632,8 @@ export function TapToPayEducationScreen() {
 
   // iOS: Show starry loading while checking availability, showing loader, or Apple education is active
   if (proximityDiscoveryAvailable === null || showingAppleEducation || appleEducationActive) {
-    // When Apple's sheet is open (appleEducationActive but not showingAppleEducation),
-    // render an empty screen so our slides don't flash behind it
     if (appleEducationActive && !showingAppleEducation) {
-      return <View style={{ flex: 1, backgroundColor: isDark ? '#09090b' : colors.background }} />;
+      return null;
     }
     return (
       <View style={StyleSheet.absoluteFill}>
