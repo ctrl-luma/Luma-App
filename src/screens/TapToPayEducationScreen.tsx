@@ -403,20 +403,15 @@ export function TapToPayEducationScreen() {
   const showAppleNativeEducation = async () => {
     setShowingAppleEducation(true);
     try {
-      // Dynamically import to avoid loading native module on Android/Expo Go
       const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
       await showProximityReaderDiscoveryEducation();
-      // User completed Apple's education - mark as seen and exit
-      markEducationSeen();
-      navigateBack();
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
-      // User dismissed Apple's UI - still mark as seen so they can proceed
-      markEducationSeen();
-      navigateBack();
-    } finally {
-      setShowingAppleEducation(false);
     }
+    // Apple's sheet dismissed — hide loader and navigate back immediately
+    setShowingAppleEducation(false);
+    markEducationSeen();
+    navigateBack();
   };
 
   // Check if device is not compatible
