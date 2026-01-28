@@ -42,6 +42,7 @@ import { shadows, glow } from '../lib/shadows';
 import { spacing, radius } from '../lib/spacing';
 import { config } from '../lib/config';
 import logger from '../lib/logger';
+import { LoadingWithStars } from '../components/StarryBackground';
 
 // Apple TTPOi 5.4: Region-correct copy
 const TAP_TO_PAY_NAME = Platform.OS === 'ios' ? 'Tap to Pay on iPhone' : 'Tap to Pay';
@@ -532,24 +533,9 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show branded loading screen while checking availability or showing Apple's native education
+  // iOS: Show starry loading screen while checking availability or showing Apple's native education
   if (proximityDiscoveryAvailable === null || showingAppleEducation) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.androidCenterContent}>
-          <View style={styles.iconContainer}>
-            <LinearGradient
-              colors={[colors.primary, colors.primary700]}
-              style={styles.iconGradient}
-            >
-              <Ionicons name="wifi" size={64} color="#fff" style={styles.nfcIcon} />
-            </LinearGradient>
-          </View>
-          <Text style={styles.slideTitle}>{TAP_TO_PAY_NAME}</Text>
-          <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 8 }} />
-        </View>
-      </SafeAreaView>
-    );
+    return <LoadingWithStars />;
   }
 
   return (
