@@ -451,7 +451,7 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show starry loading while:
+  // iOS: Show loading while:
   // - checking ProximityReaderDiscovery availability
   // - Apple education is active (native sheet showing)
   // - already connected and about to auto-launch Apple education
@@ -459,6 +459,13 @@ export function TapToPayEducationScreen() {
   const pendingEducation = isIOS && isConnected && useAppleNativeEducation && !educationCompleteRef.current;
   const warmingUp = isIOS && isWarming && useAppleNativeEducation && !educationCompleteRef.current;
   if (proximityDiscoveryAvailable === null || appleEducationActive || pendingEducation || warmingUp) {
+    // Use static loader when Apple education is active to avoid native animation
+    // conflicts with ProximityReaderDiscovery's scroll/gesture handling
+    if (appleEducationActive) {
+      return (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? '#09090b' : colors.background }]} />
+      );
+    }
     return (
       <View style={StyleSheet.absoluteFill}>
         <FullScreenStarLoader />
