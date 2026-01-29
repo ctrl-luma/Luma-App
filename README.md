@@ -131,3 +131,9 @@ EXPO_PUBLIC_API_URL=https://api.lumapos.co
 - [Luma-API](../Luma-API) - Backend API (Hono, PostgreSQL)
 - [Luma-Vendor](../Luma-Vendor) - Vendor dashboard (Next.js)
 - [Luma-Marketing](../Luma-Marketing) - Marketing website (Next.js)
+
+
+
+ANDROID LOGS
+ & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" logcat *:S ReactNative:V ReactNativeJS:V
+ 
