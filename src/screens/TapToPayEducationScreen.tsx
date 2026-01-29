@@ -180,6 +180,7 @@ export function TapToPayEducationScreen() {
   // Check if ProximityReaderDiscovery is available (iOS 18+)
   const [proximityDiscoveryAvailable, setProximityDiscoveryAvailable] = useState<boolean | null>(null);
   const [appleEducationActive, setAppleEducationActive] = useState(false);
+  const educationCompleteRef = useRef(false);
 
   useEffect(() => {
     if (isIOS) {
@@ -280,9 +281,11 @@ export function TapToPayEducationScreen() {
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
     }
-    // Apple's sheet dismissed — navigate back immediately
-    markEducationSeen();
+    // Mark complete so loading guard doesn't re-show, then navigate immediately
+    educationCompleteRef.current = true;
+    setAppleEducationActive(false);
     navigateBack();
+    markEducationSeen();
   };
 
   // Check if device is not compatible
@@ -448,8 +451,9 @@ export function TapToPayEducationScreen() {
   }
 
   // iOS: Show starry loading while checking availability, Apple education is active,
-  // or already connected (about to auto-launch Apple education via useEffect)
-  if (proximityDiscoveryAvailable === null || appleEducationActive || (isIOS && isConnected && useAppleNativeEducation)) {
+  // or already connected and about to auto-launch Apple education via useEffect
+  const pendingEducation = isIOS && isConnected && useAppleNativeEducation && !educationCompleteRef.current;
+  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingEducation) {
     return (
       <View style={StyleSheet.absoluteFill}>
         <FullScreenStarLoader />
