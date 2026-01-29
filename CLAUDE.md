@@ -4,16 +4,19 @@
 
 ## Project Overview
 
-Luma-App is a React Native/Expo mobile application for a point-of-sale (POS) system designed for mobile bars, food trucks, and events. The app enables staff to process contactless payments via Stripe Tap to Pay on iPhone/Android.
+Luma-App is a React Native/Expo mobile application for a point-of-sale (POS) system designed for mobile bars, food trucks, and events. The app enables staff to process contactless payments via Stripe Tap to Pay on iPhone/Android, accept cash payments, and handle split payments across multiple methods.
 
 **Tech Stack:**
 - **Framework:** React Native 0.81.5 with Expo SDK 54
 - **Language:** TypeScript 5.9 (strict mode)
 - **Navigation:** React Navigation v7 (native-stack + bottom-tabs)
-- **State:** React Context + TanStack Query v5
-- **Payments:** Stripe React Native + Stripe Terminal (Tap to Pay)
-- **Real-time:** Socket.IO client
-- **Storage:** AsyncStorage (tokens/cache)
+- **State:** React Context (7 contexts) + TanStack Query v5
+- **Payments:** Stripe React Native + Stripe Terminal (Tap to Pay) + Cash + Split Payments
+- **Real-time:** Socket.IO client v4.8
+- **Storage:** expo-secure-store (tokens), AsyncStorage (preferences/cache)
+- **Auth:** Biometric (Face ID / Fingerprint) + email/password
+- **Fonts:** Inter (Google Fonts)
+- **IAP:** react-native-iap v14.7
 
 ---
 
@@ -22,25 +25,30 @@ Luma-App is a React Native/Expo mobile application for a point-of-sale (POS) sys
 This app implements Tap to Pay on iPhone and must comply with Apple's TTPOi requirements (v1.5, March 2025).
 
 ### Device Requirements
-- **iPhone:** XS or later, iOS 16.4+
+- **iPhone:** XS or later (A12 Bionic chip minimum), iOS 16.4+
 - **Android:** NFC-capable device, Android 8.0 (SDK 26)+
+- **Passcode:** Device must have passcode enabled
 
 ### Required Entitlements
 1. **Development Entitlement:** Request via Apple Developer portal for testing
 2. **Publishing Entitlement:** Required before App Store submission
 
+### iOS Entitlements (app.config.ts)
+- `com.apple.developer.proximity-reader.payment.acceptance` — Tap to Pay
+- `com.apple.developer.in-app-payments` — In-app payments
+
 ### UX Requirements (Apple Mandated)
 
 **Onboarding (Section 2.1-2.3):**
-- Must educate merchants on Tap to Pay before first use
-- Show supported card types and device compatibility
-- Explain how contactless payments work
+- `TapToPayEducationScreen` and `TapToPayFirstUseModal` educate merchants before first use
+- Shows supported card types (Visa, Mastercard, Amex, Discover) and device compatibility
+- Explains how contactless payments work
 
 **Checkout Flow (Section 3.1-3.5):**
-- Clear total amount display before payment
-- Payment sheet must show amount being charged
-- Success/failure feedback required
-- Receipt offering required after successful payment
+- Clear total amount display before payment initiation
+- Payment sheet shows amount being charged
+- Immediate success/failure feedback via `PaymentResultScreen`
+- Receipt offering after successful payment (email)
 
 **Error Handling (Section 4.1-4.3):**
 - Clear error messages for failed transactions
@@ -59,44 +67,101 @@ This app implements Tap to Pay on iPhone and must comply with Apple's TTPOi requ
 ```
 Luma-App/
 ├── src/
-│   ├── screens/                    # All app screens
-│   │   ├── LoginScreen.tsx         # Email/password login
-│   │   ├── ForgotPasswordScreen.tsx
-│   │   ├── ResetPasswordScreen.tsx
-│   │   ├── CatalogSelectScreen.tsx # Catalog selection
-│   │   ├── MenuScreen.tsx          # Product grid with categories
-│   │   ├── CartScreen.tsx          # Shopping cart
-│   │   ├── CheckoutScreen.tsx      # Order summary + tip
-│   │   ├── PaymentProcessingScreen.tsx  # Tap to Pay UI
-│   │   ├── PaymentResultScreen.tsx # Success/failure + receipt
-│   │   ├── ChargeScreen.tsx        # Quick charge (amount only)
-│   │   ├── TransactionsScreen.tsx  # Transaction history
+│   ├── screens/                         # All app screens (20)
+│   │   ├── LoginScreen.tsx              # Email/password + biometric login
+│   │   ├── SignUpScreen.tsx             # New user registration
+│   │   ├── ForgotPasswordScreen.tsx     # Password reset request
+│   │   ├── ResetPasswordScreen.tsx      # Password reset completion
+│   │   ├── CatalogSelectScreen.tsx      # Catalog selection (modal)
+│   │   ├── MenuScreen.tsx               # Product grid with categories
+│   │   ├── CartScreen.tsx               # Shopping cart with item notes
+│   │   ├── CheckoutScreen.tsx           # Order summary + tip selection
+│   │   ├── PaymentProcessingScreen.tsx  # Tap to Pay UI (fullscreen modal)
+│   │   ├── PaymentResultScreen.tsx      # Success/failure + receipt
+│   │   ├── CashPaymentScreen.tsx        # Cash payment with change calc
+│   │   ├── SplitPaymentScreen.tsx       # Split across multiple methods
+│   │   ├── ChargeScreen.tsx             # Quick charge (amount only)
+│   │   ├── HeldOrdersScreen.tsx         # Saved/held orders list
+│   │   ├── TransactionsScreen.tsx       # Transaction history
 │   │   ├── TransactionDetailScreen.tsx  # Transaction details + refund
-│   │   ├── SettingsScreen.tsx      # Account settings
-│   │   └── TapToPaySettingsScreen.tsx   # Terminal settings
-│   ├── context/                    # State management
-│   │   ├── AuthContext.tsx         # Auth state + tokens
-│   │   ├── CartContext.tsx         # Shopping cart state
-│   │   ├── CatalogContext.tsx      # Selected catalog
-│   │   ├── ThemeContext.tsx        # Theme preferences
-│   │   └── SocketContext.tsx       # Socket.IO connection
+│   │   ├── SettingsScreen.tsx           # Account settings
+│   │   ├── TapToPaySettingsScreen.tsx   # Terminal reader management
+│   │   ├── TapToPayEducationScreen.tsx  # TTPOi education flow
+│   │   ├── UpgradeScreen.tsx            # Subscription upgrade
+│   │   └── StripeOnboardingScreen.tsx   # Stripe Connect onboarding
+│   ├── context/                         # State management (7 contexts)
+│   │   ├── AuthContext.tsx              # Auth, user, org, subscription, biometric
+│   │   ├── CartContext.tsx              # Cart with per-item notes
+│   │   ├── CatalogContext.tsx           # Selected catalog + catalog list
+│   │   ├── SocketContext.tsx            # Socket.IO connection + events
+│   │   ├── StripeTerminalContext.tsx    # Terminal SDK, device compat, TTP
+│   │   ├── ThemeContext.tsx             # Light/dark/system + alternate app icons
+│   │   └── DeviceContext.tsx            # Persistent device ID tracking
 │   ├── lib/
-│   │   ├── api/                    # API clients
-│   │   │   ├── client.ts           # HTTP client with refresh
-│   │   │   ├── auth.ts             # Auth service
-│   │   │   ├── catalogs.ts         # Catalog API
-│   │   │   ├── products.ts         # Products API
-│   │   │   ├── orders.ts           # Orders API
-│   │   │   ├── transactions.ts     # Transactions API
-│   │   │   └── stripe-terminal.ts  # Terminal API
-│   │   ├── colors.ts               # Design system colors
-│   │   └── config.ts               # Environment config
-│   ├── components/                 # Reusable UI components
-│   ├── hooks/                      # Custom hooks
-│   └── providers/                  # Provider wrappers
-├── app.config.ts                   # Expo configuration
-├── eas.json                        # EAS Build configuration
-└── App.tsx                         # Root component
+│   │   ├── api/                         # API service modules (12 files)
+│   │   │   ├── client.ts               # HTTP client with token refresh
+│   │   │   ├── auth.ts                 # Auth service
+│   │   │   ├── catalogs.ts             # Catalog CRUD + duplicate
+│   │   │   ├── products.ts             # Library + catalog products
+│   │   │   ├── categories.ts           # Category management
+│   │   │   ├── orders.ts               # Orders, held orders, payments
+│   │   │   ├── transactions.ts         # Transaction history + refunds
+│   │   │   ├── stripe-terminal.ts      # Terminal tokens, payment intents
+│   │   │   ├── stripe-connect.ts       # Connect account status
+│   │   │   ├── billing.ts              # Subscription info
+│   │   │   ├── organizations.ts        # Organization details
+│   │   │   └── index.ts                # Barrel export
+│   │   ├── colors.ts                   # Dark/light theme color system + glass effects
+│   │   ├── config.ts                   # Environment config
+│   │   ├── device.ts                   # Device ID generation
+│   │   ├── fonts.ts                    # Inter font declarations
+│   │   ├── biometricAuth.ts            # Face ID / fingerprint auth
+│   │   ├── iap.ts                      # In-app purchases
+│   │   ├── logger.ts                   # Environment-aware logging
+│   │   ├── auth-handoff.ts             # Cross-app auth token handoff
+│   │   ├── session-callbacks.ts        # Session kicked callbacks
+│   │   ├── stripe-terminal.ts          # Terminal SDK utilities
+│   │   ├── animations.ts              # Reusable animation presets
+│   │   ├── responsive.ts              # Responsive design helpers
+│   │   ├── shadows.ts                 # Shadow presets
+│   │   ├── spacing.ts                 # Spacing constants
+│   │   ├── typography.ts              # Typography system
+│   │   ├── validation.ts              # Input validation
+│   │   └── native/
+│   │       └── ProximityReaderDiscovery.ts  # NFC reader discovery
+│   ├── components/                     # Reusable UI components (19)
+│   │   ├── Input.tsx                   # Form input
+│   │   ├── Toggle.tsx                  # Toggle switch
+│   │   ├── ConfirmModal.tsx            # Confirmation dialog
+│   │   ├── NetworkStatus.tsx           # Network awareness banner
+│   │   ├── SetupPaymentsModal.tsx      # Payment setup wizard
+│   │   ├── PaymentsDisabledBanner.tsx  # Payments not ready banner
+│   │   ├── PayoutsSetupBanner.tsx      # Payouts setup prompt
+│   │   ├── ProductModal.tsx            # Product add/edit
+│   │   ├── CategoryManagerModal.tsx    # Category management
+│   │   ├── CatalogSettingsModal.tsx    # Catalog settings editor
+│   │   ├── ItemNotesModal.tsx          # Per-item special instructions
+│   │   ├── ProfileEditModal.tsx        # Profile edit form
+│   │   ├── SetupRequired.tsx           # Setup required screen
+│   │   ├── SetupRequiredBanner.tsx     # Setup required banner
+│   │   ├── TapToPayFirstUseModal.tsx   # First-use TTP education modal
+│   │   ├── TapToPayEducationScreen.tsx # Full TTP education component
+│   │   ├── StarBackground.tsx          # Decorative star background
+│   │   ├── SocketEventHandlers.tsx     # Socket event → query invalidation
+│   │   └── DataPrefetcher.tsx          # Pre-load data on app start
+│   ├── hooks/
+│   │   ├── useTapToPayEducation.ts     # TTP education state management
+│   │   └── index.ts                    # Barrel export
+│   └── providers/
+│       └── QueryProvider.tsx           # TanStack Query configuration
+├── plugins/
+│   └── withProximityReaderDiscovery.js # Expo plugin for NFC permissions
+├── App.tsx                             # Root component + all navigation (877 lines)
+├── app.config.ts                       # Expo config with entitlements + plugins
+├── eas.json                            # EAS Build profiles (dev, prod)
+├── package.json
+├── tsconfig.json
+└── index.ts                            # Entry point
 ```
 
 ---
@@ -104,34 +169,99 @@ Luma-App/
 ## Navigation Structure
 
 ```
-Root Navigator
+Root Navigator (native-stack)
 ├── Auth Stack (unauthenticated)
 │   ├── LoginScreen
 │   ├── ForgotPasswordScreen
 │   └── ResetPasswordScreen
 │
-└── Main Stack (authenticated)
-    ├── CatalogSelectScreen (modal, shown if no catalog)
-    │
-    ├── MainTabs (Bottom Tab Navigator)
-    │   ├── Menu Tab
-    │   │   ├── MenuScreen (product grid)
-    │   │   └── CartScreen
+└── Authenticated Navigator (authenticated)
+    ├── MainTabs (Bottom Tab Navigator - 4 tabs)
+    │   ├── Menu Tab → MenuStackNavigator
+    │   │   └── MenuScreen (product grid)
     │   ├── QuickCharge Tab
     │   │   └── ChargeScreen
-    │   ├── History Tab
+    │   ├── History Tab → HistoryStackNavigator
     │   │   ├── TransactionsScreen
     │   │   └── TransactionDetailScreen
     │   └── Settings Tab
     │       └── SettingsScreen
     │
-    ├── TapToPaySettingsScreen
-    │
-    └── Payment Flow (modal stack)
-        ├── CheckoutScreen
-        ├── PaymentProcessingScreen
-        └── PaymentResultScreen
+    ├── Modal Screens
+    │   ├── CatalogSelect (modal)
+    │   ├── TapToPaySettings (card)
+    │   ├── TapToPayEducation (modal)
+    │   ├── Upgrade (card)
+    │   ├── StripeOnboarding (modal)
+    │   ├── HeldOrders (card)
+    │   │
+    │   └── Payment Flow (slide_from_bottom / fullScreenModal)
+    │       ├── Checkout (modal)
+    │       ├── PaymentProcessing (fullScreenModal)
+    │       ├── PaymentResult (fullScreenModal)
+    │       ├── CashPayment (modal)
+    │       └── SplitPayment (modal)
 ```
+
+---
+
+## Contexts & State Management
+
+### AuthContext
+```typescript
+{
+  user: User | null;
+  organization: Organization | null;
+  subscription: Subscription | null;        // tier, status, platform
+  connectStatus: ConnectStatus | null;      // chargesEnabled, payoutsEnabled
+  isPaymentReady: boolean;                  // Connect ready for payments
+  biometricCapabilities: BiometricCapabilities;
+  biometricEnabled: boolean;
+  // Methods
+  signIn(), signOut(), refreshAuth(),
+  refreshConnectStatus(), setBiometricEnabled()
+}
+```
+
+### CartContext
+```typescript
+{
+  items: CartItem[];                        // product, quantity, notes, cartKey
+  itemCount: number;
+  subtotal: number;                         // In cents
+  orderNotes: string;                       // Order-level notes
+  customerEmail: string;
+  paymentMethod: 'tap_to_pay' | 'cash' | 'split';
+  selectedTipIndex: number | null;
+  customTipAmount: string;
+  // Methods
+  addItem(), removeItem(), updateQuantity(),
+  updateItemNotes(), incrementItem(), decrementItem(), clearCart()
+}
+```
+
+### StripeTerminalContext
+```typescript
+{
+  isInitialized: boolean;
+  isConnected: boolean;
+  isProcessing: boolean;
+  deviceCompatibility: DeviceCompatibility;  // Device TTP support check
+  configurationStage: ConfigurationStage;    // idle → checking → initializing → ... → ready
+  configurationProgress: number;             // 0-100%
+  termsAcceptance: TermsAcceptanceStatus;
+  // Methods
+  initializeTerminal(), connectReader(),
+  processPayment(), cancelPayment(),
+  warmTerminal(), checkDeviceCompatibility()
+}
+```
+
+### Other Contexts
+- **CatalogContext** — Selected catalog, catalog list, Socket.IO event subscriptions
+- **SocketContext** — Connection status, subscribe/emit, session verification, auto-reconnect
+- **ThemeContext** — Light/dark/system theme, alternate app icons (iOS)
+- **DeviceContext** — Persistent device UUID for order tracking
 
 ---
 
@@ -142,34 +272,39 @@ Root Navigator
 interface Catalog {
   id: string;
   name: string;
-  description: string | null;
-  location: string | null;
-  date: string | null;
+  description?: string | null;
+  location?: string | null;
+  date?: string | null;
   productCount: number;
   isActive: boolean;
   showTipScreen: boolean;
   promptForEmail: boolean;
-  tipPercentages: number[];      // e.g., [15, 18, 20, 25]
+  tipPercentages: number[];       // e.g., [15, 18, 20, 25]
   allowCustomTip: boolean;
-  taxRate: string;               // Decimal string
+  taxRate: number;                // Decimal (e.g., 0.08)
   layoutType: 'grid' | 'list' | 'large-grid' | 'compact';
+  isLocked?: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
 ### Product
 ```typescript
 interface Product {
-  id: string;
+  id: string;                     // catalog_product id
+  productId: string;              // library product id
   catalogId: string;
   name: string;
-  description: string | null;
-  price: number;                 // In cents
-  imageId: string | null;
-  imageUrl: string | null;
-  categoryId: string | null;
-  categoryName: string | null;
+  description?: string | null;
+  price: number;                  // In cents
+  imageUrl?: string | null;
+  categoryId?: string | null;
+  categoryName?: string | null;
   isActive: boolean;
   sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -178,6 +313,8 @@ interface Product {
 interface CartItem {
   product: Product;
   quantity: number;
+  notes?: string;                 // Per-item special instructions
+  cartKey: string;                // Unique key: productId::notes_hash
 }
 ```
 
@@ -186,14 +323,37 @@ interface CartItem {
 interface Order {
   id: string;
   orderNumber: string;
-  status: 'pending' | 'completed' | 'failed' | 'refunded';
-  subtotal: number;              // In cents
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'refunded' | 'held';
+  paymentMethod: 'card' | 'cash' | 'tap_to_pay' | 'split' | null;
+  subtotal: number;               // In cents
   taxAmount: number;
   tipAmount: number;
   totalAmount: number;
-  customerEmail: string | null;
-  items: OrderItem[];
+  stripePaymentIntentId?: string | null;
+  customerEmail?: string | null;
+  notes?: string | null;          // Order-level notes
+  holdName?: string | null;       // Name for held orders
+  heldAt?: string | null;
+  heldBy?: string | null;
+  deviceId?: string | null;       // Device that created the order
+  items?: OrderItem[];
   createdAt: string;
+  updatedAt: string;
+}
+```
+
+### OrderPayment (Split Payments)
+```typescript
+interface OrderPayment {
+  id: string;
+  paymentMethod: 'card' | 'cash' | 'tap_to_pay';
+  amount: number;                 // In cents
+  tipAmount: number;
+  status: string;
+  cashTendered?: number | null;
+  cashChange?: number | null;
+  stripePaymentIntentId?: string | null;
+  createdAt?: string;
 }
 ```
 
@@ -201,7 +361,7 @@ interface Order {
 ```typescript
 interface Transaction {
   id: string;
-  amount: number;                // In cents
+  amount: number;                 // In cents
   amountRefunded: number;
   status: 'succeeded' | 'pending' | 'failed' | 'refunded' | 'partially_refunded';
   customerEmail: string | null;
@@ -209,58 +369,126 @@ interface Transaction {
     brand: string | null;
     last4: string;
   } | null;
-  created: number;               // Unix timestamp
+  created: number;                // Unix timestamp
   receiptUrl: string | null;
 }
 ```
 
 ---
 
-## Stripe Terminal Integration
+## Payment Flows
 
-### Connection Flow
+### Tap to Pay (Stripe Terminal)
 ```typescript
 // 1. Get connection token from API
 const { secret } = await stripeTerminalApi.getConnectionToken();
 
 // 2. Initialize Terminal SDK
-await initStripeTerminal({
-  fetchConnectionToken: async () => secret,
-});
+await initStripeTerminal({ fetchConnectionToken: async () => secret });
 
-// 3. Discover local mobile reader
+// 3. Discover local mobile reader (phone's NFC)
 const { readers } = await discoverReaders({
   discoveryMethod: DiscoveryMethod.LocalMobile,
 });
 
-// 4. Connect to reader (phone's NFC)
+// 4. Connect to reader
 await connectLocalMobileReader({ reader: readers[0] });
-```
 
-### Payment Flow
-```typescript
-// 1. Create PaymentIntent via API
+// 5. Create PaymentIntent via API
 const { clientSecret, paymentIntentId } = await stripeTerminalApi.createPaymentIntent({
-  amount: totalAmount,           // In cents
+  amount: totalAmount,
   catalogId,
   items,
   tipAmount,
   customerEmail,
 });
 
-// 2. Retrieve PaymentIntent
-const { paymentIntent } = await retrievePaymentIntent(clientSecret);
-
-// 3. Collect payment (shows Tap to Pay UI)
+// 6. Collect payment (shows Tap to Pay UI)
 const { paymentIntent: collected } = await collectPaymentMethod({ paymentIntent });
 
-// 4. Confirm payment
+// 7. Confirm payment
 const { paymentIntent: confirmed } = await confirmPaymentIntent({ paymentIntent: collected });
 
-// 5. Send receipt (if email provided)
+// 8. Send receipt if email provided
 if (customerEmail) {
   await stripeTerminalApi.sendReceipt(paymentIntentId, customerEmail);
 }
+```
+
+### Cash Payment
+- Numeric keypad with quick amount buttons ($1, $5, $10, $20, $50, $100)
+- Auto-calculates change due
+- Creates order with `paymentMethod: 'cash'`
+
+### Split Payment
+- Add multiple payments across Tap to Pay, Cash, or Card
+- Tracks remaining balance
+- Each payment recorded as an `OrderPayment`
+- Order completed when total covered
+
+### Held Orders
+- Save incomplete orders with a name
+- Device-specific tracking via `deviceId`
+- Recall and complete later
+- Swipe-to-delete gesture support
+
+---
+
+## TanStack Query Configuration
+
+```typescript
+defaultOptions: {
+  queries: {
+    staleTime: 30 * 1000,            // 30 seconds
+    gcTime: 30 * 60 * 1000,          // 30 minutes cache
+    refetchOnWindowFocus: true,       // Refetch on app foreground
+    refetchOnMount: false,            // Socket handles updates
+    refetchOnReconnect: true,         // Refetch on network reconnect
+    retry: 1,                         // Retry once on failure
+  }
+}
+```
+
+---
+
+## Socket.IO Events
+
+```typescript
+const SocketEvents = {
+  // User events
+  USER_UPDATED: 'user:updated',
+  ORGANIZATION_UPDATED: 'organization:updated',
+  SESSION_KICKED: 'session:kicked',
+  SUBSCRIPTION_UPDATED: 'subscription:updated',
+
+  // Catalog events
+  CATALOG_UPDATED: 'catalog:updated',
+  CATALOG_CREATED: 'catalog:created',
+  CATALOG_DELETED: 'catalog:deleted',
+
+  // Product events
+  PRODUCT_UPDATED: 'product:updated',
+  PRODUCT_CREATED: 'product:created',
+  PRODUCT_DELETED: 'product:deleted',
+
+  // Category events
+  CATEGORY_UPDATED: 'category:updated',
+  CATEGORY_CREATED: 'category:created',
+  CATEGORY_DELETED: 'category:deleted',
+
+  // Order events
+  ORDER_CREATED: 'order:created',
+  ORDER_UPDATED: 'order:updated',
+  ORDER_COMPLETED: 'order:completed',
+  ORDER_FAILED: 'order:failed',
+  ORDER_DELETED: 'order:deleted',
+  ORDER_REFUNDED: 'order:refunded',
+
+  // Transaction events
+  TRANSACTION_CREATED: 'transaction:created',
+  TRANSACTION_UPDATED: 'transaction:updated',
+  PAYMENT_RECEIVED: 'payment:received',
+};
 ```
 
 ---
@@ -271,25 +499,36 @@ if (customerEmail) {
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/auth/login` | User login |
+| POST | `/auth/signup` | Registration |
 | POST | `/auth/refresh` | Token refresh |
 | POST | `/auth/logout` | Logout |
 | GET | `/auth/me` | Get profile |
-| POST | `/auth/forgot-password` | Request reset |
-| POST | `/auth/reset-password` | Complete reset |
+| PATCH | `/auth/profile` | Update profile |
+| POST | `/auth/avatar` | Upload avatar |
+| POST | `/auth/forgot-password` | Request password reset |
+| POST | `/auth/reset-password` | Complete password reset |
 
 ### Catalogs & Products
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/catalogs` | List catalogs |
 | GET | `/catalogs/{id}` | Get catalog |
+| POST | `/catalogs/{id}/duplicate` | Duplicate catalog |
 | GET | `/catalogs/{id}/products` | Get products |
 | GET | `/catalogs/{id}/categories` | Get categories |
+| GET | `/products` | Library products (org-level) |
 
 ### Orders & Payments
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/orders` | Create order |
 | GET | `/orders/{id}` | Get order |
+| PATCH | `/orders/{id}` | Update order |
+| POST | `/orders/{id}/hold` | Hold order |
+| POST | `/orders/{id}/payments` | Add payment (split) |
+| POST | `/orders/{id}/complete` | Complete order |
+| POST | `/orders/{id}/refund` | Refund order |
+| GET | `/orders/held` | Get held orders |
 | POST | `/stripe/terminal/connection-token` | Get Terminal token |
 | POST | `/stripe/terminal/payment-intent` | Create PaymentIntent |
 | POST | `/stripe/terminal/payment-intent/{id}/send-receipt` | Send receipt |
@@ -301,116 +540,91 @@ if (customerEmail) {
 | GET | `/stripe/connect/transactions` | List transactions |
 | POST | `/orders/{id}/refund` | Refund order |
 
----
+### Stripe Connect
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/stripe/connect/status` | Connect account status |
 
-## Socket.IO Events
-
-```typescript
-// Connect with auth
-socket.auth = { token: accessToken };
-socket.connect();
-
-// Join organization room
-socket.emit('join', `org:${organizationId}`);
-
-// Listen for events
-socket.on('ORDER_COMPLETED', (data) => {
-  queryClient.invalidateQueries({ queryKey: ['transactions'] });
-});
-
-socket.on('CATALOG_UPDATED', (data) => {
-  queryClient.invalidateQueries({ queryKey: ['catalogs'] });
-});
-
-socket.on('SESSION_KICKED', () => {
-  // Another device logged in - force logout
-  logout();
-  Alert.alert('Session Ended', 'You have been logged out because another device signed in.');
-});
-```
+### Billing & Organization
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/billing` | Subscription info |
+| GET | `/organizations` | Organization details |
 
 ---
 
 ## Design System
 
 ### Colors (`/src/lib/colors.ts`)
+
+**Dark Theme (default):**
 ```typescript
-export const colors = {
-  primary: '#2563EB',            // Blue
-  primaryLight: '#3B82F6',
-  primaryDark: '#1D4ED8',
-
-  background: '#0A0A0F',         // Near black
-  card: '#111118',
-  cardHover: '#1A1A24',
-  border: '#1E1E2A',
-
-  text: '#FFFFFF',
-  textSecondary: '#A1A1AA',
-  textMuted: '#71717A',
-
-  success: '#22C55E',
-  error: '#EF4444',
-  warning: '#F59E0B',
-};
+background: '#111827',
+card: '#1F2937',
+cardHover: '#374151',
+border: '#374151',
+text: '#FFFFFF',
+textSecondary: '#9CA3AF',
+textMuted: '#6B7280',
+primary: '#2563EB',
+primaryLight: '#3B82F6',
+success: '#22C55E',
+error: '#EF4444',
+warning: '#F59E0B',
 ```
+
+**Light Theme:**
+```typescript
+background: '#F9FAFB',
+card: '#FFFFFF',
+text: '#111827',
+textSecondary: '#6B7280',
+```
+
+**Glass Effects:** Glassmorphic overlays and borders for modals
+
+### Typography
+- **Font:** Inter (400, 500, 600, 700, 800)
+- Loaded via `@expo-google-fonts/inter`
 
 ---
 
 ## Build Configuration
 
 ### EAS Build (`eas.json`)
-```json
-{
-  "build": {
-    "development": {
-      "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
-      "distribution": "internal",
-      "android": { "buildType": "apk" }
-    },
-    "production": {
-      "autoIncrement": true
-    }
-  }
-}
-```
+- **dev:** TestFlight/internal distribution, dev API endpoints
+- **prod:** Auto-increment version, production API endpoints
 
 ### App Config (`app.config.ts`)
-```typescript
-export default {
-  expo: {
-    plugins: [
-      ['expo-build-properties', {
-        android: { minSdkVersion: 26 }  // Required for Stripe Terminal
-      }],
-      ['@stripe/stripe-react-native', {
-        merchantIdentifier: 'merchant.com.lumapos',
-        enableGooglePay: true,
-      }],
-    ],
-  },
-};
-```
+- **App Name:** "Luma" (prod) / "Luma (env)" (dev/local)
+- **Version:** 1.0.1
+- **Scheme:** `luma`
+- **Bundle ID:** `com.lumapos.app`
+- **Orientation:** Portrait only
+- **iOS Deployment Target:** 16.4+ (required for Tap to Pay)
+- **Android minSdkVersion:** 26 (required for Stripe Terminal)
+
+### Plugins
+- `expo-font` — Font loading
+- `./plugins/withProximityReaderDiscovery` — NFC/Proximity Reader permissions
+- `expo-alternate-app-icons` — App icon switching (light/dark)
+- `expo-build-properties` — Native build configuration
+- `@stripe/stripe-react-native` — Stripe SDK integration
 
 ### Build Commands
 ```bash
-# Development build (with dev client)
-eas build --platform android --profile development
-eas build --platform ios --profile development
+# Development
+npm run dev                              # Expo dev server at port 3336
 
-# Preview APK (for internal testing)
-eas build --platform android --profile preview
+# Platform-specific
+npm run android                          # Run on Android
+npm run ios                              # Run on iOS
 
-# Production builds
-eas build --platform android --profile production
-eas build --platform ios --profile production
-
-# Submit to stores
-eas submit --platform android
-eas submit --platform ios
+# EAS Builds
+npm run build:dev                        # Android dev build
+npm run build:dev:ios                    # iOS dev build + auto-submit
+npm run build:prod                       # Android production build
+npm run submit:ios                       # Submit to App Store
 ```
 
 ---
@@ -418,50 +632,44 @@ eas submit --platform ios
 ## Environment Variables
 
 ```bash
-# .env
-EXPO_PUBLIC_API_URL=https://api.lumapos.co
-
-# For local development
+# .env / .env.example
+EXPO_PUBLIC_APP_ENV=local                # local | dev | prod
 EXPO_PUBLIC_API_URL=http://localhost:3334
+EXPO_PUBLIC_WEBSITE_URL=https://lumapos.co
+EXPO_PUBLIC_VENDOR_DASHBOARD_URL=https://portal.lumapos.co
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 ```
 
 ---
 
-## Development
+## Key Features
 
-```bash
-# Install dependencies
-npm install
-
-# Start Expo dev server
-npm run dev
-# or
-npx expo start
-
-# Run on specific platform
-npm run android
-npm run ios
-
-# Clear cache and restart
-npx expo start --clear
-
-# Prebuild native directories
-npx expo prebuild
-
-# Clean prebuild
-npx expo prebuild --clean
-```
+| Feature | Description |
+|---------|-------------|
+| **Tap to Pay** | Stripe Terminal SDK for contactless NFC payments |
+| **Cash Payments** | Numeric keypad, quick amounts, change calculation |
+| **Split Payments** | Split across multiple payment methods |
+| **Held Orders** | Save orders to complete later, device-specific |
+| **Per-Item Notes** | Special instructions per cart item |
+| **Biometric Login** | Face ID / Fingerprint authentication |
+| **Theme Switching** | Light/dark/system with alternate iOS app icons |
+| **Real-time Sync** | Socket.IO driven data updates |
+| **TTP Education** | Apple-compliant Tap to Pay onboarding screens |
+| **Device Tracking** | Persistent device ID for order attribution |
+| **Network Awareness** | Connection status monitoring |
+| **Data Prefetching** | Pre-load menu, settings, transactions on app start |
 
 ---
 
 ## Debugging
 
 ### Android Logs (PowerShell)
-
 ```powershell
-# View React Native logs from connected Android device
 & "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" logcat *:S ReactNative:V ReactNativeJS:V
 ```
+
+### Logger Utility
+- `lib/logger.ts` — Environment-aware logging (suppressed in production)
 
 ---
 
@@ -472,17 +680,23 @@ npx expo prebuild --clean
 | minSdkVersion error | Ensure `expo-build-properties` plugin sets `minSdkVersion: 26` |
 | Stripe Terminal not working | Must use development build, not Expo Go |
 | NFC not detecting | Check device NFC is enabled, try different card angle |
-| Token refresh loop | Clear AsyncStorage, re-login |
+| Token refresh loop | Clear secure storage, re-login |
 | Socket not connecting | Verify API URL, check auth token validity |
+| Biometric not available | Check device capabilities and permissions |
+| Theme not persisting | Check AsyncStorage access |
+| Held orders not showing | Verify device ID is being sent with requests |
 
 ---
 
 ## Security Notes
 
-- Tokens stored in AsyncStorage (consider migrating to expo-secure-store)
+- Tokens stored in `expo-secure-store` (encrypted native storage)
+- Biometric auth gated by device capability check
 - All API calls use HTTPS in production
 - Sensitive data not logged in production builds
 - Payment data handled entirely by Stripe SDK (PCI compliant)
+- Session version validated on every API request
+- Device passcode required for Tap to Pay
 
 ---
 
