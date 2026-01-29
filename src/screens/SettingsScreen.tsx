@@ -584,7 +584,7 @@ export function SettingsScreen() {
             {(() => {
               const needsSetup = Platform.OS !== 'web' && deviceCompatibility.isCompatible && !isInitialized && !isWarming;
               const RowComponent = needsSetup ? TouchableOpacity : View;
-              const rowProps = needsSetup ? { onPress: () => navigation.navigate('TapToPaySettings') } : {};
+              const rowProps = needsSetup ? { onPress: () => navigation.navigate('TapToPayEducation') } : {};
 
               return (
                 <RowComponent style={styles.row} {...rowProps}>
