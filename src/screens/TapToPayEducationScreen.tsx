@@ -167,6 +167,7 @@ export function TapToPayEducationScreen() {
     initializeTerminal,
     isInitialized,
     isConnected,
+    isWarming,
     error: terminalError,
   } = useTerminal();
 
@@ -450,10 +451,14 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show starry loading while checking availability, Apple education is active,
-  // or already connected and about to auto-launch Apple education via useEffect
+  // iOS: Show starry loading while:
+  // - checking ProximityReaderDiscovery availability
+  // - Apple education is active (native sheet showing)
+  // - already connected and about to auto-launch Apple education
+  // - terminal is warming (may auto-connect if T&C was previously accepted)
   const pendingEducation = isIOS && isConnected && useAppleNativeEducation && !educationCompleteRef.current;
-  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingEducation) {
+  const warmingUp = isIOS && isWarming && useAppleNativeEducation && !educationCompleteRef.current;
+  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingEducation || warmingUp) {
     return (
       <View style={StyleSheet.absoluteFill}>
         <FullScreenStarLoader />
