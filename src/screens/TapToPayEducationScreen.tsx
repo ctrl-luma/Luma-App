@@ -447,8 +447,9 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show starry loading while checking availability or Apple education is active
-  if (proximityDiscoveryAvailable === null || appleEducationActive) {
+  // iOS: Show starry loading while checking availability, Apple education is active,
+  // or already connected (about to auto-launch Apple education via useEffect)
+  if (proximityDiscoveryAvailable === null || appleEducationActive || (isIOS && isConnected && useAppleNativeEducation)) {
     return (
       <View style={StyleSheet.absoluteFill}>
         <FullScreenStarLoader />

@@ -14,7 +14,6 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useTerminal } from '../context/StripeTerminalContext';
 import { stripeTerminalApi } from '../lib/api';
-import { config } from '../lib/config';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
@@ -42,7 +41,6 @@ export function PaymentProcessingScreen() {
   const { paymentIntentId, amount, orderId, orderNumber, customerEmail } = route.params;
   const [isCancelling, setIsCancelling] = useState(false);
   const [statusText, setStatusText] = useState('Preparing payment...');
-  const [isSimulating, setIsSimulating] = useState(false);
   const isCancelledRef = React.useRef(false);
 
   useEffect(() => {
@@ -126,40 +124,6 @@ export function PaymentProcessingScreen() {
     stripeTerminalApi.cancelPaymentIntent(paymentIntentId).catch(() => {});
   };
 
-  const handleDevSkip = async () => {
-    setIsSimulating(true);
-    setStatusText('Simulating payment...');
-
-    try {
-      const result = await stripeTerminalApi.simulatePayment(paymentIntentId);
-
-      if (result.status === 'succeeded') {
-        navigation.replace('PaymentResult', {
-          success: true,
-          amount,
-          paymentIntentId: result.id,
-          orderId,
-          orderNumber,
-          customerEmail,
-        });
-      } else {
-        throw new Error(`Payment simulation failed: ${result.status}`);
-      }
-    } catch (error: any) {
-      navigation.replace('PaymentResult', {
-        success: false,
-        amount,
-        paymentIntentId,
-        orderId,
-        orderNumber,
-        customerEmail,
-        errorMessage: error.message || 'Payment simulation failed',
-      });
-    } finally {
-      setIsSimulating(false);
-    }
-  };
-
   const styles = createStyles(colors, glassColors);
 
   return (
@@ -177,22 +141,6 @@ export function PaymentProcessingScreen() {
           {/* Status */}
           <Text style={styles.statusText}>{statusText}</Text>
 
-          {/* Dev Skip Button */}
-          {(config.isDev || Platform.OS === 'web') && (
-            <TouchableOpacity
-              style={[styles.devButton, isSimulating && styles.devButtonDisabled]}
-              onPress={handleDevSkip}
-              disabled={isSimulating}
-            >
-              <Text style={styles.devButtonText}>
-                {isSimulating
-                  ? 'Processing...'
-                  : Platform.OS === 'web'
-                  ? 'Simulate Payment'
-                  : 'Simulate (Dev)'}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* Cancel Button */}
@@ -239,24 +187,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       fontFamily: fonts.medium,
       color: colors.textSecondary,
       textAlign: 'center',
-    },
-    devButton: {
-      marginTop: 40,
-      paddingHorizontal: 24,
-      paddingVertical: 12,
-      backgroundColor: glassColors.backgroundElevated,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      ...shadows.sm,
-    },
-    devButtonDisabled: {
-      opacity: 0.6,
-    },
-    devButtonText: {
-      fontSize: 14,
-      fontFamily: fonts.medium,
-      color: colors.textSecondary,
     },
     footer: {
       padding: 20,
