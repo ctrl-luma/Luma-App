@@ -26,7 +26,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAuth } from '../context/AuthContext';
+import { useDevice } from '../context/DeviceContext';
 import { useTapToPayEducation } from '../hooks/useTapToPayEducation';
+import { authService } from '../lib/api';
 
 import { useTheme } from '../context/ThemeContext';
 import { useTerminal, ConfigurationStage } from '../context/StripeTerminalContext';
@@ -152,11 +154,19 @@ export function TapToPayEducationScreen() {
   const navigation = useNavigation<any>();
   const glassColors = isDark ? glass.dark : glass.light;
 
-  // Auth context for user ID
+  // Auth context for user ID and device context for device ID
   const { user } = useAuth();
+  const { deviceId } = useDevice();
 
   // Education tracking - mark as seen when user completes this screen
   const { markEducationSeen } = useTapToPayEducation(user?.id);
+
+  // Check if this device has already completed Tap to Pay setup
+  const deviceAlreadyRegistered = !!(
+    deviceId &&
+    user?.tapToPayDeviceIds &&
+    user.tapToPayDeviceIds.includes(deviceId)
+  );
 
   // Terminal context for enabling Tap to Pay
   const {
@@ -211,6 +221,20 @@ export function TapToPayEducationScreen() {
     });
   }, [isIOS, isAndroid, isConnected, isInitialized, proximityDiscoveryAvailable, appleEducationActive]);
 
+  // Register this device as having Tap to Pay enabled
+  const registerDevice = async () => {
+    if (!deviceId) return;
+    try {
+      const result = await authService.registerTapToPayDevice(deviceId);
+      // Update cached user with new device IDs
+      if (user) {
+        await authService.saveUser({ ...user, tapToPayDeviceIds: result.tapToPayDeviceIds });
+      }
+    } catch (err) {
+      logger.warn('[TapToPayEducation] Failed to register device:', err);
+    }
+  };
+
   const [isEnabling, setIsEnabling] = useState(false);
   const [enableError, setEnableError] = useState<string | null>(null);
   const [isConnectSetupError, setIsConnectSetupError] = useState(false);
@@ -226,7 +250,41 @@ export function TapToPayEducationScreen() {
     }
   };
 
-  // iOS 18+ already connected (T&C previously accepted): show Apple native education directly
+  // If this device already has Tap to Pay registered, skip the enable flow
+  // and go straight to Apple education (iOS) or navigate back (Android)
+  const skipHandledRef = useRef(false);
+  useEffect(() => {
+    if (!deviceAlreadyRegistered || skipHandledRef.current) return;
+    skipHandledRef.current = true;
+
+    if (isIOS && useAppleNativeEducation) {
+      // Device already registered — auto-enable and show Apple education
+      logger.log('[TapToPayEducation] Device already registered, auto-enabling for Apple education');
+      (async () => {
+        try {
+          if (!isInitialized) await initializeTerminal();
+          const connected = await connectReader();
+          if (connected) {
+            showAppleNativeEducation();
+          } else {
+            // Fall through to normal enable screen
+            skipHandledRef.current = false;
+          }
+        } catch (err: any) {
+          logger.warn('[TapToPayEducation] Auto-enable for registered device failed:', err.message);
+          skipHandledRef.current = false;
+        }
+      })();
+    } else if (isIOS) {
+      // iOS < 18: just navigate back since no Apple education
+      markEducationSeen();
+      navigateBack();
+    }
+    // Android case handled by existing Android auto-enable effect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceAlreadyRegistered, useAppleNativeEducation]);
+
+  // iOS 18+: If already connected, show Apple native education directly
   useEffect(() => {
     if (isIOS && isConnected && useAppleNativeEducation && !appleEducationActive) {
       logger.log('[TapToPayEducation] Already connected, showing Apple native education');
@@ -234,6 +292,30 @@ export function TapToPayEducationScreen() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isIOS, isConnected, useAppleNativeEducation]);
+
+  // iOS 18+: If initialized but not connected, auto-attempt connection
+  // This handles cases where warming initialized the SDK but didn't auto-reconnect
+  const autoConnectAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (isIOS && isInitialized && !isConnected && !isWarming && !isEnabling && useAppleNativeEducation && !autoConnectAttemptedRef.current && !educationCompleteRef.current) {
+      autoConnectAttemptedRef.current = true;
+      logger.log('[TapToPayEducation] Initialized but not connected, auto-connecting...');
+      (async () => {
+        try {
+          const connected = await connectReader();
+          if (connected) {
+            // isConnected effect above will trigger Apple education
+            logger.log('[TapToPayEducation] Auto-connect succeeded');
+          } else {
+            logger.log('[TapToPayEducation] Auto-connect returned false, showing enable screen');
+          }
+        } catch (err: any) {
+          logger.log('[TapToPayEducation] Auto-connect failed, showing enable screen:', err.message);
+        }
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isIOS, isInitialized, isConnected, isWarming, isEnabling, useAppleNativeEducation]);
 
   // Android auto-enable on mount: Connect reader and navigate back immediately
   useEffect(() => {
@@ -261,6 +343,7 @@ export function TapToPayEducationScreen() {
       const connected = await connectReader();
       if (connected) {
         markEducationSeen();
+        registerDevice();
         navigateBack();
       } else {
         setEnableError('Failed to enable Tap to Pay. Please try again.');
@@ -287,6 +370,7 @@ export function TapToPayEducationScreen() {
     setAppleEducationActive(false);
     navigateBack();
     markEducationSeen();
+    registerDevice();
   };
 
   // Check if device is not compatible
@@ -456,9 +540,11 @@ export function TapToPayEducationScreen() {
   // - Apple education is active (native sheet showing)
   // - already connected and about to auto-launch Apple education
   // - terminal is warming (may auto-connect if T&C was previously accepted)
+  // - initialized but not yet attempted auto-connect (will try connecting automatically)
   const pendingEducation = isIOS && isConnected && useAppleNativeEducation && !educationCompleteRef.current;
   const warmingUp = isIOS && isWarming && useAppleNativeEducation && !educationCompleteRef.current;
-  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingEducation || warmingUp) {
+  const pendingAutoConnect = isIOS && isInitialized && !isConnected && !autoConnectAttemptedRef.current && useAppleNativeEducation && !educationCompleteRef.current;
+  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingEducation || warmingUp || pendingAutoConnect) {
     // Use static loader when Apple education is active to avoid native animation
     // conflicts with ProximityReaderDiscovery's scroll/gesture handling
     if (appleEducationActive) {

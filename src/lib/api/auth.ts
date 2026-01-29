@@ -18,6 +18,7 @@ export interface User {
   marketingEmails?: boolean;
   weeklyReports?: boolean;
   onboardingCompleted?: boolean;
+  tapToPayDeviceIds?: string[];
 }
 
 export interface Organization {
@@ -283,6 +284,10 @@ class AuthService {
 
     logger.log('[AuthService] IAP purchase linked successfully', response);
     return response;
+  }
+
+  async registerTapToPayDevice(deviceId: string): Promise<{ tapToPayDeviceIds: string[] }> {
+    return apiClient.post<{ tapToPayDeviceIds: string[] }>('/auth/tap-to-pay-device', { deviceId });
   }
 
   async isAuthenticated(): Promise<boolean> {
