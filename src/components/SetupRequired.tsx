@@ -47,7 +47,7 @@ interface SetupRequiredProps {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Payment account setup - simple version
-function PaymentSetupRequired({ colors }: { colors: any }) {
+function PaymentSetupRequired({ colors, isManager }: { colors: any; isManager: boolean }) {
   const styles = createSimpleStyles(colors);
 
   return (
@@ -57,20 +57,24 @@ function PaymentSetupRequired({ colors }: { colors: any }) {
       </View>
       <Text style={styles.title}>Payment Setup Required</Text>
       <Text style={styles.message}>
-        Set up your payment account in the Vendor Portal to accept payments.
+        {isManager
+          ? 'Set up your payment account in the Vendor Portal to accept payments.'
+          : 'Ask your manager to set up the payment account to accept payments.'}
       </Text>
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: colors.primary }]}
-        onPress={() => openVendorDashboard('/connect')}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel="Set Up Payments"
-        accessibilityHint="Opens the Vendor Portal to set up your payment account"
-      >
-        <Ionicons name="card" size={18} color="#fff" />
-        <Text style={styles.buttonText}>Set Up Payments</Text>
-        <Ionicons name="open-outline" size={16} color="#fff" />
-      </TouchableOpacity>
+      {isManager && (
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.primary }]}
+          onPress={() => openVendorDashboard('/connect')}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Set Up Payments"
+          accessibilityHint="Opens the Vendor Portal to set up your payment account"
+        >
+          <Ionicons name="card" size={18} color="#fff" />
+          <Text style={styles.buttonText}>Set Up Payments</Text>
+          <Ionicons name="open-outline" size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -136,7 +140,7 @@ function FourPointStar({ style, size = 16, color = 'rgba(255,255,255,0.9)' }: { 
 }
 
 // No catalogs - full welcome experience
-function NoCatalogsWelcome({ colors, glassColors, isDark }: { colors: any; glassColors: typeof glass.dark; isDark: boolean }) {
+function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors: any; glassColors: typeof glass.dark; isDark: boolean; isManager: boolean }) {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { organization } = useAuth();
@@ -483,19 +487,21 @@ function NoCatalogsWelcome({ colors, glassColors, isDark }: { colors: any; glass
             </View>
           </Animated.View>
 
-          {/* Vendor Portal Hint */}
-          <Animated.View style={[styles.vendorHint, { opacity: fadeAnim }]}>
-            <Ionicons name="desktop-outline" size={16} color={colors.textMuted} />
-            <Text style={[styles.vendorHintText, { color: colors.textMuted }]}>
-              Need advanced management? Open the{' '}
-              <Text
-                style={{ color: colors.primary, fontFamily: fonts.semiBold }}
-                onPress={() => openVendorDashboard('/products')}
-              >
-                Vendor Portal
+          {/* Vendor Portal Hint - owners/admins only */}
+          {isManager && (
+            <Animated.View style={[styles.vendorHint, { opacity: fadeAnim }]}>
+              <Ionicons name="desktop-outline" size={16} color={colors.textMuted} />
+              <Text style={[styles.vendorHintText, { color: colors.textMuted }]}>
+                Need advanced management? Open the{' '}
+                <Text
+                  style={{ color: colors.primary, fontFamily: fonts.semiBold }}
+                  onPress={() => openVendorDashboard('/products')}
+                >
+                  Vendor Portal
+                </Text>
               </Text>
-            </Text>
-          </Animated.View>
+            </Animated.View>
+          )}
         </View>
       </Animated.View>
       </ScrollView>
@@ -822,13 +828,15 @@ function NoCatalogsWelcome({ colors, glassColors, isDark }: { colors: any; glass
 
 export function SetupRequired({ type }: SetupRequiredProps) {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
   const glassColors = isDark ? glass.dark : glass.light;
+  const isManager = user?.role === 'owner' || user?.role === 'admin';
 
   if (type === 'no-payment-account') {
-    return <PaymentSetupRequired colors={colors} />;
+    return <PaymentSetupRequired colors={colors} isManager={isManager} />;
   }
 
-  return <NoCatalogsWelcome colors={colors} glassColors={glassColors} isDark={isDark} />;
+  return <NoCatalogsWelcome colors={colors} glassColors={glassColors} isDark={isDark} isManager={isManager} />;
 }
 
 const createSimpleStyles = (colors: any) =>

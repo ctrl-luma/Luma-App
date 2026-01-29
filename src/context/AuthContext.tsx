@@ -224,12 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    try {
-      await authService.logout();
-    } catch (error) {
-      logger.error('Logout API error:', error);
-      // Continue with local logout even if API fails
-    }
+    // Clear state immediately for instant UI transition
     setState({
       user: null,
       organization: null,
@@ -241,6 +236,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       connectLoading: false,
       biometricCapabilities: null,
       biometricEnabled: false,
+    });
+    // Clear local tokens + invalidate on server in background
+    authService.logout().catch((error) => {
+      logger.error('Logout error:', error);
     });
   };
 

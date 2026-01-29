@@ -224,7 +224,7 @@ export function LoginScreen() {
             {/* Header */}
             <View style={styles.header}>
               <Image
-                source={require('../../assets/luma-icon-512x512.png')}
+                source={require('../../assets/splash-icon.png')}
                 style={styles.logo}
               />
               <Text style={styles.title}>Sign In</Text>

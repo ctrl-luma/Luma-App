@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useCatalog } from '../context/CatalogContext';
 import { Catalog } from '../lib/api';
 import { openVendorDashboard } from '../lib/auth-handoff';
@@ -245,7 +246,7 @@ function LoadingCatalogs({ colors, isDark }: { colors: any; isDark: boolean }) {
 }
 
 // Empty state with stars
-function EmptyCatalogs({ colors, isDark }: { colors: any; isDark: boolean }) {
+function EmptyCatalogs({ colors, isDark, isManager }: { colors: any; isDark: boolean; isManager: boolean }) {
   const sparkleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -319,18 +320,22 @@ function EmptyCatalogs({ colors, isDark }: { colors: any; isDark: boolean }) {
           No Catalogs Available
         </Text>
         <Text style={[starStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
-          Create your product menu in the Vendor Portal to start selling with preset items and prices.
+          {isManager
+            ? 'Create your product menu in the Vendor Portal to start selling with preset items and prices.'
+            : 'Ask your manager to create a catalog for you to get started.'}
         </Text>
-        <TouchableOpacity
-          style={[starStyles.button, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
-          onPress={() => openVendorDashboard('/products')}
-          activeOpacity={0.8}
-        >
-          <Text style={[starStyles.buttonText, { color: isDark ? '#09090b' : '#fff' }]}>
-            Open Vendor Portal
-          </Text>
-          <Ionicons name="arrow-forward" size={18} color={isDark ? '#09090b' : '#fff'} />
-        </TouchableOpacity>
+        {isManager && (
+          <TouchableOpacity
+            style={[starStyles.button, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
+            onPress={() => openVendorDashboard('/products')}
+            activeOpacity={0.8}
+          >
+            <Text style={[starStyles.buttonText, { color: isDark ? '#09090b' : '#fff' }]}>
+              Open Vendor Portal
+            </Text>
+            <Ionicons name="arrow-forward" size={18} color={isDark ? '#09090b' : '#fff'} />
+          </TouchableOpacity>
+        )}
       </View>
     </Animated.View>
   );
@@ -389,10 +394,12 @@ const starStyles = StyleSheet.create({
 
 export function CatalogSelectScreen() {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute();
   const glassColors = isDark ? glass.dark : glass.light;
   const { catalogs, selectedCatalog, setSelectedCatalog, refreshCatalogs, isLoading } = useCatalog();
+  const isManager = user?.role === 'owner' || user?.role === 'admin';
 
   const [isRefreshing, setIsRefreshing] = React.useState(false);
 
@@ -494,7 +501,7 @@ export function CatalogSelectScreen() {
       </View>
 
       {activeCatalogs.length === 0 ? (
-        <EmptyCatalogs colors={colors} isDark={isDark} />
+        <EmptyCatalogs colors={colors} isDark={isDark} isManager={isManager} />
       ) : (
         <FlatList
           data={activeCatalogs}

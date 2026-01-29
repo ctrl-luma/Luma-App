@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { openVendorDashboard } from '../lib/auth-handoff';
 
 interface PaymentsDisabledBannerProps {
@@ -15,23 +16,27 @@ interface PaymentsDisabledBannerProps {
 
 export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBannerProps) {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const styles = createStyles(colors, compact);
+  const isManager = user?.role === 'owner' || user?.role === 'admin';
 
   if (compact) {
     return (
       <View style={styles.compactContainer} accessibilityRole="alert">
         <Ionicons name="alert-circle" size={18} color={colors.warning} />
         <Text style={styles.compactText}>Payments not set up</Text>
-        <TouchableOpacity
-          onPress={() => openVendorDashboard('/connect')}
-          style={styles.compactButton}
-          accessibilityRole="button"
-          accessibilityLabel="Set up payments"
-          accessibilityHint="Opens the Vendor Portal to set up your payment account"
-        >
-          <Text style={styles.compactButtonText}>Set up</Text>
-          <Ionicons name="open-outline" size={14} color={colors.primary} />
-        </TouchableOpacity>
+        {isManager && (
+          <TouchableOpacity
+            onPress={() => openVendorDashboard('/connect')}
+            style={styles.compactButton}
+            accessibilityRole="button"
+            accessibilityLabel="Set up payments"
+            accessibilityHint="Opens the Vendor Portal to set up your payment account"
+          >
+            <Text style={styles.compactButtonText}>Set up</Text>
+            <Ionicons name="open-outline" size={14} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -45,21 +50,25 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
         <View style={styles.textContainer}>
           <Text style={styles.title}>Payment account not set up</Text>
           <Text style={styles.message}>
-            Set up your account in the Vendor Portal to accept payments.
+            {isManager
+              ? 'Set up your account in the Vendor Portal to accept payments.'
+              : 'Ask your manager to set up the payment account.'}
           </Text>
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => openVendorDashboard('/connect')}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel="Set Up Payments"
-        accessibilityHint="Opens the Vendor Portal to configure your payment account"
-      >
-        <Text style={styles.buttonText}>Set Up Payments</Text>
-        <Ionicons name="open-outline" size={16} color="#fff" />
-      </TouchableOpacity>
+      {isManager && (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => openVendorDashboard('/connect')}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Set Up Payments"
+          accessibilityHint="Opens the Vendor Portal to configure your payment account"
+        >
+          <Text style={styles.buttonText}>Set Up Payments</Text>
+          <Ionicons name="open-outline" size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

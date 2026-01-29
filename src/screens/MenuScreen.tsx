@@ -284,24 +284,15 @@ function EmptyMenuState({
             <Text style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
               {canManage
                 ? 'Tap the edit button to add products to this catalog'
-                : 'Add products to this catalog in the Vendor Portal'}
+                : 'Ask your manager to add products to this catalog'}
             </Text>
-            {canManage ? (
+            {canManage && (
               <TouchableOpacity
                 style={[emptyMenuStyles.primaryButton, { backgroundColor: colors.primary }]}
                 onPress={onStartEditing}
               >
                 <Ionicons name="pencil" size={18} color="#fff" />
                 <Text style={emptyMenuStyles.primaryButtonText}>Start Editing</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[emptyMenuStyles.primaryButton, { backgroundColor: colors.primary }]}
-                onPress={onOpenVendorPortal}
-              >
-                <Ionicons name="storefront" size={18} color="#fff" />
-                <Text style={emptyMenuStyles.primaryButtonText}>Open Vendor Portal</Text>
-                <Ionicons name="open-outline" size={16} color="#fff" />
               </TouchableOpacity>
             )}
           </>

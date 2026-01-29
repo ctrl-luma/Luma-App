@@ -800,8 +800,8 @@ export function TapToPayEducationScreen() {
                 </TouchableOpacity>
               )}
 
-              {/* Vendor Portal link on portal slide */}
-              {slide.id === 'portal' && (
+              {/* Vendor Portal link on portal slide - owners/admins only */}
+              {slide.id === 'portal' && (user?.role === 'owner' || user?.role === 'admin') && (
                 <TouchableOpacity style={styles.portalLink} onPress={openVendorPortal}>
                   <Ionicons name="laptop-outline" size={20} color="#fff" />
                   <Text style={styles.portalLinkText}>Open Vendor Portal</Text>

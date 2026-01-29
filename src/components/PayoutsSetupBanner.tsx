@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { openVendorDashboard } from '../lib/auth-handoff';
 
 interface PayoutsSetupBannerProps {
@@ -19,23 +20,27 @@ interface PayoutsSetupBannerProps {
  */
 export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps) {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
   const styles = createStyles(colors, compact, isDark);
+  const isManager = user?.role === 'owner' || user?.role === 'admin';
 
   if (compact) {
     return (
       <View style={styles.compactContainer} accessibilityRole="alert">
         <Ionicons name="information-circle" size={18} color={colors.info} />
         <Text style={styles.compactText}>Link bank to receive payouts</Text>
-        <TouchableOpacity
-          onPress={() => openVendorDashboard('/connect')}
-          style={styles.compactButton}
-          accessibilityRole="button"
-          accessibilityLabel="Set up payouts"
-          accessibilityHint="Opens the Vendor Portal to link your bank account for payouts"
-        >
-          <Text style={styles.compactButtonText}>Set up</Text>
-          <Ionicons name="open-outline" size={14} color={colors.primary} />
-        </TouchableOpacity>
+        {isManager && (
+          <TouchableOpacity
+            onPress={() => openVendorDashboard('/connect')}
+            style={styles.compactButton}
+            accessibilityRole="button"
+            accessibilityLabel="Set up payouts"
+            accessibilityHint="Opens the Vendor Portal to link your bank account for payouts"
+          >
+            <Text style={styles.compactButtonText}>Set up</Text>
+            <Ionicons name="open-outline" size={14} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -49,21 +54,25 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
         <View style={styles.textContainer}>
           <Text style={styles.title}>Payments ready!</Text>
           <Text style={styles.message}>
-            You can accept Tap to Pay payments. Link your bank account to receive payouts.
+            {isManager
+              ? 'You can accept Tap to Pay payments. Link your bank account to receive payouts.'
+              : 'You can accept Tap to Pay payments.'}
           </Text>
         </View>
       </View>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => openVendorDashboard('/connect')}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel="Complete Setup"
-        accessibilityHint="Opens the Vendor Portal to link your bank account for receiving payouts"
-      >
-        <Text style={styles.buttonText}>Complete Setup</Text>
-        <Ionicons name="open-outline" size={16} color="#fff" />
-      </TouchableOpacity>
+      {isManager && (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => openVendorDashboard('/connect')}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Complete Setup"
+          accessibilityHint="Opens the Vendor Portal to link your bank account for receiving payouts"
+        >
+          <Text style={styles.buttonText}>Complete Setup</Text>
+          <Ionicons name="open-outline" size={16} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

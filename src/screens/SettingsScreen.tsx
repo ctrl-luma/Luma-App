@@ -60,7 +60,7 @@ export function SettingsScreen() {
     }
   }, [isDark]);
   const { user, organization, subscription, signOut, connectStatus, connectLoading, isPaymentReady, refreshAuth, biometricCapabilities, biometricEnabled, setBiometricEnabled, refreshBiometricStatus } = useAuth();
-  const { selectedCatalog, clearCatalog } = useCatalog();
+  const { selectedCatalog, catalogs, clearCatalog } = useCatalog();
   const {
     deviceCompatibility,
     isInitialized,
@@ -328,15 +328,18 @@ export function SettingsScreen() {
                   <Text style={styles.activeCatalogLocation} numberOfLines={1}>{selectedCatalog.location}</Text>
                 )}
               </View>
-              <TouchableOpacity style={styles.switchButton} onPress={handleSwitchCatalog}>
-                <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
-                <Text style={styles.switchButtonText}>Switch</Text>
-              </TouchableOpacity>
+              {catalogs.length > 1 && (
+                <TouchableOpacity style={styles.switchButton} onPress={handleSwitchCatalog}>
+                  <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
+                  <Text style={styles.switchButtonText}>Switch</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
 
-        {/* 3. Business Section - Subscription + Banking combined */}
+        {/* 3. Business Section - Subscription + Banking combined (owners/admins only) */}
+        {(user?.role === 'owner' || user?.role === 'admin') && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Business</Text>
           <View style={styles.card}>
@@ -502,6 +505,7 @@ export function SettingsScreen() {
             )}
           </View>
         </View>
+        )}
 
         {/* 4. Account Section */}
         <View style={styles.section}>
