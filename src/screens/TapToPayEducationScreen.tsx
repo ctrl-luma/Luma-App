@@ -312,27 +312,28 @@ export function TapToPayEducationScreen() {
     }
   }, [isIOS]);
 
-  logger.log('[TapToPayEducation] State:', {
-    isIOS,
-    isAndroid,
-    isConnected,
-    isInitialized,
-    proximityDiscoveryAvailable,
-    appleEducationActive,
-    platform: Platform.OS,
-    platformVersion: Platform.Version,
-  });
-
   // Only show the enable slide if not already connected or initialized
   const showEnableSlide = isIOS && !isConnected && !isInitialized;
   // iOS 18+: After enabling, show Apple's native education UI
   // iOS 16-17: After enabling, show custom slides
   const useAppleNativeEducation = isIOS && proximityDiscoveryAvailable === true;
 
-  logger.log('[TapToPayEducation] Computed:', {
-    showEnableSlide,
-    useAppleNativeEducation,
-  });
+  useEffect(() => {
+    logger.log('[TapToPayEducation] State:', {
+      isIOS,
+      isAndroid,
+      isConnected,
+      isInitialized,
+      proximityDiscoveryAvailable,
+      appleEducationActive,
+      platform: Platform.OS,
+      platformVersion: Platform.Version,
+    });
+    logger.log('[TapToPayEducation] Computed:', {
+      showEnableSlide,
+      useAppleNativeEducation,
+    });
+  }, [isIOS, isAndroid, isConnected, isInitialized, proximityDiscoveryAvailable, appleEducationActive, showEnableSlide, useAppleNativeEducation]);
 
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isEnabling, setIsEnabling] = useState(false);
@@ -351,15 +352,17 @@ export function TapToPayEducationScreen() {
     }
   };
 
-  // iOS 18+ already connected: Jump straight to Apple's native education
+  // iOS 18+ already connected (T&C accepted): Jump straight to Apple's native education
+  // Only auto-launch when isConnected (not just isInitialized) — T&C acceptance
+  // happens during connectReader(), so isConnected means T&C was already accepted
   useEffect(() => {
     logger.log('[TapToPayEducation] Auto-launch effect:', { isIOS, isConnected, useAppleNativeEducation, appleEducationActive });
-    if (isIOS && (isConnected || isInitialized) && useAppleNativeEducation && !appleEducationActive) {
+    if (isIOS && isConnected && useAppleNativeEducation && !appleEducationActive) {
       logger.log('[TapToPayEducation] Auto-launching Apple native education');
       showAppleNativeEducation();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isIOS, isConnected, isInitialized, useAppleNativeEducation]);
+  }, [isIOS, isConnected, useAppleNativeEducation]);
 
   // Android auto-enable on mount: Connect reader and navigate back immediately
   useEffect(() => {
@@ -496,10 +499,10 @@ export function TapToPayEducationScreen() {
     navigation.navigate('StripeOnboarding');
   };
 
-  const handleScroll = (event: any) => {
+  const handleScroll = useCallback((event: any) => {
     const slideIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    setCurrentSlide(slideIndex);
-  };
+    setCurrentSlide((prev) => (prev !== slideIndex ? slideIndex : prev));
+  }, []);
 
   const goToSlide = (index: number) => {
     scrollViewRef.current?.scrollTo({ x: index * SCREEN_WIDTH, animated: true });
@@ -622,8 +625,8 @@ export function TapToPayEducationScreen() {
   }
 
   // iOS: Show starry loading while checking availability, Apple education is active,
-  // or about to auto-launch (iOS 18+ already connected)
-  const pendingAutoLaunch = useAppleNativeEducation && (isConnected || isInitialized) && !appleEducationActive;
+  // or about to auto-launch (iOS 18+ already connected with T&C accepted)
+  const pendingAutoLaunch = useAppleNativeEducation && isConnected && !appleEducationActive;
   if (proximityDiscoveryAvailable === null || appleEducationActive || pendingAutoLaunch) {
     return (
       <View style={StyleSheet.absoluteFill}>
@@ -654,7 +657,7 @@ export function TapToPayEducationScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
-        scrollEventThrottle={16}
+        scrollEventThrottle={200}
         scrollEnabled={canScrollPastEnable || currentSlide > 0}
         style={styles.slidesContainer}
       >
