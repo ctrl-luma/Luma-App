@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode, useMemo } from 'react';
 import { Product } from '../lib/api/products';
+import { useAuth } from './AuthContext';
 
 export interface CartItem {
   product: Product;
@@ -53,6 +54,7 @@ interface CartProviderProps {
 }
 
 export function CartProvider({ children }: CartProviderProps) {
+  const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [orderNotes, setOrderNotes] = useState<string>('');
   const [customerEmail, setCustomerEmail] = useState<string>('');
@@ -60,6 +62,22 @@ export function CartProvider({ children }: CartProviderProps) {
   const [selectedTipIndex, setSelectedTipIndex] = useState<number | null>(null);
   const [customTipAmount, setCustomTipAmount] = useState<string>('');
   const [showCustomTipInput, setShowCustomTipInput] = useState<boolean>(false);
+
+  // Clear cart when user signs out
+  const prevUserId = useRef(user?.id);
+  useEffect(() => {
+    if (prevUserId.current && !user?.id) {
+      // User was logged in, now logged out — clear cart
+      setItems([]);
+      setOrderNotes('');
+      setCustomerEmail('');
+      setPaymentMethod('tap_to_pay');
+      setSelectedTipIndex(null);
+      setCustomTipAmount('');
+      setShowCustomTipInput(false);
+    }
+    prevUserId.current = user?.id;
+  }, [user?.id]);
 
   // Calculate total item count
   const itemCount = useMemo(() => {

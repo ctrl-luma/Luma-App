@@ -10,6 +10,7 @@ import {
   Modal,
   Animated,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -274,6 +275,9 @@ export function TransactionDetailScreen() {
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultMessage, setResultMessage] = useState({ title: '', message: '', isError: false });
+  const [showReceiptInput, setShowReceiptInput] = useState(false);
+  const [receiptEmail, setReceiptEmail] = useState('');
+  const [sendingReceipt, setSendingReceipt] = useState(false);
 
   const { data: transaction, isLoading } = useQuery({
     queryKey: ['transaction', id],
@@ -307,6 +311,28 @@ export function TransactionDetailScreen() {
   const handleViewReceipt = () => {
     if (transaction?.receiptUrl) {
       Linking.openURL(transaction.receiptUrl);
+    }
+  };
+
+  const handleSendReceipt = async () => {
+    const email = receiptEmail.trim() || transaction?.customerEmail;
+    if (!email) {
+      setShowReceiptInput(true);
+      return;
+    }
+
+    setSendingReceipt(true);
+    try {
+      await transactionsApi.sendReceipt(id, email);
+      setShowReceiptInput(false);
+      setReceiptEmail('');
+      setResultMessage({ title: 'Receipt Sent', message: `Receipt sent to ${email}`, isError: false });
+      setShowResultModal(true);
+    } catch (error: any) {
+      setResultMessage({ title: 'Error', message: error.message || 'Failed to send receipt', isError: true });
+      setShowResultModal(true);
+    } finally {
+      setSendingReceipt(false);
     }
   };
 
@@ -421,9 +447,30 @@ export function TransactionDetailScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Payment Method</Text>
               <Text style={styles.detailValue}>
-                {transaction.paymentMethod.brand?.toUpperCase() || 'Card'} ****
-                {transaction.paymentMethod.last4}
+                {transaction.paymentMethod.type === 'cash'
+                  ? 'Cash'
+                  : transaction.paymentMethod.type === 'split'
+                  ? 'Split Payment'
+                  : transaction.paymentMethod.brand && transaction.paymentMethod.last4
+                  ? `${transaction.paymentMethod.brand.toUpperCase()} ****${transaction.paymentMethod.last4}`
+                  : transaction.paymentMethod.last4
+                  ? `Card ****${transaction.paymentMethod.last4}`
+                  : 'Card payment'}
               </Text>
+            </View>
+          )}
+
+          {transaction.cashTendered != null && transaction.cashTendered > 0 && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Cash Tendered</Text>
+              <Text style={styles.detailValue}>${(transaction.cashTendered / 100).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {transaction.cashChange != null && transaction.cashChange > 0 && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Change Given</Text>
+              <Text style={styles.detailValue}>${(transaction.cashChange / 100).toFixed(2)}</Text>
             </View>
           )}
 
@@ -443,6 +490,40 @@ export function TransactionDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Payment Breakdown (for split payments) */}
+        {transaction.orderPayments && transaction.orderPayments.length > 1 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Payment Breakdown</Text>
+            {transaction.orderPayments.map((payment) => (
+              <View key={payment.id} style={styles.paymentBreakdownItem}>
+                <View style={styles.paymentBreakdownLeft}>
+                  <Ionicons
+                    name={
+                      payment.paymentMethod === 'cash'
+                        ? 'cash-outline'
+                        : payment.paymentMethod === 'tap_to_pay'
+                        ? 'phone-portrait-outline'
+                        : 'card-outline'
+                    }
+                    size={18}
+                    color={colors.textSecondary}
+                  />
+                  <Text style={styles.paymentBreakdownMethod}>
+                    {payment.paymentMethod === 'cash'
+                      ? 'Cash'
+                      : payment.paymentMethod === 'tap_to_pay'
+                      ? 'Tap to Pay'
+                      : 'Card'}
+                  </Text>
+                </View>
+                <Text style={styles.paymentBreakdownAmount}>
+                  ${(payment.amount / 100).toFixed(2)}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Refunds Section */}
         {transaction.refunds && transaction.refunds.length > 0 && (
@@ -478,6 +559,41 @@ export function TransactionDetailScreen() {
               <Ionicons name="receipt-outline" size={20} color={colors.text} />
               <Text style={styles.actionButtonText}>View Receipt</Text>
             </TouchableOpacity>
+          )}
+
+          {transaction.status === 'succeeded' && (
+            <>
+              {showReceiptInput ? (
+                <View style={styles.receiptInputContainer}>
+                  <TextInput
+                    style={styles.receiptEmailInput}
+                    value={receiptEmail}
+                    onChangeText={setReceiptEmail}
+                    placeholder="Enter email address"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <TouchableOpacity
+                    style={styles.sendReceiptConfirmButton}
+                    onPress={handleSendReceipt}
+                    disabled={sendingReceipt || !receiptEmail.trim()}
+                  >
+                    {sendingReceipt ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="send" size={18} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.actionButton} onPress={handleSendReceipt}>
+                  <Ionicons name="mail-outline" size={20} color={colors.text} />
+                  <Text style={styles.actionButtonText}>Send Receipt</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
           {canRefund && (
@@ -714,6 +830,50 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
     },
     refundButton: {
       backgroundColor: colors.errorBg,
+    },
+    receiptInputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    receiptEmailInput: {
+      flex: 1,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      fontSize: 16,
+      color: colors.text,
+    },
+    paymentBreakdownItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: glassColors.border,
+    },
+    paymentBreakdownLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    paymentBreakdownMethod: {
+      fontSize: 15,
+      fontFamily: fonts.medium,
+      color: colors.text,
+    },
+    paymentBreakdownAmount: {
+      fontSize: 15,
+      fontFamily: fonts.semiBold,
+      color: colors.text,
+    },
+    sendReceiptConfirmButton: {
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      padding: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     centered: {
       flex: 1,

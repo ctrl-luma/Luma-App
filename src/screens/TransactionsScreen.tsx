@@ -280,8 +280,14 @@ function AnimatedTransactionItem({
               ${(item.amount / 100).toFixed(2)}
             </Text>
             <Text style={styles.transactionMeta}>
-              {item.paymentMethod
-                ? `${item.paymentMethod.brand?.toUpperCase() || 'Card'} ****${item.paymentMethod.last4}`
+              {item.paymentMethod?.type === 'cash'
+                ? 'Cash'
+                : item.paymentMethod?.type === 'split'
+                ? 'Split Payment'
+                : item.paymentMethod?.brand && item.paymentMethod?.last4
+                ? `${item.paymentMethod.brand.toUpperCase()} ****${item.paymentMethod.last4}`
+                : item.paymentMethod?.last4
+                ? `Card ****${item.paymentMethod.last4}`
                 : 'Card payment'}
             </Text>
           </View>

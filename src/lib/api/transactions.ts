@@ -1,8 +1,9 @@
 import { apiClient } from './client';
 
 export interface PaymentMethod {
+  type?: string;       // 'card' | 'card_present' | 'cash' | 'split' | 'tap_to_pay'
   brand: string | null;
-  last4: string;
+  last4: string | null;
 }
 
 export interface Refund {
@@ -26,8 +27,23 @@ export interface Transaction {
   receiptUrl: string | null;
 }
 
+export interface OrderPaymentDetail {
+  id: string;
+  paymentMethod: string;
+  amount: number; // in cents
+  tipAmount: number;
+  status: string;
+  cashTendered: number | null;
+  cashChange: number | null;
+  stripePaymentIntentId: string | null;
+  created: number;
+}
+
 export interface TransactionDetail extends Transaction {
   refunds: Refund[];
+  cashTendered?: number | null; // in cents
+  cashChange?: number | null; // in cents
+  orderPayments?: OrderPaymentDetail[];
 }
 
 export interface TransactionsListParams {
@@ -77,4 +93,10 @@ export const transactionsApi = {
    */
   refund: (id: string, params?: RefundParams) =>
     apiClient.post<{ success: boolean }>(`/stripe/connect/transactions/${id}/refund`, params || {}),
+
+  /**
+   * Send receipt email for a transaction
+   */
+  sendReceipt: (id: string, email: string) =>
+    apiClient.post<{ success: boolean; message: string }>(`/stripe/connect/transactions/${id}/send-receipt`, { email }),
 };

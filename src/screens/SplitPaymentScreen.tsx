@@ -13,7 +13,7 @@ import {
   Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
@@ -21,7 +21,9 @@ import { ordersApi, OrderPayment, stripeTerminalApi } from '../lib/api';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
+import { CardField, useConfirmPayment, CardFieldInput, initStripe } from '@stripe/stripe-react-native';
 import Constants from 'expo-constants';
+import { config } from '../lib/config';
 
 // Conditionally import Stripe Terminal - not available in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -65,6 +67,7 @@ export function SplitPaymentScreen() {
   const { clearCart } = useCart();
   const glassColors = isDark ? glass.dark : glass.light;
   const { collectPaymentMethod, confirmPaymentIntent, retrievePaymentIntent } = useStripeTerminal();
+  const { confirmPayment } = useConfirmPayment();
 
   const { orderId, orderNumber, totalAmount, customerEmail } = route.params;
 
@@ -77,6 +80,7 @@ export function SplitPaymentScreen() {
   // Add payment modal state
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>('tap_to_pay');
+  const [cardDetails, setCardDetails] = useState<CardFieldInput.Details | null>(null);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [cashTendered, setCashTendered] = useState('');
 
@@ -107,35 +111,43 @@ export function SplitPaymentScreen() {
 
   const handleOrderComplete = () => {
     clearCart();
-    navigation.replace('PaymentResult', {
-      success: true,
-      amount: totalAmount,
-      paymentIntentId: null,
-      orderId,
-      orderNumber,
-      customerEmail,
-      paymentMethod: 'split',
-    });
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          { name: 'MainTabs' },
+          {
+            name: 'PaymentResult',
+            params: {
+              success: true,
+              amount: totalAmount,
+              paymentIntentId: null,
+              orderId,
+              orderNumber,
+              customerEmail,
+              paymentMethod: 'split',
+            },
+          },
+        ],
+      })
+    );
   };
 
-  // Process card/tap to pay payment
-  const processCardPayment = async (amount: number) => {
+  // Process tap to pay payment (Terminal SDK)
+  const processTapToPayPayment = async (amount: number) => {
     setIsProcessing(true);
     try {
-      // Create a payment intent for this partial amount
       const { clientSecret, paymentIntentId } = await stripeTerminalApi.createPaymentIntent({
-        amount,
+        amount: amount / 100, // Convert cents to dollars for API
         orderId,
         isQuickCharge: false,
       });
 
-      // Retrieve the payment intent
-      const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(clientSecret);
+      const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(paymentIntentId);
       if (retrieveError || !paymentIntent) {
         throw new Error(retrieveError?.message || 'Failed to retrieve payment intent');
       }
 
-      // Collect payment method
       const { paymentIntent: collectedIntent, error: collectError } = await collectPaymentMethod({
         paymentIntent,
       });
@@ -143,7 +155,6 @@ export function SplitPaymentScreen() {
         throw new Error(collectError?.message || 'Failed to collect payment method');
       }
 
-      // Confirm the payment
       const { paymentIntent: confirmedIntent, error: confirmError } = await confirmPaymentIntent({
         paymentIntent: collectedIntent,
       });
@@ -151,14 +162,68 @@ export function SplitPaymentScreen() {
         throw new Error(confirmError.message || 'Payment failed');
       }
 
-      // Add payment to order
       await ordersApi.addPayment(orderId, {
-        paymentMethod: selectedMethod,
+        paymentMethod: 'tap_to_pay',
         amount,
         stripePaymentIntentId: paymentIntentId,
       });
 
-      // Refresh payments
+      await fetchPayments();
+      setShowAddPayment(false);
+      resetPaymentForm();
+    } catch (error: any) {
+      Alert.alert('Payment Failed', error.message || 'Failed to process tap to pay payment');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Process manual card entry payment (regular Stripe SDK)
+  const processManualCardPayment = async (amount: number) => {
+    if (!cardDetails?.complete) {
+      Alert.alert('Card Required', 'Please enter your card details.');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const paymentIntent = await stripeTerminalApi.createPaymentIntent({
+        amount: amount / 100,
+        orderId,
+        isQuickCharge: false,
+        captureMethod: 'automatic',
+        paymentMethodType: 'card',
+      });
+
+      await initStripe({
+        publishableKey: config.stripePublishableKey,
+        merchantIdentifier: 'merchant.com.lumapos',
+        stripeAccountId: paymentIntent.stripeAccountId,
+      });
+
+      const { error, paymentIntent: confirmedIntent } = await confirmPayment(paymentIntent.clientSecret, {
+        paymentMethodType: 'Card',
+        paymentMethodData: {
+          billingDetails: {
+            email: customerEmail || undefined,
+          },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Payment failed');
+      }
+
+      if (confirmedIntent?.status !== 'Succeeded') {
+        throw new Error('Payment was not successful');
+      }
+
+      await ordersApi.addPayment(orderId, {
+        paymentMethod: 'card',
+        amount,
+        stripePaymentIntentId: paymentIntent.id,
+      });
+
       await fetchPayments();
       setShowAddPayment(false);
       resetPaymentForm();
@@ -199,6 +264,7 @@ export function SplitPaymentScreen() {
   const resetPaymentForm = () => {
     setPaymentAmount('');
     setCashTendered('');
+    setCardDetails(null);
     setSelectedMethod('tap_to_pay');
   };
 
@@ -222,8 +288,10 @@ export function SplitPaymentScreen() {
         return;
       }
       await processCashPayment(amountCents, tenderedCents);
+    } else if (selectedMethod === 'tap_to_pay') {
+      await processTapToPayPayment(amountCents);
     } else {
-      await processCardPayment(amountCents);
+      await processManualCardPayment(amountCents);
     }
   };
 
@@ -417,6 +485,27 @@ export function SplitPaymentScreen() {
                           </Text>
                         </View>
                       )}
+                    </View>
+                  )}
+
+                  {/* Card Entry (for manual card payments) */}
+                  {selectedMethod === 'card' && (
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.inputLabel}>Card Details</Text>
+                      <CardField
+                        postalCodeEnabled={false}
+                        cardStyle={{
+                          backgroundColor: isDark ? colors.card : '#FFFFFF',
+                          textColor: colors.text,
+                          placeholderColor: colors.textMuted,
+                          borderColor: glassColors.border,
+                          borderWidth: 1,
+                          borderRadius: 12,
+                          fontSize: 16,
+                        }}
+                        style={{ width: '100%', height: 50, marginTop: 8 }}
+                        onCardChange={setCardDetails}
+                      />
                     </View>
                   )}
 

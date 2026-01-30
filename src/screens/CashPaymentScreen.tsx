@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,9 @@ import {
   Vibration,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
-import { useCart } from '../context/CartContext';
 import { ordersApi } from '../lib/api';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
@@ -27,21 +26,10 @@ type RouteParams = {
   };
 };
 
-// Quick amount buttons in cents
-const QUICK_AMOUNTS = [
-  { label: '$1', value: 100 },
-  { label: '$5', value: 500 },
-  { label: '$10', value: 1000 },
-  { label: '$20', value: 2000 },
-  { label: '$50', value: 5000 },
-  { label: '$100', value: 10000 },
-];
-
 export function CashPaymentScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'CashPayment'>>();
-  const { clearCart } = useCart();
   const glassColors = isDark ? glass.dark : glass.light;
 
   const { orderId, orderNumber, totalAmount, customerEmail } = route.params;
@@ -72,12 +60,6 @@ export function CashPaymentScreen() {
     }
   };
 
-  // Handle quick amount
-  const handleQuickAmount = (amountCents: number) => {
-    Vibration.vibrate(10);
-    setCashTendered((amountCents / 100).toFixed(2));
-  };
-
   // Handle exact amount
   const handleExactAmount = () => {
     Vibration.vibrate(10);
@@ -95,21 +77,28 @@ export function CashPaymentScreen() {
     try {
       const response = await ordersApi.completeCash(orderId, cashTenderedCents);
 
-      // Clear cart on success
-      clearCart();
-
-      // Navigate to success screen
-      navigation.replace('PaymentResult', {
-        success: true,
-        amount: totalAmount,
-        paymentIntentId: null,
-        orderId,
-        orderNumber,
-        customerEmail,
-        paymentMethod: 'cash',
-        cashTendered: cashTenderedCents,
-        changeAmount: response.changeAmount,
-      });
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            { name: 'MainTabs' },
+            {
+              name: 'PaymentResult',
+              params: {
+                success: true,
+                amount: totalAmount,
+                paymentIntentId: null,
+                orderId,
+                orderNumber,
+                customerEmail,
+                paymentMethod: 'cash',
+                cashTendered: cashTenderedCents,
+                changeAmount: response.changeAmount,
+              },
+            },
+          ],
+        })
+      );
     } catch (error: any) {
       Alert.alert('Payment Failed', error.message || 'Failed to complete cash payment.');
     } finally {
@@ -118,7 +107,7 @@ export function CashPaymentScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -156,22 +145,10 @@ export function CashPaymentScreen() {
         </View>
       )}
 
-      {/* Quick Amount Buttons */}
-      <View style={styles.quickAmounts}>
-        {QUICK_AMOUNTS.map((amount) => (
-          <TouchableOpacity
-            key={amount.value}
-            style={styles.quickButton}
-            onPress={() => handleQuickAmount(amount.value)}
-          >
-            <Text style={styles.quickButtonText}>{amount.label}</Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={[styles.quickButton, styles.exactButton]}
-          onPress={handleExactAmount}
-        >
-          <Text style={[styles.quickButtonText, styles.exactButtonText]}>Exact</Text>
+      {/* Exact Amount Button */}
+      <View style={styles.exactRow}>
+        <TouchableOpacity style={styles.exactButton} onPress={handleExactAmount}>
+          <Text style={styles.exactButtonText}>Exact Amount</Text>
         </TouchableOpacity>
       </View>
 
@@ -251,7 +228,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     totalSection: {
       alignItems: 'center',
-      paddingVertical: 24,
+      paddingVertical: 20,
       borderBottomWidth: 1,
       borderBottomColor: glassColors.border,
     },
@@ -268,7 +245,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     tenderedSection: {
       alignItems: 'center',
-      paddingVertical: 20,
+      paddingVertical: 16,
     },
     tenderedLabel: {
       fontSize: 14,
@@ -315,39 +292,29 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontFamily: fonts.bold,
       color: colors.success,
     },
-    quickAmounts: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      paddingHorizontal: 16,
+    exactRow: {
+      alignItems: 'center',
       paddingVertical: 12,
-      gap: 8,
-      justifyContent: 'center',
-    },
-    quickButton: {
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      backgroundColor: glassColors.backgroundElevated,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-    },
-    quickButtonText: {
-      fontSize: 16,
-      fontFamily: fonts.semiBold,
-      color: colors.text,
     },
     exactButton: {
+      paddingHorizontal: 24,
+      paddingVertical: 12,
       backgroundColor: colors.primary + '20',
+      borderRadius: 12,
+      borderWidth: 1,
       borderColor: colors.primary + '40',
     },
     exactButtonText: {
+      fontSize: 16,
+      fontFamily: fonts.semiBold,
       color: colors.primary,
     },
     keypad: {
+      flex: 1,
       flexDirection: 'row',
       flexWrap: 'wrap',
       paddingHorizontal: 20,
-      paddingVertical: 12,
+      paddingVertical: 8,
       justifyContent: 'center',
     },
     keypadButton: {
