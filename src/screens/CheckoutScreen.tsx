@@ -709,7 +709,12 @@ export function CheckoutScreen() {
       {/* Payouts Setup Banner (can accept payments but no payouts yet) */}
       {showPayoutsBanner && <PayoutsSetupBanner />}
 
-      <ScrollView style={styles.scrollContent} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        style={styles.scrollContent}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
+      >
         {/* 1. Tip Selection (first) - hide for resumed orders since tip is already set */}
         {showTipScreen && !resumedOrder && (
           <View style={styles.tipSection}>

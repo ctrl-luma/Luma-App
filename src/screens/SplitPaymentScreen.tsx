@@ -330,7 +330,12 @@ export function SplitPaymentScreen() {
           <View style={{ width: 48 }} />
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
           {/* Order Summary */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
