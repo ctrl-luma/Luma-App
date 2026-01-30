@@ -659,7 +659,7 @@ function AuthenticatedNavigator() {
       <Stack.Screen
         name="TapToPayEducation"
         component={TapToPayEducationScreen}
-        options={{ presentation: 'modal' }}
+        options={{ presentation: 'fullScreenModal' }}
       />
       <Stack.Screen
         name="Upgrade"
