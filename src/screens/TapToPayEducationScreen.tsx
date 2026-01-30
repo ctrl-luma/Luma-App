@@ -137,12 +137,10 @@ export function TapToPayEducationScreen() {
     try {
       const result = await authService.registerTapToPayDevice(deviceId);
       logger.log('[TapToPayEducation] Device registered:', result.tapToPayDeviceIds);
-      // Update cached user and refresh auth context state
+      // Update cached user so next screen mount sees the registration
       if (user) {
         await authService.saveUser({ ...user, tapToPayDeviceIds: result.tapToPayDeviceIds });
       }
-      // Refresh auth context so user state has the updated tapToPayDeviceIds
-      refreshAuth().catch(() => {});
     } catch (err) {
       logger.warn('[TapToPayEducation] Failed to register device:', err);
     }
