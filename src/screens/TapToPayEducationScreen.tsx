@@ -155,28 +155,51 @@ export function TapToPayEducationScreen() {
   };
 
   // iOS: Once we know ProximityReader availability, handle the flow
-  // - Already connected → show Apple education directly
-  // - Not connected → auto-connect, then show Apple education
   const autoHandledRef = useRef(false);
   useEffect(() => {
     if (!isIOS || educationCompleteRef.current || autoHandledRef.current) return;
-    // Wait until we know whether Apple native education is available
     if (proximityDiscoveryAvailable === null) return;
 
+    // Device already registered — skip enable screen entirely
+    if (deviceAlreadyRegistered) {
+      autoHandledRef.current = true;
+      if (useAppleNativeEducation) {
+        logger.log('[TapToPayEducation] Device registered, auto-connecting for Apple education');
+        (async () => {
+          try {
+            if (!isConnected) {
+              if (!isInitialized) await initializeTerminal();
+              await connectReader();
+            }
+            await showAppleNativeEducation();
+          } catch (err: any) {
+            logger.warn('[TapToPayEducation] Auto-enable failed:', err.message);
+            // Still navigate back — don't show enable screen for registered device
+            markEducationSeen();
+            navigateBack();
+          }
+        })();
+      } else {
+        // iOS < 18, no Apple education to show
+        markEducationSeen();
+        navigateBack();
+      }
+      return;
+    }
+
+    // Not registered but already connected — show Apple education directly
     if (isConnected && useAppleNativeEducation) {
-      // Already connected — go straight to Apple education
       autoHandledRef.current = true;
       logger.log('[TapToPayEducation] Already connected, showing Apple native education');
       showAppleNativeEducation();
     } else if (isConnected && !useAppleNativeEducation) {
-      // iOS < 18, already connected — nothing to show
       autoHandledRef.current = true;
       markEducationSeen();
       registerDevice();
       navigateBack();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isIOS, isConnected, proximityDiscoveryAvailable, useAppleNativeEducation]);
+  }, [isIOS, isConnected, proximityDiscoveryAvailable, useAppleNativeEducation, deviceAlreadyRegistered]);
 
   // Android auto-enable on mount: Connect reader and navigate back immediately
   useEffect(() => {
