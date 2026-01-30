@@ -17,37 +17,13 @@ import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-naviga
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
+import { useTerminal } from '../context/StripeTerminalContext';
 import { ordersApi, OrderPayment, stripeTerminalApi } from '../lib/api';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
 import { CardField, useConfirmPayment, CardFieldInput, initStripe } from '@stripe/stripe-react-native';
-import Constants from 'expo-constants';
 import { config } from '../lib/config';
-
-// Conditionally import Stripe Terminal - not available in Expo Go
-const isExpoGo = Constants.appOwnership === 'expo';
-type PaymentIntent = any;
-
-let useStripeTerminal: any;
-if (!isExpoGo) {
-  try {
-    const terminal = require('@stripe/stripe-terminal-react-native');
-    useStripeTerminal = terminal.useStripeTerminal;
-  } catch {
-    useStripeTerminal = () => ({
-      collectPaymentMethod: async () => ({ paymentIntent: null }),
-      confirmPaymentIntent: async () => ({ paymentIntent: null }),
-      retrievePaymentIntent: async () => ({ paymentIntent: null }),
-    });
-  }
-} else {
-  useStripeTerminal = () => ({
-    collectPaymentMethod: async () => ({ paymentIntent: null }),
-    confirmPaymentIntent: async () => ({ paymentIntent: null }),
-    retrievePaymentIntent: async () => ({ paymentIntent: null }),
-  });
-}
 
 type RouteParams = {
   SplitPayment: {
@@ -66,7 +42,7 @@ export function SplitPaymentScreen() {
   const route = useRoute<RouteProp<RouteParams, 'SplitPayment'>>();
   const { clearCart } = useCart();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { collectPaymentMethod, confirmPaymentIntent, retrievePaymentIntent } = useStripeTerminal();
+  const { initializeTerminal, connectReader, processPayment: terminalProcessPayment } = useTerminal();
   const { confirmPayment } = useConfirmPayment();
 
   const { orderId, orderNumber, totalAmount, customerEmail } = route.params;
@@ -133,33 +109,24 @@ export function SplitPaymentScreen() {
     );
   };
 
-  // Process tap to pay payment (Terminal SDK)
+  // Process tap to pay payment (Terminal SDK via context)
   const processTapToPayPayment = async (amount: number) => {
     setIsProcessing(true);
     try {
-      const { clientSecret, paymentIntentId } = await stripeTerminalApi.createPaymentIntent({
+      // Ensure terminal is initialized and reader connected
+      await initializeTerminal();
+      await connectReader();
+
+      // Create payment intent via API
+      const { paymentIntentId } = await stripeTerminalApi.createPaymentIntent({
         amount: amount / 100, // Convert cents to dollars for API
-        orderId,
-        isQuickCharge: false,
       });
 
-      const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(paymentIntentId);
-      if (retrieveError || !paymentIntent) {
-        throw new Error(retrieveError?.message || 'Failed to retrieve payment intent');
-      }
+      // Process payment through the Terminal context (retrieve → collect → confirm)
+      const result = await terminalProcessPayment(paymentIntentId);
 
-      const { paymentIntent: collectedIntent, error: collectError } = await collectPaymentMethod({
-        paymentIntent,
-      });
-      if (collectError || !collectedIntent) {
-        throw new Error(collectError?.message || 'Failed to collect payment method');
-      }
-
-      const { paymentIntent: confirmedIntent, error: confirmError } = await confirmPaymentIntent({
-        paymentIntent: collectedIntent,
-      });
-      if (confirmError) {
-        throw new Error(confirmError.message || 'Payment failed');
+      if (result.status !== 'succeeded') {
+        throw new Error(`Payment status: ${result.status}`);
       }
 
       await ordersApi.addPayment(orderId, {
