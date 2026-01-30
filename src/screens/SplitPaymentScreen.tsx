@@ -113,17 +113,25 @@ export function SplitPaymentScreen() {
   const processTapToPayPayment = async (amount: number) => {
     setIsProcessing(true);
     try {
+      console.log('[SplitPayment] Starting tap to pay, amount cents:', amount);
+
       // Ensure terminal is initialized and reader connected
+      console.log('[SplitPayment] Initializing terminal...');
       await initializeTerminal();
+      console.log('[SplitPayment] Connecting reader...');
       await connectReader();
 
       // Create payment intent via API
-      const { paymentIntentId } = await stripeTerminalApi.createPaymentIntent({
+      console.log('[SplitPayment] Creating payment intent...');
+      const piResponse = await stripeTerminalApi.createPaymentIntent({
         amount: amount / 100, // Convert cents to dollars for API
       });
+      console.log('[SplitPayment] Payment intent created:', piResponse.id, 'clientSecret present:', !!piResponse.clientSecret);
 
       // Process payment through the Terminal context (retrieve → collect → confirm)
-      const result = await terminalProcessPayment(paymentIntentId);
+      console.log('[SplitPayment] Processing payment via terminal context...');
+      const result = await terminalProcessPayment(piResponse.id);
+      console.log('[SplitPayment] Payment result status:', result.status);
 
       if (result.status !== 'succeeded') {
         throw new Error(`Payment status: ${result.status}`);
@@ -132,13 +140,14 @@ export function SplitPaymentScreen() {
       await ordersApi.addPayment(orderId, {
         paymentMethod: 'tap_to_pay',
         amount,
-        stripePaymentIntentId: paymentIntentId,
+        stripePaymentIntentId: piResponse.id,
       });
 
       await fetchPayments();
       setShowAddPayment(false);
       resetPaymentForm();
     } catch (error: any) {
+      console.error('[SplitPayment] Tap to pay error:', error.message, error);
       Alert.alert('Payment Failed', error.message || 'Failed to process tap to pay payment');
     } finally {
       setIsProcessing(false);
@@ -307,6 +316,7 @@ export function SplitPaymentScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -320,7 +330,7 @@ export function SplitPaymentScreen() {
           <View style={{ width: 48 }} />
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           {/* Order Summary */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>

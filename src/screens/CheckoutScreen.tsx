@@ -12,6 +12,7 @@ import {
   Animated,
   Platform,
   Modal,
+  KeyboardAvoidingView,
   Pressable,
   Dimensions,
 } from 'react-native';
@@ -652,6 +653,11 @@ export function CheckoutScreen() {
   return (
     <StarBackground colors={colors} isDark={isDark}>
       <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -703,7 +709,7 @@ export function CheckoutScreen() {
       {/* Payouts Setup Banner (can accept payments but no payouts yet) */}
       {showPayoutsBanner && <PayoutsSetupBanner />}
 
-      <ScrollView style={styles.scrollContent} contentContainerStyle={styles.content}>
+      <ScrollView style={styles.scrollContent} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* 1. Tip Selection (first) - hide for resumed orders since tip is already set */}
         {showTipScreen && !resumedOrder && (
           <View style={styles.tipSection}>
@@ -1179,6 +1185,7 @@ export function CheckoutScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      </KeyboardAvoidingView>
       </SafeAreaView>
     </StarBackground>
   );
