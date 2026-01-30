@@ -226,7 +226,8 @@ export function TapToPayEducationScreen() {
       const connected = await connectReader();
       if (connected) {
         markEducationSeen();
-        registerDevice();
+        logger.log('[TapToPayEducation] Android enable complete, registering device before navigating back');
+        await registerDevice();
         navigateBack();
       } else {
         setEnableError('Failed to enable Tap to Pay. Please try again.');
@@ -248,12 +249,13 @@ export function TapToPayEducationScreen() {
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
     }
-    // Mark complete so loading guard doesn't re-show, then navigate immediately
+    // Mark complete so loading guard doesn't re-show
     educationCompleteRef.current = true;
     setAppleEducationActive(false);
-    navigateBack();
     markEducationSeen();
-    registerDevice();
+    logger.log('[TapToPayEducation] Education complete, registering device before navigating back');
+    await registerDevice();
+    navigateBack();
   };
 
   // Check if device is not compatible
