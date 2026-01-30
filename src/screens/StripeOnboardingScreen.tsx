@@ -390,6 +390,9 @@ export function StripeOnboardingScreen() {
           domStorageEnabled={true}
           sharedCookiesEnabled={true}
           thirdPartyCookiesEnabled={true}
+          contentMode="mobile"
+          automaticallyAdjustContentInsets={false}
+          scalesPageToFit={true}
         />
       )}
     </SafeAreaView>
