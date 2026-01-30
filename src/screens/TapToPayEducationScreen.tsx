@@ -187,17 +187,7 @@ export function TapToPayEducationScreen() {
       return;
     }
 
-    // Not registered but already connected — show Apple education directly
-    if (isConnected && useAppleNativeEducation) {
-      autoHandledRef.current = true;
-      logger.log('[TapToPayEducation] Already connected, showing Apple native education');
-      showAppleNativeEducation();
-    } else if (isConnected && !useAppleNativeEducation) {
-      autoHandledRef.current = true;
-      markEducationSeen();
-      registerDevice();
-      navigateBack();
-    }
+    // Not registered — show the enable screen (Apple TTPOi 3.5 requires explicit user action)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isIOS, isConnected, proximityDiscoveryAvailable, useAppleNativeEducation, deviceAlreadyRegistered]);
 
@@ -425,9 +415,8 @@ export function TapToPayEducationScreen() {
   // - already connected and about to auto-launch Apple education
   // Show blank screen while waiting for ProximityReader check, Apple education sheet,
   // or auto-connect to complete
-  const pendingEducation = isIOS && isConnected && useAppleNativeEducation && !educationCompleteRef.current;
-  const warmingUp = isIOS && isWarming && useAppleNativeEducation && !educationCompleteRef.current;
-  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingEducation || warmingUp) {
+  const pendingAutoEducation = isIOS && autoHandledRef.current && !educationCompleteRef.current;
+  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingAutoEducation) {
     return (
       <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? '#09090b' : colors.background }]} />
     );
