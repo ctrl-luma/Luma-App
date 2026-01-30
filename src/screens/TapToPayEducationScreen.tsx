@@ -59,7 +59,7 @@ export function TapToPayEducationScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
 
   // Auth context for user ID and device context for device ID
-  const { user } = useAuth();
+  const { user, refreshAuth } = useAuth();
   const { deviceId } = useDevice();
 
   // Education tracking - mark as seen when user completes this screen
@@ -153,6 +153,8 @@ export function TapToPayEducationScreen() {
   const styles = createStyles(colors, glassColors, isDark);
 
   const navigateBack = () => {
+    // Refresh auth so user state picks up newly registered device IDs
+    refreshAuth().catch(() => {});
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
@@ -428,12 +430,12 @@ export function TapToPayEducationScreen() {
   const pendingAutoEducation = isIOS && autoHandledRef.current && !educationCompleteRef.current;
   if (proximityDiscoveryAvailable === null || appleEducationActive || pendingAutoEducation) {
     return (
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? '#09090b' : colors.background }]} />
+      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#09090b' : colors.background }]} edges={['top', 'bottom', 'left', 'right']} />
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>

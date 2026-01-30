@@ -296,7 +296,7 @@ export function StripeOnboardingScreen() {
     // Route based on returnTo parameter
     if (returnTo === 'education') {
       // Coming from initial onboarding - go to Tap to Pay education
-      navigation.replace('TapToPayEducation');
+      navigation.navigate('TapToPayEducation');
     } else if (returnTo === 'settings') {
       // Coming from Settings - go back to Settings
       navigation.goBack();
