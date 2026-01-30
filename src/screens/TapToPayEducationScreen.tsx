@@ -226,8 +226,6 @@ export function TapToPayEducationScreen() {
       const connected = await connectReader();
       if (connected) {
         markEducationSeen();
-        logger.log('[TapToPayEducation] Android enable complete, registering device before navigating back');
-        await registerDevice();
         navigateBack();
       } else {
         setEnableError('Failed to enable Tap to Pay. Please try again.');
@@ -243,6 +241,10 @@ export function TapToPayEducationScreen() {
   // iOS 18+: Show Apple's native education UI after T&C acceptance
   const showAppleNativeEducation = async () => {
     setAppleEducationActive(true);
+    if (!deviceAlreadyRegistered) {
+      logger.log('[TapToPayEducation] Apple education opening, registering device');
+      registerDevice();
+    }
     try {
       const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
       await showProximityReaderDiscoveryEducation();
@@ -253,8 +255,6 @@ export function TapToPayEducationScreen() {
     educationCompleteRef.current = true;
     setAppleEducationActive(false);
     markEducationSeen();
-    logger.log('[TapToPayEducation] Education complete, registering device before navigating back');
-    await registerDevice();
     navigateBack();
   };
 
