@@ -254,27 +254,32 @@ export function TapToPayEducationScreen() {
   // and go straight to Apple education (iOS) or navigate back (Android)
   const skipHandledRef = useRef(false);
   useEffect(() => {
-    if (!deviceAlreadyRegistered || skipHandledRef.current) return;
+    if (!deviceAlreadyRegistered || skipHandledRef.current || educationCompleteRef.current) return;
     skipHandledRef.current = true;
 
     if (isIOS && useAppleNativeEducation) {
-      // Device already registered — auto-enable and show Apple education
-      logger.log('[TapToPayEducation] Device already registered, auto-enabling for Apple education');
-      (async () => {
-        try {
-          if (!isInitialized) await initializeTerminal();
-          const connected = await connectReader();
-          if (connected) {
-            showAppleNativeEducation();
-          } else {
-            // Fall through to normal enable screen
+      if (isConnected) {
+        // Already connected — go straight to Apple education, no need to reconnect
+        logger.log('[TapToPayEducation] Device registered + already connected, showing Apple education');
+        showAppleNativeEducation();
+      } else {
+        // Device registered but not connected — auto-enable and show Apple education
+        logger.log('[TapToPayEducation] Device registered, auto-enabling for Apple education');
+        (async () => {
+          try {
+            if (!isInitialized) await initializeTerminal();
+            const connected = await connectReader();
+            if (connected) {
+              showAppleNativeEducation();
+            } else {
+              skipHandledRef.current = false;
+            }
+          } catch (err: any) {
+            logger.warn('[TapToPayEducation] Auto-enable for registered device failed:', err.message);
             skipHandledRef.current = false;
           }
-        } catch (err: any) {
-          logger.warn('[TapToPayEducation] Auto-enable for registered device failed:', err.message);
-          skipHandledRef.current = false;
-        }
-      })();
+        })();
+      }
     } else if (isIOS) {
       // iOS < 18: just navigate back since no Apple education
       markEducationSeen();
@@ -282,11 +287,11 @@ export function TapToPayEducationScreen() {
     }
     // Android case handled by existing Android auto-enable effect
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceAlreadyRegistered, useAppleNativeEducation]);
+  }, [deviceAlreadyRegistered, useAppleNativeEducation, isConnected]);
 
-  // iOS 18+: If already connected, show Apple native education directly
+  // iOS 18+: If already connected (e.g. warmed on app start), show Apple native education directly
   useEffect(() => {
-    if (isIOS && isConnected && useAppleNativeEducation && !appleEducationActive) {
+    if (isIOS && isConnected && useAppleNativeEducation && !appleEducationActive && !educationCompleteRef.current && !skipHandledRef.current) {
       logger.log('[TapToPayEducation] Already connected, showing Apple native education');
       showAppleNativeEducation();
     }
@@ -297,7 +302,7 @@ export function TapToPayEducationScreen() {
   // This handles cases where warming initialized the SDK but didn't auto-reconnect
   const autoConnectAttemptedRef = useRef(false);
   useEffect(() => {
-    if (isIOS && isInitialized && !isConnected && !isWarming && !isEnabling && useAppleNativeEducation && !autoConnectAttemptedRef.current && !educationCompleteRef.current) {
+    if (isIOS && isInitialized && !isConnected && !isWarming && !isEnabling && useAppleNativeEducation && !autoConnectAttemptedRef.current && !educationCompleteRef.current && !skipHandledRef.current) {
       autoConnectAttemptedRef.current = true;
       logger.log('[TapToPayEducation] Initialized but not connected, auto-connecting...');
       (async () => {
