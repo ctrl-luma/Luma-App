@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -200,7 +202,10 @@ export function ProductModal({
       <View style={styles.container}>
         <Pressable style={styles.overlay} onPress={onClose} />
 
-        <View style={styles.content}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.content}
+        >
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -404,7 +409,7 @@ export function ProductModal({
               </View>
             </View>
           </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
