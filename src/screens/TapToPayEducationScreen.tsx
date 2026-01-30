@@ -59,7 +59,7 @@ export function TapToPayEducationScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
 
   // Auth context for user ID and device context for device ID
-  const { user } = useAuth();
+  const { user, refreshAuth } = useAuth();
   const { deviceId } = useDevice();
 
   // Education tracking - mark as seen when user completes this screen
@@ -71,6 +71,12 @@ export function TapToPayEducationScreen() {
     user?.tapToPayDeviceIds &&
     user.tapToPayDeviceIds.includes(deviceId)
   );
+
+  logger.log('[TapToPayEducation] Device check:', {
+    deviceId,
+    tapToPayDeviceIds: user?.tapToPayDeviceIds,
+    deviceAlreadyRegistered,
+  });
 
   // Terminal context for enabling Tap to Pay
   const {
@@ -130,10 +136,13 @@ export function TapToPayEducationScreen() {
     if (!deviceId) return;
     try {
       const result = await authService.registerTapToPayDevice(deviceId);
-      // Update cached user with new device IDs
+      logger.log('[TapToPayEducation] Device registered:', result.tapToPayDeviceIds);
+      // Update cached user and refresh auth context state
       if (user) {
         await authService.saveUser({ ...user, tapToPayDeviceIds: result.tapToPayDeviceIds });
       }
+      // Refresh auth context so user state has the updated tapToPayDeviceIds
+      refreshAuth().catch(() => {});
     } catch (err) {
       logger.warn('[TapToPayEducation] Failed to register device:', err);
     }
