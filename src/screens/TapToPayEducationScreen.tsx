@@ -240,6 +240,7 @@ export function TapToPayEducationScreen() {
 
   // iOS 18+: Show Apple's native education UI after T&C acceptance
   const showAppleNativeEducation = async () => {
+    autoHandledRef.current = true;
     setAppleEducationActive(true);
     if (!deviceAlreadyRegistered) {
       logger.log('[TapToPayEducation] Apple education opening, registering device');
