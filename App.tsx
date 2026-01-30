@@ -669,7 +669,7 @@ function AuthenticatedNavigator() {
       <Stack.Screen
         name="StripeOnboarding"
         component={StripeOnboardingScreen}
-        options={{ presentation: 'modal' }}
+        options={{ presentation: 'fullScreenModal', gestureEnabled: false }}
       />
 
       {/* Payment flow modals */}
