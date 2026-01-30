@@ -59,7 +59,7 @@ export function TapToPayEducationScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
 
   // Auth context for user ID and device context for device ID
-  const { user, refreshAuth } = useAuth();
+  const { user } = useAuth();
   const { deviceId } = useDevice();
 
   // Education tracking - mark as seen when user completes this screen
