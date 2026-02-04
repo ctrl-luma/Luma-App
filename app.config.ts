@@ -24,7 +24,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       icon: './assets/logo-dark.png',
       entitlements: {
         'com.apple.developer.proximity-reader.payment.acceptance': true,
-        'com.apple.developer.in-app-payments': ['merchant.com.lumapos'],
       },
       infoPlist: {
         NFCReaderUsageDescription: 'This app uses NFC to accept contactless payments via Tap to Pay',
@@ -92,8 +91,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         '@stripe/stripe-react-native',
         {
           merchantIdentifier: 'merchant.com.lumapos',
-          enableGooglePay: true,
-          enableApplePay: true,
+          enableGooglePay: false,
+          enableApplePay: false,
         },
       ],
     ],
