@@ -40,6 +40,13 @@ export const SocketEvents = {
   ORDER_DELETED: 'order:deleted',
   PAYMENT_RECEIVED: 'payment:received',
   ORDER_REFUNDED: 'order:refunded',
+  // Event/ticket events
+  EVENT_CREATED: 'event:created',
+  EVENT_UPDATED: 'event:updated',
+  EVENT_DELETED: 'event:deleted',
+  TICKET_PURCHASED: 'ticket:purchased',
+  TICKET_SCANNED: 'ticket:scanned',
+  TICKET_REFUNDED: 'ticket:refunded',
 } as const;
 
 type SocketEventName = typeof SocketEvents[keyof typeof SocketEvents];

@@ -5,7 +5,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: ENV === 'production' ? 'Luma' : `Luma (${ENV})`,
+    name: ENV === 'prod' ? 'LumaPos' : `Luma (${ENV})`,
     slug: 'luma-app',
     version: '1.0.3',
     orientation: 'portrait',

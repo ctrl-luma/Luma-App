@@ -114,7 +114,7 @@ export function CatalogSettingsModal({
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Error', 'Catalog name is required');
+      Alert.alert('Error', 'Menu name is required');
       return;
     }
 
@@ -141,7 +141,7 @@ export function CatalogSettingsModal({
       });
       onClose();
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to save catalog');
+      Alert.alert('Error', error.message || 'Failed to save menu');
     } finally {
       setIsSaving(false);
     }
@@ -151,7 +151,7 @@ export function CatalogSettingsModal({
     if (!catalog || !onDuplicate) return;
 
     Alert.alert(
-      'Duplicate Catalog',
+      'Duplicate Menu',
       `Create a copy of "${catalog.name}" with all its products and settings?`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -163,7 +163,7 @@ export function CatalogSettingsModal({
               await onDuplicate(catalog.id);
               onClose();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to duplicate catalog');
+              Alert.alert('Error', error.message || 'Failed to duplicate menu');
             } finally {
               setIsDuplicating(false);
             }
@@ -177,8 +177,8 @@ export function CatalogSettingsModal({
     if (!catalog || !onDelete) return;
 
     Alert.alert(
-      'Delete Catalog',
-      `Are you sure you want to delete "${catalog.name}"? This will remove all products from this catalog. This action cannot be undone.`,
+      'Delete Menu',
+      `Are you sure you want to delete "${catalog.name}"? This will remove all products from this menu. This action cannot be undone.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -190,7 +190,7 @@ export function CatalogSettingsModal({
               await onDelete(catalog.id);
               onClose();
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to delete catalog');
+              Alert.alert('Error', error.message || 'Failed to delete menu');
             } finally {
               setIsDeleting(false);
             }
@@ -264,7 +264,7 @@ export function CatalogSettingsModal({
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.title}>Catalog Settings</Text>
+            <Text style={styles.title}>Menu Settings</Text>
             <TouchableOpacity
               onPress={handleSave}
               disabled={isSaving}
@@ -285,7 +285,7 @@ export function CatalogSettingsModal({
           >
             {/* Name */}
             <View style={styles.section}>
-              <Text style={styles.label}>Catalog Name *</Text>
+              <Text style={styles.label}>Menu Name *</Text>
               <TextInput
                 style={styles.input}
                 value={name}
@@ -387,7 +387,7 @@ export function CatalogSettingsModal({
                 <View style={styles.toggleInfo}>
                   <Text style={styles.label}>Active</Text>
                   <Text style={styles.toggleDescription}>
-                    Show this catalog in the app
+                    Show this menu in the app
                   </Text>
                 </View>
                 <Toggle value={isActive} onValueChange={setIsActive} />
@@ -541,7 +541,7 @@ export function CatalogSettingsModal({
             {/* Catalog Actions */}
             {(onDuplicate || onDelete) && (
               <View style={styles.actionsSection}>
-                <Text style={styles.actionsSectionTitle}>Catalog Actions</Text>
+                <Text style={styles.actionsSectionTitle}>Menu Actions</Text>
 
                 {onDuplicate && (
                   <TouchableOpacity

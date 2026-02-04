@@ -300,7 +300,7 @@ export function SettingsScreen() {
                   </View>
                   <View style={styles.vendorPortalText}>
                     <Text style={styles.vendorPortalTitle}>Vendor Portal</Text>
-                    <Text style={styles.vendorPortalSubtitle}>Manage products, catalogs & reports</Text>
+                    <Text style={styles.vendorPortalSubtitle}>Manage products, menus & reports</Text>
                   </View>
                 </View>
                 <View style={styles.vendorPortalArrow}>
@@ -313,7 +313,7 @@ export function SettingsScreen() {
 
         {/* 2. Catalog Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Catalog</Text>
+          <Text style={styles.sectionTitle}>Menu</Text>
           <View style={styles.card}>
             <View style={styles.activeCatalogRow}>
               <View style={styles.activeCatalogInfo}>

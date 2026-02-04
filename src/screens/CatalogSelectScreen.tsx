@@ -317,12 +317,12 @@ function EmptyCatalogs({ colors, isDark, isManager }: { colors: any; isDark: boo
           <Ionicons name="grid-outline" size={44} color={isDark ? 'rgba(255,255,255,0.95)' : colors.primary} />
         </View>
         <Text style={[starStyles.title, { color: isDark ? '#fff' : colors.text }]}>
-          No Catalogs Available
+          No Menus Available
         </Text>
         <Text style={[starStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
           {isManager
             ? 'Create your product menu in the Vendor Portal to start selling with preset items and prices.'
-            : 'Ask your manager to create a catalog for you to get started.'}
+            : 'Ask your manager to create a menu for you to get started.'}
         </Text>
         {isManager && (
           <TouchableOpacity
@@ -486,11 +486,11 @@ export function CatalogSelectScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>{isModal ? 'Switch Catalog' : 'Select a Menu'}</Text>
+          <Text style={styles.title}>{isModal ? 'Switch Menu' : 'Select a Menu'}</Text>
           <Text style={styles.subtitle}>
             {isModal
-              ? 'Choose a different catalog for this device'
-              : 'Choose which catalog to use for this session'}
+              ? 'Choose a different menu for this device'
+              : 'Choose which menu to use for this session'}
           </Text>
         </View>
         {isModal && (

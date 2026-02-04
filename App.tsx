@@ -70,6 +70,9 @@ import { PaymentResultScreen } from './src/screens/PaymentResultScreen';
 import { CashPaymentScreen } from './src/screens/CashPaymentScreen';
 import { SplitPaymentScreen } from './src/screens/SplitPaymentScreen';
 
+// Events screens
+import { EventsScannerScreen } from './src/screens/EventsScannerScreen';
+
 // Education screens
 import { TapToPayEducationScreen } from './src/screens/TapToPayEducationScreen';
 
@@ -464,6 +467,9 @@ function TabIcon({
     case 'History':
       iconName = focused ? 'receipt' : 'receipt-outline';
       break;
+    case 'Events':
+      iconName = focused ? 'scan' : 'scan-outline';
+      break;
     case 'Settings':
       iconName = focused ? 'settings' : 'settings-outline';
       break;
@@ -537,6 +543,11 @@ function TabNavigator() {
         name="QuickCharge"
         component={ChargeScreen}
         options={{ tabBarLabel: 'Charge' }}
+      />
+      <Tab.Screen
+        name="Events"
+        component={EventsScannerScreen}
+        options={{ tabBarLabel: 'Events' }}
       />
       <Tab.Screen
         name="History"
