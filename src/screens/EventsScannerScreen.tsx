@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useDevice } from '../context/DeviceContext';
-import { eventsApi, type EventScanResult, type OrgEvent, type RecentScan } from '../lib/api';
+import { eventsApi, type OrgEvent, type RecentScan } from '../lib/api';
 import { useQuery } from '@tanstack/react-query';
 import { glass } from '../lib/colors';
 import { StarBackground } from '../components/StarBackground';
@@ -502,7 +502,7 @@ export function EventsScannerScreen() {
             </View>
           ) : (
             <FlatList
-              data={recentScans.slice(0, 5)}
+              data={recentScans.slice(0, 20)}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <View style={styles.recentItem}>
@@ -521,7 +521,8 @@ export function EventsScannerScreen() {
                   </View>
                 </View>
               )}
-              scrollEnabled={false}
+              style={styles.recentList}
+              showsVerticalScrollIndicator={false}
             />
           )}
         </View>
@@ -797,6 +798,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
     paddingTop: 16,
+    maxHeight: 220,
+  },
+  recentList: {
+    maxHeight: 150,
   },
   recentTitle: {
     color: 'rgba(255,255,255,0.5)',

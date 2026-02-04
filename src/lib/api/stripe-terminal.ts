@@ -17,6 +17,8 @@ export interface CreatePaymentIntentParams {
   receiptEmail?: string;
   captureMethod?: 'automatic' | 'manual'; // For manual card, use 'automatic'
   paymentMethodType?: 'card_present' | 'card'; // 'card' for manual entry, 'card_present' for tap to pay
+  orderId?: string; // For split payments
+  isQuickCharge?: boolean; // Whether this is a quick charge (no order)
 }
 
 export interface PaymentIntent {

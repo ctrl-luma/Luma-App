@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
 import { useTerminal } from '../context/StripeTerminalContext';
@@ -275,7 +276,7 @@ export function SplitPaymentScreen() {
     setPaymentAmount((remainingBalance / 100).toFixed(2));
   };
 
-  const getPaymentMethodIcon = (method: PaymentMethod): string => {
+  const getPaymentMethodIcon = (method: PaymentMethod): ComponentProps<typeof Ionicons>['name'] => {
     switch (method) {
       case 'cash':
         return 'cash-outline';

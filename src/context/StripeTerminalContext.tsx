@@ -432,24 +432,6 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     };
   }, [warmTerminal, deviceCompatibility.isCompatible, isInitialized, chargesEnabled]);
 
-  // Android: Auto-connect reader after terminal is initialized
-  useEffect(() => {
-    if (
-      Platform.OS === 'android' &&
-      isInitialized &&
-      !isConnected &&
-      !hasAutoConnectedRef.current &&
-      chargesEnabled
-    ) {
-      logger.log('[StripeTerminal] Android auto-connect: Terminal initialized, auto-connecting reader...');
-      hasAutoConnectedRef.current = true;
-      connectReader().catch(err => {
-        logger.warn('[StripeTerminal] Android auto-connect failed (non-fatal):', err.message);
-        hasAutoConnectedRef.current = false;
-      });
-    }
-  }, [isInitialized, isConnected, chargesEnabled, connectReader]);
-
   // Fetch terminal location on mount (only if Stripe Connect is set up)
   useEffect(() => {
     // Skip if Stripe Connect isn't set up
@@ -693,6 +675,24 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     // This should never be reached, but TypeScript needs it
     throw new Error('Failed to connect after all retries');
   }, [discoverReaders, sdkConnectReader, locationId, hookDiscoveredReaders, isConnected]);
+
+  // Android: Auto-connect reader after terminal is initialized
+  useEffect(() => {
+    if (
+      Platform.OS === 'android' &&
+      isInitialized &&
+      !isConnected &&
+      !hasAutoConnectedRef.current &&
+      chargesEnabled
+    ) {
+      logger.log('[StripeTerminal] Android auto-connect: Terminal initialized, auto-connecting reader...');
+      hasAutoConnectedRef.current = true;
+      connectReader().catch(err => {
+        logger.warn('[StripeTerminal] Android auto-connect failed (non-fatal):', err.message);
+        hasAutoConnectedRef.current = false;
+      });
+    }
+  }, [isInitialized, isConnected, chargesEnabled, connectReader]);
 
   const processPayment = useCallback(async (paymentIntentId: string) => {
     logger.log('[StripeTerminal] ========== PROCESS PAYMENT START ==========');

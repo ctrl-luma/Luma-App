@@ -75,4 +75,4 @@ export { stripeConnectApi } from './stripe-connect';
 export type { ConnectStatus } from './stripe-connect';
 
 export { eventsApi } from './events';
-export type { EventScanResult, OrgEvent } from './events';
+export type { EventScanResult, OrgEvent, RecentScan } from './events';

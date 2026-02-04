@@ -1016,7 +1016,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, success: bool
     cardPageFormContainer: {
       marginBottom: 24,
     },
-    cardField: {
+    cardPageField: {
       height: 60,
       marginBottom: 16,
     },

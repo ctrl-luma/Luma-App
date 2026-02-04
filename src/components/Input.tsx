@@ -90,7 +90,7 @@ export function Input({
         placeholder={placeholder}
         accessibilityLabel={accessibilityLabel || label || placeholder}
         accessibilityHint={accessibilityHint}
-        accessibilityState={error ? { invalid: true } : undefined}
+        aria-invalid={error ? true : undefined}
         accessibilityLiveRegion={error ? 'polite' : 'none'}
         accessibilityValue={error ? { text: error } : undefined}
         {...props}

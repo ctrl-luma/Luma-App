@@ -1802,7 +1802,7 @@ export function MenuScreen() {
         <DraggableFlatList
           data={filteredProducts}
           renderItem={renderProduct}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: Product) => item.id}
           onDragEnd={handleDragEnd}
           key={`draggable-${currentLayoutType}`}
           contentContainerStyle={styles.productList}
