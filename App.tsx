@@ -513,6 +513,10 @@ function TabNavigatorWithOnboarding() {
 function TabNavigator() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const { subscription } = useAuth();
+
+  // Only show Events tab for Pro/Enterprise users
+  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
 
   return (
     <Tab.Navigator
@@ -540,20 +544,22 @@ function TabNavigator() {
         options={{ tabBarLabel: 'Menu' }}
       />
       <Tab.Screen
-        name="QuickCharge"
-        component={ChargeScreen}
-        options={{ tabBarLabel: 'Charge' }}
-      />
-      <Tab.Screen
-        name="Events"
-        component={EventsScannerScreen}
-        options={{ tabBarLabel: 'Events' }}
-      />
-      <Tab.Screen
         name="History"
         component={HistoryStackNavigator}
         options={{ tabBarLabel: 'History' }}
       />
+      <Tab.Screen
+        name="QuickCharge"
+        component={ChargeScreen}
+        options={{ tabBarLabel: 'Charge' }}
+      />
+      {isPro && (
+        <Tab.Screen
+          name="Events"
+          component={EventsScannerScreen}
+          options={{ tabBarLabel: 'Events' }}
+        />
+      )}
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}

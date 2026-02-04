@@ -380,30 +380,60 @@ export function TapToPayEducationScreen() {
             </>
           ) : enableError ? (
             <>
-              <View style={[styles.iconContainer, { marginBottom: 24 }]}>
-                <LinearGradient
-                  colors={[colors.error, colors.error]}
-                  style={styles.iconGradient}
-                >
-                  <Ionicons name="alert-circle" size={64} color="#fff" />
-                </LinearGradient>
-              </View>
-              <Text style={styles.slideTitle}>Setup Failed</Text>
-              <Text style={styles.slideDescription}>{enableError}</Text>
-              <TouchableOpacity
-                onPress={handleAndroidAutoEnable}
-                activeOpacity={0.9}
-                style={{ marginTop: 32 }}
-              >
-                <LinearGradient
-                  colors={[colors.primary, colors.primary700]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.nextButton}
-                >
-                  <Text style={styles.nextButtonText}>Try Again</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+              {/* Check if this is the Expo Go error */}
+              {enableError.includes('Expo Go') ? (
+                <>
+                  <View style={[styles.errorIconCircle, { backgroundColor: colors.warning + '15' }]}>
+                    <Ionicons name="code-slash-outline" size={40} color={colors.warning} />
+                  </View>
+                  <Text style={styles.slideTitle}>Development Build Required</Text>
+                  <Text style={[styles.slideDescription, { marginBottom: 24 }]}>
+                    Tap to Pay requires native device features that aren't available in Expo Go.
+                  </Text>
+                  <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.infoCardTitle, { color: colors.text }]}>To test payments:</Text>
+                    <Text style={[styles.infoCardText, { color: colors.textSecondary }]}>
+                      Run{' '}<Text style={{ fontFamily: 'monospace', color: colors.primary }}>eas build --profile development</Text>{' '}to create a development build with full native support.
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleClose}
+                    activeOpacity={0.9}
+                    style={{ marginTop: 32, width: '100%' }}
+                  >
+                    <LinearGradient
+                      colors={[colors.primary, colors.primary700]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.nextButton}
+                    >
+                      <Text style={styles.nextButtonText}>Got It</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <View style={[styles.errorIconCircle, { backgroundColor: colors.error + '15' }]}>
+                    <Ionicons name="alert-circle-outline" size={40} color={colors.error} />
+                  </View>
+                  <Text style={styles.slideTitle}>Setup Failed</Text>
+                  <Text style={[styles.slideDescription, { marginBottom: 8 }]}>{enableError}</Text>
+                  <TouchableOpacity
+                    onPress={handleAndroidAutoEnable}
+                    activeOpacity={0.9}
+                    style={{ marginTop: 32, width: '100%' }}
+                  >
+                    <LinearGradient
+                      colors={[colors.primary, colors.primary700]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.nextButton}
+                    >
+                      <Text style={styles.nextButtonText}>Try Again</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              )}
             </>
           ) : (
             <>
@@ -616,6 +646,29 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       alignItems: 'center',
       justifyContent: 'center',
       ...shadows.lg,
+    },
+    errorIconCircle: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 24,
+    },
+    infoCard: {
+      width: '100%',
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: 16,
+    },
+    infoCardTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    infoCardText: {
+      fontSize: 14,
+      lineHeight: 20,
     },
     slideTitle: {
       fontSize: 28,

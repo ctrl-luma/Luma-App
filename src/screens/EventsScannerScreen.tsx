@@ -9,12 +9,16 @@ import {
   Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useDevice } from '../context/DeviceContext';
 import { eventsApi, type EventScanResult, type OrgEvent, type RecentScan } from '../lib/api';
 import { useQuery } from '@tanstack/react-query';
+import { glass } from '../lib/colors';
+import { StarBackground } from '../components/StarBackground';
 
 // Dynamically import expo-camera (may not be installed)
 let CameraView: any = null;
@@ -41,9 +45,11 @@ interface ScanRecord {
 }
 
 export function EventsScannerScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const { subscription } = useAuth();
+  const navigation = useNavigation<any>();
+  const glassColors = isDark ? glass.dark : glass.light;
+  const { subscription, isLoading: authLoading } = useAuth();
   const { deviceId } = useDevice();
 
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
@@ -107,6 +113,9 @@ export function EventsScannerScreen() {
   }
 
   const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
+
+  // Show loading while auth/subscription is loading to prevent flash
+  const isInitializing = authLoading || (subscription === undefined && !authLoading);
 
   // Handle both { events: [...] } and [...] response formats
   const allEvents: OrgEvent[] = Array.isArray(eventsData)
@@ -185,63 +194,6 @@ export function EventsScannerScreen() {
     }
   }, [processing, showResult, selectedEvent, deviceId]);
 
-  // Pro gate
-  if (!isPro) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <View style={styles.center}>
-          <Ionicons name="lock-closed" size={48} color={colors.textMuted} />
-          <Text style={[styles.title, { color: colors.text, marginTop: 16 }]}>
-            Pro Feature
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Upgrade to Pro to scan event tickets
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  // Camera not available
-  if (!CameraView) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <View style={styles.center}>
-          <Ionicons name="camera-outline" size={48} color={colors.textMuted} />
-          <Text style={[styles.title, { color: colors.text, marginTop: 16 }]}>
-            Camera Not Available
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Install expo-camera to enable QR scanning
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  // Permission not granted
-  if (!permission?.granted) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <View style={styles.center}>
-          <Ionicons name="camera-outline" size={48} color={colors.textMuted} />
-          <Text style={[styles.title, { color: colors.text, marginTop: 16 }]}>
-            Camera Access Required
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary, marginBottom: 24 }]}>
-            Allow camera access to scan ticket QR codes
-          </Text>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.primary }]}
-            onPress={requestPermission}
-          >
-            <Text style={styles.buttonText}>Enable Camera</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   // Format event date/time for display
   const formatEventDateTime = (event: OrgEvent) => {
     const start = new Date(event.startsAt);
@@ -254,39 +206,141 @@ export function EventsScannerScreen() {
     });
   };
 
-  // Event selection screen
+  // Unified loading state - show skeleton while auth or events are loading
+  // Also check if eventsData is undefined (query hasn't returned yet)
+  const isLoading = isInitializing || eventsLoading || (eventsData === undefined && !eventsError);
+
+  // Event selection screen (or loading/empty states)
   if (!selectedEvent) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-        <View style={styles.selectHeader}>
-          <Text style={[styles.selectTitle, { color: colors.text }]}>Select Event</Text>
+      <StarBackground colors={colors} isDark={isDark}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+          {/* Header - always visible */}
+          <View style={styles.selectHeader}>
+          <Text style={[styles.selectTitle, { color: colors.text }]}>Ticket Scanner</Text>
           <Text style={[styles.selectSubtitle, { color: colors.textSecondary }]}>
-            Choose an event to scan tickets for
+            {isPro ? 'Select an event to start scanning' : 'Scan QR codes to check in guests'}
           </Text>
         </View>
 
-        {eventsLoading ? (
-          <View style={styles.center}>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Loading events...</Text>
+        {/* Content area */}
+        {isLoading ? (
+          // Skeleton loading
+          <View style={styles.skeletonContainer}>
+            {[1, 2, 3].map((i) => (
+              <View key={i} style={[styles.skeletonCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.skeletonContent}>
+                  <View style={[styles.skeletonTitle, { backgroundColor: colors.border }]} />
+                  <View style={[styles.skeletonSubtitle, { backgroundColor: colors.border }]} />
+                  <View style={styles.skeletonStats}>
+                    <View style={[styles.skeletonStat, { backgroundColor: colors.border }]} />
+                    <View style={[styles.skeletonStat, { backgroundColor: colors.border }]} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : !isPro ? (
+          // Pro gate - shown after loading completes
+          <View style={styles.proGateContent}>
+            {/* Features */}
+            <View style={[styles.proFeaturesCard, { backgroundColor: glassColors.background, borderColor: glassColors.border }]}>
+              {[
+                { icon: 'qr-code-outline', text: 'Instant QR code scanning' },
+                { icon: 'checkmark-circle-outline', text: 'Real-time ticket validation' },
+                { icon: 'people-outline', text: 'Track check-in progress' },
+              ].map((feature, index) => (
+                <View key={index} style={styles.proFeatureRow}>
+                  <Ionicons name={feature.icon as any} size={18} color={colors.primary} />
+                  <Text style={[styles.proFeatureText, { color: colors.textSecondary }]}>
+                    {feature.text}
+                  </Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Upgrade Button */}
+            <TouchableOpacity
+              style={styles.upgradeButton}
+              onPress={() => navigation.navigate('Upgrade')}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.primary, '#3B82F6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.upgradeButtonGradient}
+              >
+                <Ionicons name="diamond" size={18} color="#fff" />
+                <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : !CameraView ? (
+          // Camera not available
+          <View style={styles.emptyStateContainer}>
+            <View style={[styles.emptyIconContainer, { backgroundColor: colors.textMuted + '15' }]}>
+              <Ionicons name="camera-outline" size={32} color={colors.textMuted} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              Camera Not Available
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              The camera module is not installed.{'\n'}Please use a development build.
+            </Text>
+          </View>
+        ) : !permission?.granted ? (
+          // Camera permission needed
+          <View style={styles.emptyStateContainer}>
+            <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary + '15' }]}>
+              <Ionicons name="camera-outline" size={32} color={colors.primary} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              Camera Access Required
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              To scan ticket QR codes, please allow{'\n'}camera access for Luma
+            </Text>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={requestPermission}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={[colors.primary, '#3B82F6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.primaryButtonGradient}
+              >
+                <Ionicons name="camera" size={18} color="#fff" />
+                <Text style={styles.primaryButtonText}>Enable Camera</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
         ) : eventsError ? (
-          <View style={styles.center}>
-            <Ionicons name="alert-circle-outline" size={48} color={colors.textMuted} />
-            <Text style={[styles.title, { color: colors.text, marginTop: 16 }]}>
-              Failed to Load Events
+          // Error state
+          <View style={styles.emptyStateContainer}>
+            <View style={[styles.emptyIconContainer, { backgroundColor: colors.error + '15' }]}>
+              <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              Unable to Load Events
             </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              {(eventsError as Error)?.message || 'Unknown error'}
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              Please check your connection and try again
             </Text>
           </View>
         ) : activeEvents.length === 0 ? (
-          <View style={styles.center}>
-            <Ionicons name="calendar-outline" size={48} color={colors.textMuted} />
-            <Text style={[styles.title, { color: colors.text, marginTop: 16 }]}>
+          // No events
+          <View style={styles.emptyStateContainer}>
+            <View style={[styles.emptyIconContainer, { backgroundColor: colors.textMuted + '10' }]}>
+              <Ionicons name="calendar-outline" size={32} color={colors.textMuted} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
               No Active Events
             </Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              You don't have any published events to scan tickets for.
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              Create and publish an event from the{'\n'}vendor dashboard to start scanning tickets
             </Text>
           </View>
         ) : (
@@ -327,7 +381,8 @@ export function EventsScannerScreen() {
             )}
           />
         )}
-      </View>
+        </View>
+      </StarBackground>
     );
   }
 
@@ -479,29 +534,121 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  center: {
+  // Empty state styles (shared)
+  emptyStateContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 40,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
     textAlign: 'center',
+    marginBottom: 8,
   },
-  subtitle: {
+  emptySubtitle: {
     fontSize: 15,
     textAlign: 'center',
-    marginTop: 8,
     lineHeight: 22,
+    opacity: 0.8,
   },
-  button: {
-    paddingHorizontal: 28,
+  // Skeleton loading styles
+  skeletonContainer: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  skeletonCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  skeletonContent: {
+    gap: 12,
+  },
+  skeletonTitle: {
+    height: 18,
+    width: '60%',
+    borderRadius: 8,
+  },
+  skeletonSubtitle: {
+    height: 14,
+    width: '40%',
+    borderRadius: 6,
+  },
+  skeletonStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 4,
+  },
+  skeletonStat: {
+    height: 12,
+    width: 70,
+    borderRadius: 6,
+  },
+  // Pro gate styles
+  proGateContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  proFeaturesCard: {
+    width: '100%',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    marginBottom: 32,
+    gap: 16,
+  },
+  proFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  proFeatureText: {
+    fontSize: 15,
+    flex: 1,
+  },
+  // Buttons
+  upgradeButton: {
+    width: '100%',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  upgradeButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  upgradeButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  primaryButton: {
+    marginTop: 24,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  primaryButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 28,
+    gap: 8,
   },
-  buttonText: {
+  primaryButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
@@ -509,12 +656,13 @@ const styles = StyleSheet.create({
   // Event selection styles
   selectHeader: {
     paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
   selectTitle: {
     fontSize: 28,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   selectSubtitle: {
     fontSize: 15,
