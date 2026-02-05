@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { apiClient } from './client';
 import { organizationsService } from './organizations';
 import { isBiometricLoginEnabled, clearStoredCredentials } from '../biometricAuth';
+import { getDeviceId, getDeviceInfoForApi } from '../device';
 import logger from '../logger';
 
 export interface User {
@@ -71,11 +73,21 @@ class AuthService {
   private static readonly SUBSCRIPTION_KEY = 'subscription';
 
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
+    // Get device info for tracking
+    const deviceId = await getDeviceId();
+    const deviceInfo = getDeviceInfoForApi();
+    const appVersion = Constants.expoConfig?.version || 'unknown';
+
     // Include source: 'app' so the backend knows this is a mobile app login
     // This enables single-session enforcement for the app only (not vendor portal)
     const response = await apiClient.post<LoginResponse>('/auth/login', {
       ...credentials,
       source: 'app',
+      deviceId,
+      deviceInfo: {
+        ...deviceInfo,
+        appVersion,
+      },
     });
 
     // Extract Cognito username from the access token

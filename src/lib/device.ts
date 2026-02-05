@@ -49,6 +49,23 @@ export function getDeviceInfo(): { name: string; model: string; os: string } {
 }
 
 /**
+ * Get detailed device info for API transmission
+ */
+export function getDeviceInfoForApi(): {
+  name: string;
+  model: string;
+  os: string;
+  osVersion: string;
+} {
+  return {
+    name: Device.deviceName || 'Unknown Device',
+    model: Device.modelName || 'Unknown Model',
+    os: Device.osName || 'Unknown',
+    osVersion: Device.osVersion || '',
+  };
+}
+
+/**
  * Get a friendly device name (e.g., "iPhone 14 Pro" or "Pixel 7")
  */
 export function getDeviceName(): string {
