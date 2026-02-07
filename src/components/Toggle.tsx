@@ -1,5 +1,12 @@
-import React, { useEffect, useRef } from 'react';
-import { TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import React, { useEffect } from 'react';
+import { TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+  interpolateColor,
+} from 'react-native-reanimated';
 import { useTheme } from '../context/ThemeContext';
 
 interface ToggleProps {
@@ -17,35 +24,41 @@ const THUMB_TRAVEL = TRACK_WIDTH - TRACK_PADDING * 2 - THUMB_SIZE;
 export function Toggle({ value, onValueChange, disabled = false, accessibilityLabel = 'Toggle' }: ToggleProps) {
   const { colors, isDark } = useTheme();
 
-  const animatedValue = useRef(new Animated.Value(value ? 1 : 0)).current;
+  const progress = useSharedValue(value ? 1 : 0);
 
   useEffect(() => {
-    Animated.spring(animatedValue, {
-      toValue: value ? 1 : 0,
-      useNativeDriver: false,
-      tension: 60,
-      friction: 8,
-    }).start();
-  }, [value, animatedValue]);
+    progress.value = withSpring(value ? 1 : 0, {
+      damping: 15,
+      stiffness: 120,
+    });
+  }, [value]);
+
+  const offColor = isDark ? '#374151' : '#D1D5DB';
+  const onColor = colors.primary;
+
+  const trackStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      progress.value,
+      [0, 1],
+      [offColor, onColor],
+    );
+    return { backgroundColor };
+  });
+
+  const thumbStyle = useAnimatedStyle(() => {
+    const translateX = interpolate(
+      progress.value,
+      [0, 1],
+      [0, THUMB_TRAVEL],
+    );
+    return { transform: [{ translateX }] };
+  });
 
   const handlePress = () => {
     if (!disabled) {
       onValueChange(!value);
     }
   };
-
-  // Interpolate thumb position
-  const thumbTranslateX = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, THUMB_TRAVEL],
-  });
-
-  // Interpolate track color
-  const offColor = isDark ? '#374151' : '#D1D5DB';
-  const trackBackgroundColor = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [offColor, colors.primary],
-  });
 
   return (
     <TouchableOpacity
@@ -58,13 +71,8 @@ export function Toggle({ value, onValueChange, disabled = false, accessibilityLa
       accessibilityLabel={accessibilityLabel}
       accessibilityHint="Double tap to toggle"
     >
-      <Animated.View style={[styles.track, { backgroundColor: trackBackgroundColor }]}>
-        <Animated.View
-          style={[
-            styles.thumb,
-            { transform: [{ translateX: thumbTranslateX }] },
-          ]}
-        />
+      <Animated.View style={[styles.track, trackStyle]}>
+        <Animated.View style={[styles.thumb, thumbStyle]} />
       </Animated.View>
     </TouchableOpacity>
   );

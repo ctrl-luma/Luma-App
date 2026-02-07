@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useDevice } from '../context/DeviceContext';
-import { useSocketEvent, SocketEvents } from '../context/SocketContext';
+import { useSocketEvent, useSocket, SocketEvents } from '../context/SocketContext';
 import { transactionsApi, Transaction, ordersApi, Order } from '../lib/api';
 import { getDeviceId } from '../lib/device';
 import { glass } from '../lib/colors';
@@ -261,6 +261,32 @@ function AnimatedTransactionItem({
     }).start();
   }, [scaleAnim]);
 
+  const getMetaText = () => {
+    if (item.sourceType === 'preorder') {
+      const parts: string[] = [];
+      if (item.customerName) parts.push(item.customerName);
+      if (item.catalogName) parts.push(item.catalogName);
+      if (item.itemCount && item.itemCount > 0) parts.push(`${item.itemCount} item${item.itemCount > 1 ? 's' : ''}`);
+      return parts.join(' • ') || 'Preorder';
+    }
+    // Default: order
+    if (item.paymentMethod?.type === 'cash') return 'Cash';
+    if (item.paymentMethod?.type === 'split') return 'Split Payment';
+    if (item.paymentMethod?.brand && item.paymentMethod?.last4)
+      return `${item.paymentMethod.brand.toUpperCase()} ****${item.paymentMethod.last4}`;
+    if (item.paymentMethod?.last4) return `Card ****${item.paymentMethod.last4}`;
+    return 'Card payment';
+  };
+
+  const getSourceBadge = () => {
+    if (item.sourceType === 'preorder') {
+      return { label: item.dailyNumber ? `Preorder #${item.dailyNumber}` : 'Preorder', color: '#a855f7' };
+    }
+    return null;
+  };
+
+  const sourceBadge = getSourceBadge();
+
   return (
     <Pressable
       onPress={onPress}
@@ -276,19 +302,29 @@ function AnimatedTransactionItem({
             ]}
           />
           <View style={styles.transactionInfo}>
-            <Text style={styles.transactionAmount}>
-              ${(item.amount / 100).toFixed(2)}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.transactionAmount}>
+                ${(item.amount / 100).toFixed(2)}
+              </Text>
+              {sourceBadge && (
+                <View style={{
+                  backgroundColor: sourceBadge.color + '20',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                }}>
+                  <Text style={{
+                    fontSize: 10,
+                    fontFamily: fonts.semiBold,
+                    color: sourceBadge.color,
+                  }}>
+                    {sourceBadge.label}
+                  </Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.transactionMeta}>
-              {item.paymentMethod?.type === 'cash'
-                ? 'Cash'
-                : item.paymentMethod?.type === 'split'
-                ? 'Split Payment'
-                : item.paymentMethod?.brand && item.paymentMethod?.last4
-                ? `${item.paymentMethod.brand.toUpperCase()} ****${item.paymentMethod.last4}`
-                : item.paymentMethod?.last4
-                ? `Card ****${item.paymentMethod.last4}`
-                : 'Card payment'}
+              {getMetaText()}
             </Text>
           </View>
         </View>
@@ -308,19 +344,23 @@ export function TransactionsScreen() {
   const { colors, isDark } = useTheme();
   const { selectedCatalog } = useCatalog();
   const { deviceId } = useDevice();
+  const { isConnected } = useSocket();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<TransactionsScreenParams, 'History'>>();
-  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
   const [activeTab, setActiveTab] = useState<TabType>('transactions');
   const [filter, setFilter] = useState<FilterType>('all');
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+  const wasConnectedRef = useRef(isConnected);
 
-  // Held orders state
-  const [heldOrders, setHeldOrders] = useState<Order[]>([]);
+  // Held orders state - seed from prefetch cache if available
+  const prefetchedHeld = queryClient.getQueryData<{ orders: Order[] }>(['held-orders', deviceId]);
+  const [heldOrders, setHeldOrders] = useState<Order[]>(prefetchedHeld?.orders || []);
   const [isLoadingHeld, setIsLoadingHeld] = useState(false);
   const [isRefreshingHeld, setIsRefreshingHeld] = useState(false);
+  const hasFetchedHeldRef = useRef(!!prefetchedHeld);
 
   // Handle initialTab route param - switch tabs when navigating with initialTab
   useEffect(() => {
@@ -355,6 +395,7 @@ export function TransactionsScreen() {
         orderCount: response.orders.length,
         orderIds: response.orders.map((o: Order) => o.id),
       });
+      hasFetchedHeldRef.current = true;
       setHeldOrders(response.orders);
     } catch (error: any) {
       console.error('Failed to fetch held orders:', error);
@@ -364,23 +405,24 @@ export function TransactionsScreen() {
     }
   }, [deviceId]);
 
-  // Load held orders when tab changes
+  // Load held orders on first visit only - socket events keep it in sync after that
   useEffect(() => {
-    if (activeTab === 'held') {
+    if (activeTab === 'held' && !hasFetchedHeldRef.current) {
       setIsLoadingHeld(true);
       fetchHeldOrders();
     }
-  }, [activeTab, fetchHeldOrders]);
+  }, [activeTab]);
 
-  // Refresh held orders when screen focuses (user might have held an order from another screen)
-  useFocusEffect(
-    useCallback(() => {
-      console.log('[TransactionsScreen DEBUG] Screen focused, activeTab:', activeTab);
-      if (activeTab === 'held') {
-        fetchHeldOrders();
-      }
-    }, [activeTab, fetchHeldOrders])
-  );
+  // Refetch when socket reconnects (to catch any missed events)
+  useEffect(() => {
+    if (isConnected && !wasConnectedRef.current) {
+      // Socket just reconnected - refetch all data to catch missed events
+      console.log('[TransactionsScreen] Socket reconnected, refetching data...');
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      fetchHeldOrders();
+    }
+    wasConnectedRef.current = isConnected;
+  }, [isConnected, queryClient, activeTab, fetchHeldOrders]);
 
   // Auto-refresh transactions when payment events occur
   const handlePaymentEvent = useCallback((data: any) => {
@@ -391,6 +433,8 @@ export function TransactionsScreen() {
   useSocketEvent(SocketEvents.ORDER_COMPLETED, handlePaymentEvent);
   useSocketEvent(SocketEvents.PAYMENT_RECEIVED, handlePaymentEvent);
   useSocketEvent(SocketEvents.ORDER_REFUNDED, handlePaymentEvent);
+  useSocketEvent(SocketEvents.PREORDER_COMPLETED, handlePaymentEvent);
+  useSocketEvent(SocketEvents.PREORDER_CANCELLED, handlePaymentEvent);
 
   // Listen for held order updates via socket
   useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
@@ -428,13 +472,14 @@ export function TransactionsScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['transactions', selectedCatalog?.id, deviceId],
+    queryKey: ['transactions', selectedCatalog?.id, deviceId, filter],
     queryFn: ({ pageParam }) =>
       transactionsApi.list({
         limit: 25,
         starting_after: pageParam,
         catalog_id: selectedCatalog?.id,
         device_id: deviceId || undefined,
+        status: filter,
       }),
     getNextPageParam: (lastPage) => {
       if (!lastPage.hasMore || lastPage.data.length === 0) return undefined;
@@ -444,15 +489,8 @@ export function TransactionsScreen() {
     enabled: !!deviceId, // Wait for device ID to be loaded before fetching
   });
 
-  // Get all transactions and apply client-side filter
-  const allTransactions = data?.pages.flatMap((page) => page.data) || [];
-  const transactions = allTransactions.filter((t) => {
-    if (filter === 'all') return true;
-    if (filter === 'succeeded') return t.status === 'succeeded';
-    if (filter === 'refunded') return t.status === 'refunded' || t.status === 'partially_refunded';
-    if (filter === 'failed') return t.status === 'failed';
-    return true;
-  });
+  // Filtering is now done server-side via the status query parameter
+  const transactions = data?.pages.flatMap((page) => page.data) || [];
 
   const styles = createStyles(colors, glassColors, isDark);
 
@@ -498,10 +536,18 @@ export function TransactionsScreen() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  const handleTransactionPress = useCallback((item: Transaction) => {
+    if (item.sourceType === 'preorder') {
+      navigation.navigate('TransactionDetail', { id: item.id, sourceType: 'preorder' });
+    } else {
+      navigation.navigate('TransactionDetail', { id: item.id });
+    }
+  }, [navigation]);
+
   const renderTransaction = ({ item }: { item: Transaction }) => (
     <AnimatedTransactionItem
       item={item}
-      onPress={() => navigation.navigate('TransactionDetail', { id: item.id })}
+      onPress={() => handleTransactionPress(item)}
       colors={colors}
       styles={styles}
       getStatusColor={getStatusColor}
@@ -659,33 +705,31 @@ export function TransactionsScreen() {
   return (
     <StarBackground colors={colors} isDark={isDark}>
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+        <View style={styles.headerContainer}>
           <Text style={styles.title}>History</Text>
-        </View>
-
-        {/* Main Tab Bar */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'transactions' && styles.tabActive]}
-            onPress={() => setActiveTab('transactions')}
-          >
-            <Text style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>
-              Transactions
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'held' && styles.tabActive]}
-            onPress={() => setActiveTab('held')}
-          >
-            <Text style={[styles.tabText, activeTab === 'held' && styles.tabTextActive]}>
-              Held Orders
-            </Text>
-            {heldOrders.length > 0 && (
-              <View style={styles.tabBadge}>
-                <Text style={styles.tabBadgeText}>{heldOrders.length}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          <View style={styles.tabBar}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'transactions' && styles.tabActive]}
+              onPress={() => setActiveTab('transactions')}
+            >
+              <Text style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>
+                Transactions
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'held' && styles.tabActive]}
+              onPress={() => setActiveTab('held')}
+            >
+              <Text style={[styles.tabText, activeTab === 'held' && styles.tabTextActive]}>
+                Held Orders
+              </Text>
+              {heldOrders.length > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{heldOrders.length}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         {activeTab === 'held' ? (
@@ -761,7 +805,7 @@ export function TransactionsScreen() {
               <FlatList
                 data={transactions}
                 renderItem={renderTransaction}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item) => `${item.sourceType || 'order'}-${item.id}`}
                 contentContainerStyle={[styles.list, { flexGrow: 1 }]}
                 style={styles.listContainer}
                 refreshControl={
@@ -784,8 +828,6 @@ export function TransactionsScreen() {
 }
 
 const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boolean) => {
-  // Solid background for header only
-  const headerBackground = isDark ? '#09090b' : colors.background;
   // Card backgrounds - solid colors that match the visual appearance of the old semi-transparent ones
   // Calculated: #09090b base + 6% white overlay ≈ #181819
   const cardBackground = isDark ? '#181819' : 'rgba(255,255,255,0.85)';
@@ -796,19 +838,16 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       flex: 1,
       backgroundColor: 'transparent',
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      height: 56,
-      paddingHorizontal: 16,
-      backgroundColor: headerBackground,
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    headerContainer: {
+      paddingTop: 4,
     },
     title: {
-      fontSize: 18,
-      fontFamily: fonts.semiBold,
+      fontSize: 22,
+      fontFamily: fonts.bold,
       color: colors.text,
+      letterSpacing: -0.3,
+      paddingHorizontal: 16,
+      marginBottom: 8,
     },
     filterContainer: {
       flexDirection: 'row',
@@ -935,7 +974,6 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       flexDirection: 'row',
       paddingHorizontal: 16,
       paddingVertical: 8,
-      backgroundColor: 'transparent',
       borderBottomWidth: 1,
       borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
       gap: 12,
@@ -948,9 +986,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       gap: 8,
       paddingVertical: 12,
       borderRadius: 12,
-      backgroundColor: cardBackground,
+      backgroundColor: glassColors.backgroundElevated,
       borderWidth: 1,
-      borderColor: cardBorder,
+      borderColor: glassColors.border,
     },
     tabActive: {
       backgroundColor: colors.primary,

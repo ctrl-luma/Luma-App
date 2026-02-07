@@ -1,5 +1,7 @@
 import { apiClient } from './client';
 
+export type SourceType = 'order' | 'preorder' | 'ticket';
+
 export interface PaymentMethod {
   type?: string;       // 'card' | 'card_present' | 'cash' | 'split' | 'tap_to_pay'
   brand: string | null;
@@ -25,6 +27,12 @@ export interface Transaction {
   paymentMethod: PaymentMethod | null;
   created: number; // Unix timestamp
   receiptUrl: string | null;
+  sourceType?: SourceType;
+  catalogName?: string | null;
+  eventName?: string | null;
+  tierName?: string | null;
+  dailyNumber?: number | null;
+  itemCount?: number;
 }
 
 export interface OrderPaymentDetail {

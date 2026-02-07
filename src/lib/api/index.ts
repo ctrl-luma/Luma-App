@@ -46,6 +46,7 @@ export type {
   PaymentMethod,
   Refund,
   RefundParams,
+  SourceType,
 } from './transactions';
 
 export { stripeTerminalApi } from './stripe-terminal';
@@ -76,3 +77,14 @@ export type { ConnectStatus } from './stripe-connect';
 
 export { eventsApi } from './events';
 export type { EventScanResult, OrgEvent, RecentScan } from './events';
+
+export { preordersApi } from './preorders';
+export type {
+  Preorder,
+  PreorderItem,
+  PreorderStatus,
+  PreorderPaymentType,
+  PreordersListParams,
+  PreordersListResponse,
+  PreorderStatsResponse,
+} from './preorders';

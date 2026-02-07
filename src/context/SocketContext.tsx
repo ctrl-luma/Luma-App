@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { AppState, AppStateStatus } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { config } from '../lib/config';
 import { authService } from '../lib/api';
 import { triggerSessionKicked } from '../lib/session-callbacks';
@@ -47,6 +48,12 @@ export const SocketEvents = {
   TICKET_PURCHASED: 'ticket:purchased',
   TICKET_SCANNED: 'ticket:scanned',
   TICKET_REFUNDED: 'ticket:refunded',
+  // Preorder events
+  PREORDER_CREATED: 'preorder:created',
+  PREORDER_UPDATED: 'preorder:updated',
+  PREORDER_READY: 'preorder:ready',
+  PREORDER_COMPLETED: 'preorder:completed',
+  PREORDER_CANCELLED: 'preorder:cancelled',
 } as const;
 
 type SocketEventName = typeof SocketEvents[keyof typeof SocketEvents];
@@ -69,6 +76,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const socketRef = useRef<Socket | null>(null);
   const listenersRef = useRef<Map<string, Set<EventCallback>>>(new Map());
   const isRefreshingRef = useRef(false);
+  const lastUsedTokenRef = useRef<string | null>(null);
   const [isConnected, setIsConnected] = React.useState(false);
 
   // Verify session is still valid (called on reconnect/app foreground)
@@ -121,6 +129,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         return;
       }
 
+      lastUsedTokenRef.current = token;
       const socketUrl = config.apiUrl.replace('/api', '').replace('http://', 'ws://').replace('https://', 'wss://');
       logger.log('[Socket] Connecting to:', socketUrl);
       logger.log('[Socket] Using token:', token.substring(0, 20) + '...');
@@ -190,41 +199,60 @@ export function SocketProvider({ children }: SocketProviderProps) {
         logger.error('[Socket] Connection error:', error.message);
         setIsConnected(false);
 
-        // If the error is "Invalid token", wait for ApiClient to refresh then reconnect
-        // The ApiClient handles token refresh centrally - we just need to retry connection
+        // If the error is "Invalid token", stop auto-reconnect and try to refresh
         if (error.message === 'Invalid token' && !isRefreshingRef.current) {
-          logger.log('[Socket] Invalid token error - waiting for token refresh...');
+          logger.log('[Socket] Invalid token error - stopping auto-reconnect and attempting refresh...');
           isRefreshingRef.current = true;
 
-          // Wait for ApiClient's token refresh to complete, then reconnect
+          // Stop automatic reconnection to prevent spam
+          if (socketRef.current) {
+            socketRef.current.io.opts.reconnection = false;
+            socketRef.current.disconnect();
+          }
+
+          // Wait for API client's refresh to complete, then reconnect
           setTimeout(async () => {
             try {
-              let token = await authService.getAccessToken();
-
-              // If no token after waiting, try refreshing ourselves as fallback
-              if (!token) {
-                logger.log('[Socket] No token found, attempting fallback refresh...');
-                const newTokens = await authService.refreshTokens();
-                if (newTokens) {
-                  token = await authService.getAccessToken();
-                }
-              }
-
-              if (token) {
-                logger.log('[Socket] Got fresh token, reconnecting...');
-                socketRef.current?.disconnect();
+              // Check if API client already refreshed the token while we waited
+              const currentToken = await authService.getAccessToken();
+              if (currentToken && currentToken !== lastUsedTokenRef.current) {
+                logger.log('[Socket] API client already refreshed token, reconnecting...');
                 socketRef.current = null;
                 isRefreshingRef.current = false;
                 connect();
-              } else {
-                logger.log('[Socket] No token available - user may need to re-login');
-                isRefreshingRef.current = false;
+                return;
+              }
+
+              // Token hasn't changed — refresh ourselves
+              logger.log('[Socket] Token not refreshed yet, attempting refresh...');
+              const newTokens = await authService.refreshTokens();
+
+              if (newTokens) {
+                const token = await authService.getAccessToken();
+                if (token) {
+                  logger.log('[Socket] Got fresh token, reconnecting...');
+                  socketRef.current = null;
+                  isRefreshingRef.current = false;
+                  connect();
+                  return;
+                }
+              }
+
+              // Refresh failed - trigger session kicked to log user out
+              logger.log('[Socket] Token refresh failed - triggering session kicked');
+              isRefreshingRef.current = false;
+              if (triggerSessionKicked) {
+                triggerSessionKicked({ reason: 'Session expired - please log in again' });
               }
             } catch (err) {
-              logger.error('[Socket] Error getting token:', err);
+              logger.error('[Socket] Error refreshing token:', err);
               isRefreshingRef.current = false;
+              // Trigger session kicked on error
+              if (triggerSessionKicked) {
+                triggerSessionKicked({ reason: 'Session expired - please log in again' });
+              }
             }
-          }, 3000); // Wait 3 seconds for ApiClient to complete refresh
+          }, 1000); // Short delay to let any in-flight refresh complete
         }
       });
 
@@ -243,6 +271,18 @@ export function SocketProvider({ children }: SocketProviderProps) {
         SocketEvents.ORDER_DELETED,
       ];
       orderEvents.forEach((eventName) => {
+        socketRef.current?.on(eventName, (data: any) => {
+          logger.log(`[Socket DEBUG] Received ${eventName}:`, JSON.stringify(data, null, 2));
+        });
+      });
+
+      // Debug: Log ALL preorder-related events
+      const preorderEvents = [
+        SocketEvents.PREORDER_CREATED,
+        SocketEvents.PREORDER_UPDATED,
+        SocketEvents.PREORDER_READY,
+      ];
+      preorderEvents.forEach((eventName) => {
         socketRef.current?.on(eventName, (data: any) => {
           logger.log(`[Socket DEBUG] Received ${eventName}:`, JSON.stringify(data, null, 2));
         });
@@ -294,6 +334,38 @@ export function SocketProvider({ children }: SocketProviderProps) {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
+  }, [isAuthenticated, connect, verifySession]);
+
+  // Handle network connectivity changes (verify session when coming back online)
+  // This is critical for single-session enforcement when Device 1 loses wifi,
+  // Device 2 logs in, then Device 1 comes back online
+  useEffect(() => {
+    let wasOffline = false;
+
+    const unsubscribe = NetInfo.addEventListener(async (state) => {
+      const isOnline = state.isConnected && state.isInternetReachable !== false;
+
+      if (!isOnline) {
+        // Track that we were offline
+        wasOffline = true;
+        logger.log('[Socket] Network went offline');
+      } else if (wasOffline && isOnline && isAuthenticated) {
+        // Coming back online after being offline - verify session immediately
+        logger.log('[Socket] Network restored - verifying session...');
+        wasOffline = false;
+
+        // Verify session first (this will kick us out if another device logged in)
+        await verifySession();
+
+        // If still authenticated and socket not connected, reconnect
+        if (!socketRef.current?.connected) {
+          logger.log('[Socket] Network restored - reconnecting socket...');
+          connect();
+        }
+      }
+    });
+
+    return () => unsubscribe();
   }, [isAuthenticated, connect, verifySession]);
 
   const subscribe = useCallback((event: SocketEventName, callback: EventCallback) => {

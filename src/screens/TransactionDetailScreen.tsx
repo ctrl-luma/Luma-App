@@ -20,10 +20,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
 import { StarBackground } from '../components/StarBackground';
-import { transactionsApi } from '../lib/api';
+import { transactionsApi, preordersApi } from '../lib/api';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
-import { shadows } from '../lib/shadows';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -260,7 +259,7 @@ const starLoadingStyles = StyleSheet.create({
 });
 
 type RouteParams = {
-  TransactionDetail: { id: string };
+  TransactionDetail: { id: string; sourceType?: 'order' | 'preorder' };
 };
 
 export function TransactionDetailScreen() {
@@ -270,7 +269,7 @@ export function TransactionDetailScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const queryClient = useQueryClient();
 
-  const { id } = route.params;
+  const { id, sourceType } = route.params;
 
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
@@ -279,16 +278,31 @@ export function TransactionDetailScreen() {
   const [receiptEmail, setReceiptEmail] = useState('');
   const [sendingReceipt, setSendingReceipt] = useState(false);
 
-  const { data: transaction, isLoading } = useQuery({
+  // Fetch order detail (default)
+  const { data: transaction, isLoading: isLoadingTransaction } = useQuery({
     queryKey: ['transaction', id],
     queryFn: () => transactionsApi.get(id),
+    enabled: sourceType !== 'preorder',
   });
+
+  // Fetch preorder detail
+  const { data: preorder, isLoading: isLoadingPreorder } = useQuery({
+    queryKey: ['preorder', id],
+    queryFn: () => preordersApi.get(id),
+    enabled: sourceType === 'preorder',
+  });
+
+  const isLoading = sourceType === 'preorder' ? isLoadingPreorder : isLoadingTransaction;
 
   const refundMutation = useMutation({
     mutationFn: () => transactionsApi.refund(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transaction', id] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (sourceType === 'preorder') {
+        queryClient.invalidateQueries({ queryKey: ['preorder', id] });
+        queryClient.invalidateQueries({ queryKey: ['preorders'] });
+      }
       setShowRefundModal(false);
       setResultMessage({ title: 'Success', message: 'Refund processed successfully', isError: false });
       setShowResultModal(true);
@@ -364,6 +378,221 @@ export function TransactionDetailScreen() {
     );
   }
 
+  // Preorder detail view
+  if (sourceType === 'preorder') {
+    if (!preorder) {
+      return (
+        <SafeAreaView style={styles.container}>
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>Preorder not found</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
+    const preorderStatusColor = preorder.status === 'picked_up' ? colors.success
+      : preorder.status === 'cancelled' ? colors.error
+      : colors.warning;
+    const preorderStatusLabel = preorder.status === 'picked_up' ? 'Completed'
+      : preorder.status === 'cancelled' ? 'Cancelled'
+      : preorder.status.charAt(0).toUpperCase() + preorder.status.slice(1);
+
+    return (
+      <StarBackground colors={colors} isDark={isDark}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Preorder</Text>
+          <View style={{ width: 44 }} />
+        </View>
+        <ScrollView style={styles.content}>
+          <View style={styles.amountCard}>
+            <Text style={styles.amountLabel}>Total</Text>
+            <Text style={styles.amount}>${preorder.totalAmount.toFixed(2)}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: preorderStatusColor + '20' }]}>
+              <View style={[styles.statusDot, { backgroundColor: preorderStatusColor }]} />
+              <Text style={[styles.statusText, { color: preorderStatusColor }]}>{preorderStatusLabel}</Text>
+            </View>
+            {preorder.dailyNumber > 0 && (
+              <View style={{ marginTop: 8, backgroundColor: '#a855f720', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
+                <Text style={{ fontSize: 14, fontFamily: fonts.semiBold, color: '#a855f7' }}>#{preorder.dailyNumber}</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Details</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Order Number</Text>
+              <Text style={styles.detailValue}>{preorder.orderNumber}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Customer</Text>
+              <Text style={styles.detailValue}>{preorder.customerName}</Text>
+            </View>
+            {preorder.customerEmail && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Email</Text>
+                <Text style={styles.detailValue}>{preorder.customerEmail}</Text>
+              </View>
+            )}
+            {preorder.customerPhone && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Phone</Text>
+                <Text style={styles.detailValue}>{preorder.customerPhone}</Text>
+              </View>
+            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Catalog</Text>
+              <Text style={styles.detailValue}>{preorder.catalogName}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Payment</Text>
+              <Text style={styles.detailValue}>{preorder.paymentType === 'pay_now' ? 'Paid Online' : 'Pay at Pickup'}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Placed</Text>
+              <Text style={styles.detailValue}>{new Date(preorder.createdAt).toLocaleString()}</Text>
+            </View>
+            {preorder.pickedUpAt && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Picked Up</Text>
+                <Text style={styles.detailValue}>{new Date(preorder.pickedUpAt).toLocaleString()}</Text>
+              </View>
+            )}
+          </View>
+          {preorder.items.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Items</Text>
+              {preorder.items.map((item) => (
+                <View key={item.id} style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{item.quantity}x {item.name}</Text>
+                  <Text style={styles.detailValue}>${(item.unitPrice * item.quantity).toFixed(2)}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Totals</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Subtotal</Text>
+              <Text style={styles.detailValue}>${preorder.subtotal.toFixed(2)}</Text>
+            </View>
+            {preorder.taxAmount > 0 && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Tax</Text>
+                <Text style={styles.detailValue}>${preorder.taxAmount.toFixed(2)}</Text>
+              </View>
+            )}
+            {preorder.tipAmount > 0 && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Tip</Text>
+                <Text style={styles.detailValue}>${preorder.tipAmount.toFixed(2)}</Text>
+              </View>
+            )}
+          </View>
+          {preorder.orderNotes && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Notes</Text>
+              <Text style={[styles.detailValue, { textAlign: 'left', maxWidth: '100%' }]}>{preorder.orderNotes}</Text>
+            </View>
+          )}
+          {/* Refund action for non-cancelled preorders */}
+          {preorder.status !== 'cancelled' && (
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.refundButton]}
+                onPress={handleRefund}
+                disabled={refundMutation.isPending}
+              >
+                {refundMutation.isPending ? (
+                  <ActivityIndicator size="small" color={colors.error} />
+                ) : (
+                  <>
+                    <Ionicons name="arrow-undo-outline" size={20} color={colors.error} />
+                    <Text style={[styles.actionButtonText, { color: colors.error }]}>
+                      Issue Refund
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+        {/* Refund Confirmation Modal */}
+        <Modal
+          visible={showRefundModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowRefundModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalIconContainer}>
+                <Ionicons name="arrow-undo" size={32} color={colors.error} />
+              </View>
+              <Text style={styles.modalTitle}>Issue Refund</Text>
+              <Text style={styles.modalMessage}>
+                Are you sure you want to refund this preorder for ${preorder.totalAmount.toFixed(2)}? This action cannot be undone.
+              </Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonCancel]}
+                  onPress={() => setShowRefundModal(false)}
+                  disabled={refundMutation.isPending}
+                >
+                  <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.modalButtonDestructive]}
+                  onPress={confirmRefund}
+                  disabled={refundMutation.isPending}
+                >
+                  {refundMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.modalButtonDestructiveText}>Refund</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        {/* Result Modal */}
+        <Modal
+          visible={showResultModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => { setShowResultModal(false); navigation.goBack(); }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={[styles.modalIconContainer, { backgroundColor: resultMessage.isError ? colors.errorBg : colors.successBg }]}>
+                <Ionicons
+                  name={resultMessage.isError ? 'close-circle' : 'checkmark-circle'}
+                  size={32}
+                  color={resultMessage.isError ? colors.error : colors.success}
+                />
+              </View>
+              <Text style={styles.modalTitle}>{resultMessage.title}</Text>
+              <Text style={styles.modalMessage}>{resultMessage.message}</Text>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 20, flex: 0, width: '100%' }]}
+                onPress={() => { setShowResultModal(false); navigation.goBack(); }}
+              >
+                <Text style={styles.modalButtonPrimaryText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
+      </StarBackground>
+    );
+  }
+
+  // Default: Order detail view
   if (!transaction) {
     return (
       <SafeAreaView style={styles.container}>

@@ -1,6 +1,7 @@
 import { apiClient } from './client';
 
 export type CatalogLayoutType = 'grid' | 'list' | 'large-grid' | 'compact';
+export type PreorderPaymentMode = 'pay_now' | 'pay_at_pickup' | 'both';
 
 export interface Catalog {
   id: string;
@@ -17,6 +18,12 @@ export interface Catalog {
   taxRate: number;
   layoutType: CatalogLayoutType;
   isLocked?: boolean;
+  // Preorder settings
+  preorderEnabled: boolean;
+  slug: string | null;
+  preorderPaymentMode: PreorderPaymentMode;
+  pickupInstructions: string | null;
+  estimatedPrepTime: number;
   createdAt: string;
   updatedAt: string;
 }

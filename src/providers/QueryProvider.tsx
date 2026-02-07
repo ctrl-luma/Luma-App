@@ -20,16 +20,18 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Data is considered fresh for 30 seconds
-            staleTime: 30 * 1000,
-            // Cache persists for 30 minutes (shows cached data while refetching)
+            // Socket.IO events handle real-time invalidation, so data stays fresh
+            // until explicitly invalidated. Only refetch on reconnect as a safety net.
+            staleTime: Infinity,
+            // Cache persists for 30 minutes
             gcTime: 30 * 60 * 1000,
-            // Refetch on app focus for fresh data
-            refetchOnWindowFocus: true,
+            // Skip auto-refetch on focus — sockets keep data current
+            refetchOnWindowFocus: false,
+            refetchOnMount: false,
+            // Refetch on reconnect as safety net (catches anything missed while offline)
+            refetchOnReconnect: true,
             // Retry failed requests once
             retry: 1,
-            // Refetch on reconnect
-            refetchOnReconnect: true,
           },
         },
       })

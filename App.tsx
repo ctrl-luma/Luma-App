@@ -40,6 +40,7 @@ import { CatalogProvider, useCatalog } from './src/context/CatalogContext';
 import { CartProvider } from './src/context/CartContext';
 import { DeviceProvider } from './src/context/DeviceContext';
 import { SocketProvider } from './src/context/SocketContext';
+import { PreordersProvider, usePreorders } from './src/context/PreordersContext';
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
 import { StripeTerminalContextProvider } from './src/context/StripeTerminalContext';
 import { NetworkStatus } from './src/components/NetworkStatus';
@@ -55,7 +56,7 @@ import { ResetPasswordScreen } from './src/screens/ResetPasswordScreen';
 // Main screens
 import { CatalogSelectScreen } from './src/screens/CatalogSelectScreen';
 import { MenuScreen } from './src/screens/MenuScreen';
-import { ChargeScreen } from './src/screens/ChargeScreen';
+// ChargeScreen functionality moved to QuickChargeBottomSheet in MenuScreen
 import { TransactionsScreen } from './src/screens/TransactionsScreen';
 import { TransactionDetailScreen } from './src/screens/TransactionDetailScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
@@ -72,6 +73,10 @@ import { SplitPaymentScreen } from './src/screens/SplitPaymentScreen';
 
 // Events screens
 import { EventsScannerScreen } from './src/screens/EventsScannerScreen';
+
+// Preorder screens
+import { PreordersScreen } from './src/screens/PreordersScreen';
+import { PreorderDetailScreen } from './src/screens/PreorderDetailScreen';
 
 // Education screens
 import { TapToPayEducationScreen } from './src/screens/TapToPayEducationScreen';
@@ -426,15 +431,17 @@ function HistoryStackNavigator() {
   );
 }
 
-// Custom Tab Bar Icon - Clean iOS style with dot indicator
+// Custom Tab Bar Icon - Clean iOS style with dot indicator and optional badge
 function TabIcon({
   route,
   focused,
-  color
+  color,
+  badge,
 }: {
   route: string;
   focused: boolean;
   color: string;
+  badge?: number;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const dotOpacity = useRef(new Animated.Value(0)).current;
@@ -461,14 +468,14 @@ function TabIcon({
     case 'Menu':
       iconName = focused ? 'grid' : 'grid-outline';
       break;
-    case 'QuickCharge':
-      iconName = focused ? 'flash' : 'flash-outline';
-      break;
     case 'History':
       iconName = focused ? 'receipt' : 'receipt-outline';
       break;
     case 'Events':
       iconName = focused ? 'scan' : 'scan-outline';
+      break;
+    case 'Preorders':
+      iconName = focused ? 'clipboard' : 'clipboard-outline';
       break;
     case 'Settings':
       iconName = focused ? 'settings' : 'settings-outline';
@@ -484,7 +491,16 @@ function TabIcon({
         { transform: [{ scale: scaleAnim }] },
       ]}
     >
-      <Ionicons name={iconName} size={26} color={color} />
+      <View>
+        <Ionicons name={iconName} size={26} color={color} />
+        {typeof badge === 'number' && badge > 0 ? (
+          <View style={styles.tabBadge}>
+            <Text style={styles.tabBadgeText}>
+              {badge > 99 ? '99+' : String(badge)}
+            </Text>
+          </View>
+        ) : null}
+      </View>
       <Animated.View
         style={[
           styles.tabDot,
@@ -514,9 +530,14 @@ function TabNavigator() {
   const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { subscription } = useAuth();
+  const { counts: preorderCounts } = usePreorders();
+  const { selectedCatalog } = useCatalog();
 
   // Only show Events tab for Pro/Enterprise users
   const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
+
+  // Only show Preorders tab if the selected catalog has preorders enabled
+  const showPreordersTab = selectedCatalog?.preorderEnabled === true;
 
   return (
     <Tab.Navigator
@@ -534,7 +555,12 @@ function TabNavigator() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarIcon: ({ focused, color }) => (
-          <TabIcon route={route.name} focused={focused} color={color} />
+          <TabIcon
+            route={route.name}
+            focused={focused}
+            color={color}
+            badge={route.name === 'Preorders' && preorderCounts?.total ? preorderCounts.total : undefined}
+          />
         ),
       })}
     >
@@ -543,15 +569,17 @@ function TabNavigator() {
         component={MenuStackNavigator}
         options={{ tabBarLabel: 'Menu' }}
       />
+      {showPreordersTab && (
+        <Tab.Screen
+          name="Preorders"
+          component={PreordersScreen}
+          options={{ tabBarLabel: 'Orders' }}
+        />
+      )}
       <Tab.Screen
         name="History"
         component={HistoryStackNavigator}
         options={{ tabBarLabel: 'History' }}
-      />
-      <Tab.Screen
-        name="QuickCharge"
-        component={ChargeScreen}
-        options={{ tabBarLabel: 'Charge' }}
       />
       {isPro && (
         <Tab.Screen
@@ -730,6 +758,22 @@ function AuthenticatedNavigator() {
           animation: 'slide_from_bottom',
         }}
       />
+
+      {/* Preorder screens */}
+      <Stack.Screen
+        name="Preorders"
+        component={PreordersScreen}
+        options={{
+          presentation: 'card',
+        }}
+      />
+      <Stack.Screen
+        name="PreorderDetail"
+        component={PreorderDetailScreen}
+        options={{
+          presentation: 'card',
+        }}
+      />
     </Stack.Navigator>
     </StripeTerminalContextProvider>
   );
@@ -845,6 +889,7 @@ export default function App() {
                 <AuthProvider>
                   <SocketProvider>
                     <SocketEventHandlers />
+                    <PreordersProvider>
                     <DeviceProvider>
                       <CatalogProvider>
                         <CartProvider>
@@ -853,6 +898,7 @@ export default function App() {
                         </CartProvider>
                       </CatalogProvider>
                     </DeviceProvider>
+                    </PreordersProvider>
                   </SocketProvider>
                 </AuthProvider>
               </ThemeProvider>
@@ -890,5 +936,22 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 2.5,
     marginTop: 4,
+  },
+  tabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  tabBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

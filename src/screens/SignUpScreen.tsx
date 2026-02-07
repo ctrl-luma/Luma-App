@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import PhoneInput from 'react-native-phone-number-input';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -193,15 +194,6 @@ export function SignUpScreen() {
         return newErrors;
       });
     }
-  };
-
-  // Format phone number
-  const formatPhoneNumber = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 10);
-    if (digits.length === 0) return '';
-    if (digits.length <= 3) return `(${digits}`;
-    if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   };
 
   // Check email availability
@@ -680,14 +672,39 @@ export function SignUpScreen() {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Phone Number (Optional)</Text>
-          <Input
-            icon="call-outline"
-            value={formatPhoneNumber(formData.phone)}
-            onChangeText={(value) => updateField('phone', value.replace(/\D/g, ''))}
+          <PhoneInput
+            defaultCode="US"
+            layout="first"
+            withDarkTheme={isDark}
+            onChangeFormattedText={(text) => {
+              // Extract digits from E.164 format and store
+              const digits = text.replace(/\D/g, '');
+              // Remove country code (1) if present
+              const phone = digits.length === 11 && digits.startsWith('1')
+                ? digits.slice(1)
+                : digits;
+              updateField('phone', phone);
+            }}
             placeholder="(555) 123-4567"
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            editable={!isFormDisabled}
+            textInputProps={{
+              placeholderTextColor: colors.textMuted,
+              selectionColor: colors.primary,
+            }}
+            renderDropdownImage={
+              <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+            }
+            disabled={isFormDisabled}
+            containerStyle={styles.phoneContainer}
+            textContainerStyle={styles.phoneTextContainer}
+            textInputStyle={styles.phoneInput}
+            codeTextStyle={styles.phoneCode}
+            flagButtonStyle={styles.phoneFlagButton}
+            countryPickerButtonStyle={styles.phoneCountryButton}
+            countryPickerProps={{
+              withEmoji: false,
+              withFilter: true,
+              withFlag: true,
+            }}
           />
         </View>
 
@@ -1693,5 +1710,36 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontSize: 14,
       fontFamily: fonts.semiBold,
       color: colors.primary,
+    },
+    // Phone input styles
+    phoneContainer: {
+      backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+      width: '100%',
+    },
+    phoneTextContainer: {
+      backgroundColor: 'transparent',
+      borderRadius: 16,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+    },
+    phoneInput: {
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.text,
+      height: 48,
+    },
+    phoneCode: {
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
+    phoneFlagButton: {
+      marginLeft: 12,
+    },
+    phoneCountryButton: {
+      backgroundColor: 'transparent',
     },
   });

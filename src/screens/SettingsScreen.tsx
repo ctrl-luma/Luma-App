@@ -46,7 +46,6 @@ import { StarBackground } from '../components/StarBackground';
 
 export function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
-  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
   const scrollViewRef = useRef<ScrollView>(null);
   const scrollOffsetRef = useRef(0);
@@ -71,6 +70,7 @@ export function SettingsScreen() {
   } = useTerminal();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
 
   // Listen for subscription updates via socket and refresh data
   useSocketEvent(SocketEvents.SUBSCRIPTION_UPDATED, useCallback((data: any) => {
@@ -267,7 +267,7 @@ export function SettingsScreen() {
   return (
     <StarBackground colors={colors} isDark={isDark}>
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+        <View style={styles.headerContainer}>
           <Text style={styles.title}>Settings</Text>
         </View>
 
@@ -712,7 +712,6 @@ export function SettingsScreen() {
 }
 
 const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boolean) => {
-  const headerBackground = isDark ? '#09090b' : colors.background;
   const cardBackground = isDark ? '#181819' : 'rgba(255,255,255,0.95)';
   const cardBorder = isDark ? '#1d1d1f' : 'rgba(0,0,0,0.08)';
 
@@ -721,19 +720,16 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       flex: 1,
       backgroundColor: 'transparent',
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      height: 56,
-      paddingHorizontal: 16,
-      backgroundColor: headerBackground,
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    headerContainer: {
+      paddingTop: 4,
     },
     title: {
-      fontSize: 18,
-      fontFamily: fonts.semiBold,
+      fontSize: 22,
+      fontFamily: fonts.bold,
       color: colors.text,
+      letterSpacing: -0.3,
+      paddingHorizontal: 16,
+      marginBottom: 8,
     },
     content: {
       flex: 1,

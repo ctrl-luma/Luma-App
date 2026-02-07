@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCatalog } from '../context/CatalogContext';
 import { useDevice } from '../context/DeviceContext';
-import { productsApi, categoriesApi, transactionsApi } from '../lib/api';
+import { productsApi, categoriesApi, transactionsApi, ordersApi, preordersApi, eventsApi } from '../lib/api';
 import { billingService } from '../lib/api/billing';
 import logger from '../lib/logger';
 
@@ -40,16 +40,37 @@ export function DataPrefetcher() {
       queryFn: () => categoriesApi.list(selectedCatalog.id),
     });
 
-    // Transactions: first page
+    // Transactions: first page (default 'all' filter)
     queryClient.prefetchInfiniteQuery({
-      queryKey: ['transactions', selectedCatalog.id, deviceId],
+      queryKey: ['transactions', selectedCatalog.id, deviceId, 'all'],
       queryFn: () =>
         transactionsApi.list({
           limit: 25,
           catalog_id: selectedCatalog.id,
           device_id: deviceId,
+          status: 'all',
         }),
       initialPageParam: undefined as string | undefined,
+    });
+
+    // Held orders
+    queryClient.prefetchQuery({
+      queryKey: ['held-orders', deviceId],
+      queryFn: () => ordersApi.listHeld(deviceId),
+    });
+
+    // Preorders: prefetch all status tabs so no loading on tab switch
+    ['pending', 'preparing', 'ready'].forEach((status) => {
+      queryClient.prefetchQuery({
+        queryKey: ['preorders', status],
+        queryFn: () => preordersApi.list({ status: [status] }),
+      });
+    });
+
+    // Events: for ticket scanner screen
+    queryClient.prefetchQuery({
+      queryKey: ['events'],
+      queryFn: () => eventsApi.list(),
     });
   }, [selectedCatalog?.id, deviceId, queryClient]);
 

@@ -15,8 +15,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useDevice } from '../context/DeviceContext';
+import { useSocket } from '../context/SocketContext';
 import { eventsApi, type OrgEvent, type RecentScan } from '../lib/api';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { glass } from '../lib/colors';
 import { StarBackground } from '../components/StarBackground';
 
@@ -51,6 +52,9 @@ export function EventsScannerScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const { subscription, isLoading: authLoading } = useAuth();
   const { deviceId } = useDevice();
+  const { isConnected } = useSocket();
+  const queryClient = useQueryClient();
+  const wasConnectedRef = useRef(isConnected);
 
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
   const [lastScan, setLastScan] = useState<ScanRecord | null>(null);
@@ -104,8 +108,16 @@ export function EventsScannerScreen() {
       console.log('[EventsScanner] Fetch result:', JSON.stringify(result, null, 2));
       return result;
     },
-    staleTime: 60 * 1000,
+    staleTime: Infinity,
   });
+
+  // Refetch on socket reconnect
+  useEffect(() => {
+    if (isConnected && !wasConnectedRef.current) {
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+    }
+    wasConnectedRef.current = isConnected;
+  }, [isConnected, queryClient]);
 
   // Log any errors
   if (eventsError) {

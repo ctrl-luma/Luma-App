@@ -71,6 +71,7 @@ import { CategoryManagerModal } from '../components/CategoryManagerModal';
 import { CatalogSettingsModal } from '../components/CatalogSettingsModal';
 import { ItemNotesModal } from '../components/ItemNotesModal';
 import { StarBackground } from '../components/StarBackground';
+import { QuickChargeBottomSheet } from '../components/QuickChargeBottomSheet';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 
@@ -408,92 +409,49 @@ interface CategoryPillProps {
 }
 
 function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: CategoryPillProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 5,
-      tension: 150,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const pillStyles = StyleSheet.create({
-    container: {
-      marginRight: 10,
-    },
-    pill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 18,
-      paddingVertical: 12,
-      borderRadius: 20,
-      backgroundColor: isActive ? colors.primary : glassColors.backgroundElevated,
-      borderWidth: 1,
-      borderColor: isActive ? colors.primary : glassColors.border,
-      ...Platform.select({
-        ios: {
-          shadowColor: isActive ? colors.primary : '#000',
-          shadowOffset: { width: 0, height: isActive ? 0 : 4 },
-          shadowOpacity: isActive ? 0.4 : 0.2,
-          shadowRadius: isActive ? 12 : 8,
-        },
-        android: {
-          elevation: isActive ? 8 : 4,
-        },
-        web: {
-          boxShadow: isActive
-            ? `0 0 20px ${colors.primary}50`
-            : '0 4px 12px rgba(0,0,0,0.25)',
-        },
-      }),
-    },
-    label: {
-      fontSize: 14,
-      fontWeight: isActive ? '700' : '500',
-      color: isActive ? '#fff' : colors.text,
-      letterSpacing: 0.2,
-    },
-    countBadge: {
-      marginLeft: 8,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 10,
-      backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : glassColors.background,
-      minWidth: 24,
-      alignItems: 'center',
-    },
-    countText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: isActive ? '#fff' : colors.textSecondary,
-    },
-  });
-
   return (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      style={pillStyles.container}
+      activeOpacity={0.7}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 18,
+        borderRadius: 12,
+        backgroundColor: isActive ? colors.primary : glassColors.backgroundElevated,
+        borderWidth: 1,
+        borderColor: isActive ? colors.primary : glassColors.border,
+      }}
     >
-      <Animated.View style={[pillStyles.pill, { transform: [{ scale: scaleAnim }] }]}>
-        <Text style={pillStyles.label}>{label}</Text>
-        {count !== undefined && count > 0 && (
-          <View style={pillStyles.countBadge}>
-            <Text style={pillStyles.countText}>{count}</Text>
-          </View>
-        )}
-      </Animated.View>
-    </Pressable>
+      <Text style={{
+        fontSize: 14,
+        fontWeight: isActive ? '600' : '500',
+        color: isActive ? '#fff' : colors.textSecondary,
+      }}>
+        {label}
+      </Text>
+      {count !== undefined && count > 0 && (
+        <View style={{
+          paddingHorizontal: 7,
+          paddingVertical: 2,
+          borderRadius: 10,
+          backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : colors.primary + '20',
+          minWidth: 22,
+          alignItems: 'center',
+        }}>
+          <Text style={{
+            fontSize: 12,
+            fontWeight: '600',
+            color: isActive ? '#fff' : colors.primary,
+          }}>
+            {count}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -556,7 +514,7 @@ export function MenuScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const { isLoading: authLoading, user, completeOnboarding } = useAuth();
   const { selectedCatalog, catalogs, isLoading: catalogsLoading, refreshCatalogs, setSelectedCatalog } = useCatalog();
-  const { addItem, getItemQuantity, itemCount, subtotal } = useCart();
+  const { addItem, getItemQuantity, decrementItem, itemCount, subtotal } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -591,6 +549,7 @@ export function MenuScreen() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [notesProduct, setNotesProduct] = useState<Product | null>(null);
+  const [quickChargeVisible, setQuickChargeVisible] = useState(false);
 
   // Bulk selection state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -1280,17 +1239,44 @@ export function MenuScreen() {
                 <Ionicons name="image-outline" size={24} color={colors.textMuted} />
               </View>
             )}
-            {quantity > 0 && !isEditMode && (
-              <View style={styles.listQuantityBadge}>
-                <Text style={styles.quantityText}>{quantity}</Text>
-              </View>
-            )}
             {inactiveBadge}
           </View>
           <View style={styles.listInfo}>
-            <Text style={styles.listName} numberOfLines={2}>
-              {item.name}
-            </Text>
+            <View style={styles.listTitleRow}>
+              <Text style={styles.listName} numberOfLines={2}>
+                {item.name}
+              </Text>
+              {isSelectionMode ? null : isEditMode ? null : (
+                <View style={styles.listQuantityControls}>
+                  {quantity > 0 ? (
+                    <>
+                      <TouchableOpacity
+                        style={styles.listQuantityDecrementButton}
+                        onPress={() => decrementItem(item.id)}
+                      >
+                        <Ionicons name="remove" size={14} color="#fff" />
+                      </TouchableOpacity>
+                      <View style={styles.listQuantityBadge}>
+                        <Text style={styles.quantityText}>{quantity}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.listQuantityIncrementButton}
+                        onPress={() => handleAddToCart(item)}
+                      >
+                        <Ionicons name="add" size={14} color="#fff" />
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.listQuantityIncrementButton}
+                      onPress={() => handleAddToCart(item)}
+                    >
+                      <Ionicons name="add" size={14} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
             {item.description ? (
               <Text style={styles.listDescription} numberOfLines={2}>
                 {item.description}
@@ -1300,14 +1286,7 @@ export function MenuScreen() {
               ${(item.price / 100).toFixed(2)}
             </Text>
           </View>
-          {isSelectionMode ? null : isEditMode ? editOverlay : (
-            <TouchableOpacity
-              style={styles.listAddButton}
-              onPress={() => handleAddToCart(item)}
-            >
-              <Ionicons name="add" size={22} color="#fff" />
-            </TouchableOpacity>
-          )}
+          {isSelectionMode ? null : isEditMode ? editOverlay : null}
         </AnimatedPressable>
       );
       return supportsDragAndDrop ? (
@@ -1338,11 +1317,6 @@ export function MenuScreen() {
                 <Ionicons name="image-outline" size={48} color={colors.textMuted} />
               </View>
             )}
-            {quantity > 0 && !isEditMode && (
-              <View style={styles.largeQuantityBadge}>
-                <Text style={styles.largeQuantityText}>{quantity}</Text>
-              </View>
-            )}
             {inactiveBadge}
             {!isSelectionMode && editOverlay}
           </View>
@@ -1362,12 +1336,34 @@ export function MenuScreen() {
                 ${(item.price / 100).toFixed(2)}
               </Text>
               {!isEditMode && !isSelectionMode && (
-                <TouchableOpacity
-                  style={styles.largeAddButton}
-                  onPress={() => handleAddToCart(item)}
-                >
-                  <Ionicons name="add" size={24} color="#fff" />
-                </TouchableOpacity>
+                <View style={styles.largeQuantityControls}>
+                  {quantity > 0 ? (
+                    <>
+                      <TouchableOpacity
+                        style={styles.largeQuantityDecrementButton}
+                        onPress={() => decrementItem(item.id)}
+                      >
+                        <Ionicons name="remove" size={18} color="#fff" />
+                      </TouchableOpacity>
+                      <View style={styles.largeQuantityBadge}>
+                        <Text style={styles.largeQuantityText}>{quantity}</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.largeQuantityIncrementButton}
+                        onPress={() => handleAddToCart(item)}
+                      >
+                        <Ionicons name="add" size={18} color="#fff" />
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.largeQuantityIncrementButton}
+                      onPress={() => handleAddToCart(item)}
+                    >
+                      <Ionicons name="add" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
               )}
             </View>
           </View>
@@ -1410,11 +1406,6 @@ export function MenuScreen() {
             <Text style={styles.compactName} numberOfLines={1}>
               {item.name}
             </Text>
-            {quantity > 0 && !isEditMode && (
-              <View style={styles.compactQuantityBadge}>
-                <Text style={styles.compactQuantityText}>{quantity}</Text>
-              </View>
-            )}
             {isInactive && isEditMode && !isSelectionMode && (
               <View style={styles.compactHiddenBadge}>
                 <Text style={styles.compactHiddenText}>Hidden</Text>
@@ -1440,12 +1431,34 @@ export function MenuScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <TouchableOpacity
-              style={styles.compactAddButton}
-              onPress={() => handleAddToCart(item)}
-            >
-              <Ionicons name="add" size={18} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.compactQuantityControls}>
+              {quantity > 0 ? (
+                <>
+                  <TouchableOpacity
+                    style={styles.compactQuantityDecrementButton}
+                    onPress={() => decrementItem(item.id)}
+                  >
+                    <Ionicons name="remove" size={12} color="#fff" />
+                  </TouchableOpacity>
+                  <View style={styles.compactQuantityBadge}>
+                    <Text style={styles.compactQuantityText}>{quantity}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.compactQuantityIncrementButton}
+                    onPress={() => handleAddToCart(item)}
+                  >
+                    <Ionicons name="add" size={12} color="#fff" />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={styles.compactQuantityIncrementButton}
+                  onPress={() => handleAddToCart(item)}
+                >
+                  <Ionicons name="add" size={14} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </AnimatedPressable>
       );
@@ -1474,11 +1487,6 @@ export function MenuScreen() {
               <Ionicons name="image-outline" size={32} color={colors.textMuted} />
             </View>
           )}
-          {quantity > 0 && !isEditMode && (
-            <View style={styles.quantityBadge}>
-              <Text style={styles.quantityText}>{quantity}</Text>
-            </View>
-          )}
           {inactiveBadge}
           {!isSelectionMode && editOverlay}
         </View>
@@ -1486,18 +1494,42 @@ export function MenuScreen() {
           <Text style={styles.productName} numberOfLines={2}>
             {item.name}
           </Text>
-          <Text style={styles.productPrice}>
-            ${(item.price / 100).toFixed(2)}
-          </Text>
+          <View style={styles.productPriceRow}>
+            <Text style={styles.productPrice}>
+              ${(item.price / 100).toFixed(2)}
+            </Text>
+            {!isEditMode && !isSelectionMode && (
+              <View style={styles.quantityControls}>
+                {quantity > 0 ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.quantityDecrementButton}
+                      onPress={() => decrementItem(item.id)}
+                    >
+                      <Ionicons name="remove" size={14} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={styles.quantityBadge}>
+                      <Text style={styles.quantityText}>{quantity}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.quantityIncrementButton}
+                      onPress={() => handleAddToCart(item)}
+                    >
+                      <Ionicons name="add" size={14} color="#fff" />
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.quantityIncrementButton}
+                    onPress={() => handleAddToCart(item)}
+                  >
+                    <Ionicons name="add" size={14} color="#fff" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
         </View>
-        {!isEditMode && !isSelectionMode && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => handleAddToCart(item)}
-          >
-            <Ionicons name="add" size={20} color="#fff" />
-          </TouchableOpacity>
-        )}
       </AnimatedPressable>
     );
   };
@@ -1677,28 +1709,6 @@ export function MenuScreen() {
                   </TouchableOpacity>
                 </>
               )}
-              {!isEditMode && (
-                <TouchableOpacity
-                  style={[styles.cartButton, itemCount === 0 && styles.cartButtonDisabled]}
-                  onPress={() => {
-                    if (itemCount > 0) {
-                      navigation.navigate('Checkout', { total: subtotal });
-                    }
-                  }}
-                  activeOpacity={itemCount > 0 ? 0.8 : 1}
-                >
-                  <Ionicons
-                    name="cart-outline"
-                    size={22}
-                    color={itemCount > 0 ? colors.text : colors.textMuted}
-                  />
-                  {itemCount > 0 && (
-                    <View style={styles.cartBadge}>
-                      <Text style={styles.cartBadgeText}>{itemCount}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )}
             </View>
           </>
         )}
@@ -1844,6 +1854,35 @@ export function MenuScreen() {
         </TouchableOpacity>
       )}
 
+      {/* Bottom Action Buttons (only when not in edit mode) */}
+      {!isEditMode && (
+        <View style={[styles.bottomActions, itemCount === 0 && styles.bottomActionsEmpty]}>
+          {/* Quick Charge FAB */}
+          <TouchableOpacity
+            style={[styles.quickChargeFab, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
+            onPress={() => setQuickChargeVisible(true)}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="flash" size={24} color={isDark ? '#09090b' : '#fff'} />
+          </TouchableOpacity>
+
+          {/* Go to Cart Button */}
+          {itemCount > 0 && (
+            <TouchableOpacity
+              style={styles.goToCartButton}
+              onPress={() => navigation.navigate('Checkout', { total: subtotal })}
+              activeOpacity={0.9}
+            >
+              <View style={styles.goToCartBadge}>
+                <Text style={styles.goToCartBadgeText}>{itemCount}</Text>
+              </View>
+              <Text style={styles.goToCartText}>Go to Cart</Text>
+              <Ionicons name="chevron-forward" size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {/* Product Modal */}
       <ProductModal
         visible={productModalVisible}
@@ -1885,6 +1924,12 @@ export function MenuScreen() {
           product={notesProduct}
           onConfirm={handleAddWithNotes}
           onCancel={handleCancelNotes}
+        />
+
+        {/* Quick Charge Bottom Sheet */}
+        <QuickChargeBottomSheet
+          visible={quickChargeVisible}
+          onClose={() => setQuickChargeVisible(false)}
         />
       </View>
     </StarBackground>
@@ -2010,42 +2055,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       fontWeight: '500',
       color: colors.primary,
     },
-    cartButton: {
-      width: 48,
-      height: 48,
-      borderRadius: 16,
-      backgroundColor: glassColors.backgroundElevated,
-      borderWidth: 1,
-      borderColor: glassColors.border,
-      alignItems: 'center',
-      justifyContent: 'center',
-      ...shadows.sm,
-    },
-    cartButtonDisabled: {
-      opacity: 0.5,
-    },
-    cartBadge: {
-      position: 'absolute',
-      top: -6,
-      right: -6,
-      backgroundColor: colors.primary,
-      borderRadius: 12,
-      minWidth: 22,
-      height: 22,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 6,
-      borderWidth: 2,
-      borderColor: colors.background,
-      ...shadows.sm,
-    },
-    cartBadgeText: {
-      color: '#fff',
-      fontSize: 11,
-      fontWeight: '700',
-    },
     categorySection: {
-      paddingVertical: 4,
       marginBottom: 4,
     },
     categoryScroll: {
@@ -2054,6 +2064,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
     categoryContainer: {
       paddingHorizontal: 16,
       paddingVertical: 8,
+      gap: 12,
     },
     productList: {
       paddingHorizontal: GRID_PADDING,
@@ -2094,24 +2105,40 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       backgroundColor: glassColors.backgroundSubtle,
     },
     quantityBadge: {
-      position: 'absolute',
-      top: 10,
-      right: 10,
-      backgroundColor: colors.primary,
-      borderRadius: 14,
-      minWidth: 28,
-      height: 28,
+      minWidth: 24,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 8,
-      borderWidth: 2,
-      borderColor: 'rgba(0,0,0,0.2)',
-      ...shadows.sm,
     },
     quantityText: {
-      color: '#fff',
-      fontSize: 13,
+      color: colors.text,
+      fontSize: 15,
       fontWeight: '700',
+    },
+    productPriceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    quantityControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    quantityDecrementButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quantityIncrementButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     productInfo: {
       padding: 14,
@@ -2195,8 +2222,8 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
     listImageContainer: {
       width: 80,
       height: 80,
-      borderRadius: 14,
       backgroundColor: glassColors.backgroundElevated,
+      borderRadius: 14,
       overflow: 'hidden',
     },
     listImage: {
@@ -2210,28 +2237,49 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       alignItems: 'center',
       justifyContent: 'center',
     },
-    listQuantityBadge: {
-      position: 'absolute',
-      top: 4,
-      right: 4,
-      backgroundColor: colors.primary,
-      borderRadius: 10,
-      minWidth: 20,
-      height: 20,
+    listQuantityControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    listQuantityDecrementButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 6,
+    },
+    listQuantityIncrementButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    listQuantityBadge: {
+      minWidth: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     listInfo: {
       flex: 1,
       marginLeft: 16,
       marginRight: 12,
     },
+    listTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 4,
+    },
     listName: {
+      flex: 1,
       fontSize: 16,
       fontWeight: '600',
       color: colors.text,
-      marginBottom: 4,
     },
     listDescription: {
       fontSize: 13,
@@ -2276,21 +2324,35 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       alignItems: 'center',
       justifyContent: 'center',
     },
-    largeQuantityBadge: {
-      position: 'absolute',
-      top: 12,
-      right: 12,
-      backgroundColor: colors.primary,
-      borderRadius: 14,
-      minWidth: 28,
-      height: 28,
+    largeQuantityControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    largeQuantityDecrementButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 10,
+    },
+    largeQuantityIncrementButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    largeQuantityBadge: {
+      minWidth: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     largeQuantityText: {
-      color: '#fff',
-      fontSize: 15,
+      color: colors.text,
+      fontSize: 18,
       fontWeight: '700',
     },
     largeInfo: {
@@ -2351,19 +2413,39 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       fontWeight: '500',
       color: colors.text,
     },
-    compactQuantityBadge: {
-      backgroundColor: colors.primary,
-      borderRadius: 10,
-      minWidth: 20,
-      height: 20,
+    compactQuantityControls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: 4,
+      marginLeft: 10,
+      width: 86,
+    },
+    compactQuantityDecrementButton: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 6,
+    },
+    compactQuantityIncrementButton: {
+      width: 26,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    compactQuantityBadge: {
+      minWidth: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     compactQuantityText: {
-      color: '#fff',
-      fontSize: 12,
-      fontWeight: '600',
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '700',
     },
     compactHiddenBadge: {
       backgroundColor: colors.textMuted + '40',
@@ -2377,10 +2459,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       color: colors.textMuted,
     },
     compactPrice: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: 17,
+      fontWeight: '700',
       color: colors.primary,
-      marginRight: 12,
     },
     compactAddButton: {
       width: 32,
@@ -2490,6 +2571,54 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       position: 'absolute',
       bottom: 20,
       right: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      ...shadows.lg,
+    },
+    bottomActions: {
+      position: 'absolute',
+      bottom: 20,
+      left: 20,
+      right: 20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      justifyContent: 'flex-end',
+    },
+    goToCartButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: '#2563EB',
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      borderRadius: 28,
+      ...shadows.lg,
+    },
+    goToCartBadge: {
+      backgroundColor: 'rgba(255, 255, 255, 0.25)',
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    goToCartBadgeText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    goToCartText: {
+      color: '#fff',
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    quickChargeFab: {
       width: 56,
       height: 56,
       borderRadius: 28,

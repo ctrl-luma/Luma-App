@@ -23,7 +23,8 @@
       "WebFetch(domain:www.openiap.dev)",
       "Bash(convert:*)",
       "Bash(python3:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(xargs -I {} sh -c 'grep -H \"\"SafeAreaView\"\" {} | grep \"\"from [''''\\\\\"\"']react-native \")"
     ]
   }
 }

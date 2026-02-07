@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   Modal,
   ScrollView,
   ActivityIndicator,
@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import PhoneInput from 'react-native-phone-number-input';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -34,10 +35,12 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
   const { user, refreshAuth } = useAuth();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
+  const phoneInputRef = useRef<PhoneInput>(null);
 
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [formattedPhone, setFormattedPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -47,26 +50,11 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
     if (visible && user) {
       setFirstName(user.firstName || '');
       setLastName(user.lastName || '');
-      setPhone(formatPhoneNumber(user.phone || ''));
+      // Phone from API is 10 digits, store as-is
+      setPhone(user.phone || '');
       setAvatarPreview(null);
     }
   }, [visible, user]);
-
-  const formatPhoneNumber = (value: string): string => {
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.length >= 6) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
-    } else if (cleaned.length >= 3) {
-      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
-    } else if (cleaned.length > 0) {
-      return `(${cleaned}`;
-    }
-    return '';
-  };
-
-  const handlePhoneChange = (value: string) => {
-    setPhone(formatPhoneNumber(value));
-  };
 
   const pickImage = async () => {
     try {
@@ -175,17 +163,21 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
         updateData.lastName = lastName;
       }
 
+      // Phone is stored as 10-digit string
       const cleanPhone = phone.replace(/\D/g, '');
       const originalPhone = (user?.phone || '').replace(/\D/g, '');
       if (cleanPhone !== originalPhone) {
-        if (cleanPhone.length === 10) {
+        // Handle E.164 format from PhoneInput (+1XXXXXXXXXX)
+        if (cleanPhone.length === 11 && cleanPhone.startsWith('1')) {
+          updateData.phone = cleanPhone.slice(1);
+        } else if (cleanPhone.length === 10) {
           updateData.phone = cleanPhone;
+        } else if (cleanPhone.length === 0) {
+          updateData.phone = null;
         } else if (cleanPhone.length > 0) {
-          Alert.alert('Invalid Phone', 'Phone number must be 10 digits.');
+          Alert.alert('Invalid Phone', 'Please enter a valid phone number.');
           setIsSaving(false);
           return;
-        } else {
-          updateData.phone = null;
         }
       }
 
@@ -204,10 +196,16 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
   };
 
   const hasChanges = () => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const originalPhone = (user?.phone || '').replace(/\D/g, '');
+    // Handle E.164 format comparison
+    const normalizedPhone = cleanPhone.length === 11 && cleanPhone.startsWith('1')
+      ? cleanPhone.slice(1)
+      : cleanPhone;
     return (
       firstName !== (user?.firstName || '') ||
       lastName !== (user?.lastName || '') ||
-      phone.replace(/\D/g, '') !== (user?.phone || '').replace(/\D/g, '')
+      normalizedPhone !== originalPhone
     );
   };
 
@@ -312,14 +310,32 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={phone}
-                onChangeText={handlePhoneChange}
+              <PhoneInput
+                ref={phoneInputRef}
+                defaultValue={phone}
+                defaultCode="US"
+                layout="first"
+                withDarkTheme={isDark}
+                onChangeFormattedText={(text) => setPhone(text)}
                 placeholder="(555) 123-4567"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
-                maxLength={14}
+                textInputProps={{
+                  placeholderTextColor: colors.textMuted,
+                  selectionColor: colors.primary,
+                }}
+                renderDropdownImage={
+                  <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+                }
+                containerStyle={styles.phoneContainer}
+                textContainerStyle={styles.phoneTextContainer}
+                textInputStyle={styles.phoneInput}
+                codeTextStyle={styles.phoneCode}
+                flagButtonStyle={styles.phoneFlagButton}
+                countryPickerButtonStyle={styles.phoneCountryButton}
+                countryPickerProps={{
+                  withEmoji: false,
+                  withFilter: true,
+                  withFlag: true,
+                }}
               />
             </View>
 
@@ -480,6 +496,36 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       color: colors.textMuted,
       marginLeft: 4,
       marginTop: 4,
+    },
+    phoneContainer: {
+      backgroundColor: cardBackground,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: isDark ? '#1d1d1f' : 'rgba(0,0,0,0.08)',
+      width: '100%',
+    },
+    phoneTextContainer: {
+      backgroundColor: 'transparent',
+      borderRadius: 12,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+    },
+    phoneInput: {
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.text,
+      height: 48,
+    },
+    phoneCode: {
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
+    phoneFlagButton: {
+      marginLeft: 8,
+    },
+    phoneCountryButton: {
+      backgroundColor: 'transparent',
     },
   });
 };

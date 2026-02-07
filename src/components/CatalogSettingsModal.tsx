@@ -538,6 +538,43 @@ export function CatalogSettingsModal({
               </View>
             </View>
 
+            {/* Divider */}
+            <View style={styles.divider} />
+
+            {/* Preorder Settings (Read-only indicator) */}
+            <View style={styles.section}>
+              <View style={styles.toggleRow}>
+                <View style={styles.toggleInfo}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="receipt-outline" size={16} color={colors.primary} />
+                    <Text style={styles.label}>Pre-Orders</Text>
+                  </View>
+                  <Text style={styles.toggleDescription}>
+                    {catalog?.preorderEnabled
+                      ? 'Pre-orders are enabled for this menu'
+                      : 'Allow customers to order ahead via QR code'}
+                  </Text>
+                </View>
+                <View style={[
+                  styles.preorderBadge,
+                  catalog?.preorderEnabled && styles.preorderBadgeEnabled
+                ]}>
+                  <Text style={[
+                    styles.preorderBadgeText,
+                    catalog?.preorderEnabled && styles.preorderBadgeTextEnabled
+                  ]}>
+                    {catalog?.preorderEnabled ? 'Enabled' : 'Disabled'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.preorderNote}>
+                <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.preorderNoteText}>
+                  Configure pre-order settings, QR codes, and payment options in the Vendor Dashboard
+                </Text>
+              </View>
+            </View>
+
             {/* Catalog Actions */}
             {(onDuplicate || onDelete) && (
               <View style={styles.actionsSection}>
@@ -883,5 +920,40 @@ const createStyles = (colors: any, glassColors: any, isDark: boolean) =>
     actionButtonText: {
       fontSize: 16,
       fontWeight: '600',
+    },
+    preorderBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 12,
+      backgroundColor: glassColors.backgroundElevated,
+      borderWidth: 1,
+      borderColor: glassColors.border,
+    },
+    preorderBadgeEnabled: {
+      backgroundColor: colors.success + '15',
+      borderColor: colors.success + '30',
+    },
+    preorderBadgeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    preorderBadgeTextEnabled: {
+      color: colors.success,
+    },
+    preorderNote: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginTop: 12,
+      paddingTop: 12,
+      borderTopWidth: 1,
+      borderTopColor: glassColors.border,
+      gap: 8,
+    },
+    preorderNoteText: {
+      flex: 1,
+      fontSize: 13,
+      color: colors.textMuted,
+      lineHeight: 18,
     },
   });
