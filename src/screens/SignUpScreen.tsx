@@ -318,8 +318,10 @@ export function SignUpScreen() {
       setCurrentStep('account');
     } else if (currentStep === 'plan') {
       setCurrentStep('business');
-    } else {
+    } else if (navigation.canGoBack()) {
       navigation.goBack();
+    } else {
+      navigation.navigate('Login' as never);
     }
   };
 
