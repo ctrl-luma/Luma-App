@@ -27,7 +27,10 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
             gcTime: 30 * 60 * 1000,
             // Skip auto-refetch on focus — sockets keep data current
             refetchOnWindowFocus: false,
-            refetchOnMount: false,
+            // Refetch on mount if query was invalidated (staleTime: Infinity means
+            // queries only go stale via explicit invalidation, so this won't cause
+            // unnecessary refetches — only fires after socket-driven invalidation)
+            refetchOnMount: true,
             // Refetch on reconnect as safety net (catches anything missed while offline)
             refetchOnReconnect: true,
             // Retry failed requests once

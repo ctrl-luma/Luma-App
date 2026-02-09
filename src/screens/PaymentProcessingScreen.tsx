@@ -28,6 +28,7 @@ type RouteParams = {
     orderId?: string;
     orderNumber?: string;
     customerEmail?: string;
+    preorderId?: string;
   };
 };
 
@@ -38,7 +39,7 @@ export function PaymentProcessingScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const { initializeTerminal, connectReader, processPayment: terminalProcessPayment, cancelPayment } = useTerminal();
 
-  const { paymentIntentId, amount, orderId, orderNumber, customerEmail } = route.params;
+  const { paymentIntentId, amount, orderId, orderNumber, customerEmail, preorderId } = route.params;
   const [isCancelling, setIsCancelling] = useState(false);
   const [statusText, setStatusText] = useState('Preparing payment...');
   const isCancelledRef = React.useRef(false);
@@ -82,6 +83,7 @@ export function PaymentProcessingScreen() {
           orderId,
           orderNumber,
           customerEmail,
+          preorderId,
         });
       } else {
         throw new Error(`Payment status: ${result.status}`);
@@ -108,6 +110,7 @@ export function PaymentProcessingScreen() {
         orderNumber,
         customerEmail,
         errorMessage,
+        preorderId,
       });
     }
   };

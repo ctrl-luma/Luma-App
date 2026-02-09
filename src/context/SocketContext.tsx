@@ -76,6 +76,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
   const socketRef = useRef<Socket | null>(null);
   const listenersRef = useRef<Map<string, Set<EventCallback>>>(new Map());
   const isRefreshingRef = useRef(false);
+  const isSessionKickedRef = useRef(false);
   const lastUsedTokenRef = useRef<string | null>(null);
   const [isConnected, setIsConnected] = React.useState(false);
 
@@ -112,6 +113,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
       logger.log('[Socket] Already connected, skipping');
       return;
     }
+
+    // Reset kicked flag on fresh connect (user logged in again)
+    isSessionKickedRef.current = false;
 
     // Clean up existing socket if it exists but isn't connected
     // This prevents duplicate sockets when reconnecting
@@ -171,6 +175,15 @@ export function SocketProvider({ children }: SocketProviderProps) {
       // Listen for session kicked event (user logged in on another device)
       socketRef.current.on(SocketEvents.SESSION_KICKED, (data: any) => {
         logger.log('[Socket] Received SESSION_KICKED event:', data);
+        // Immediately prevent any reconnect/refresh attempts
+        isSessionKickedRef.current = true;
+        if (socketRef.current) {
+          socketRef.current.io.opts.reconnection = false;
+          socketRef.current.removeAllListeners();
+          socketRef.current.disconnect();
+          socketRef.current = null;
+          setIsConnected(false);
+        }
         if (triggerSessionKicked) {
           triggerSessionKicked(data);
         }
@@ -182,6 +195,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
       });
 
       socketRef.current.io.on('reconnect', async (attempt) => {
+        if (isSessionKickedRef.current) return;
         logger.log(`[Socket] Reconnected after ${attempt} attempts`);
         // Verify session is still valid after reconnect
         await verifySession();
@@ -198,6 +212,9 @@ export function SocketProvider({ children }: SocketProviderProps) {
       socketRef.current.on('connect_error', async (error) => {
         logger.error('[Socket] Connection error:', error.message);
         setIsConnected(false);
+
+        // Don't attempt anything if we were kicked
+        if (isSessionKickedRef.current) return;
 
         // If the error is "Invalid token", stop auto-reconnect and try to refresh
         if (error.message === 'Invalid token' && !isRefreshingRef.current) {
@@ -321,11 +338,11 @@ export function SocketProvider({ children }: SocketProviderProps) {
   useEffect(() => {
     const handleAppStateChange = async (nextAppState: AppStateStatus) => {
       logger.log('[Socket] App state changed to:', nextAppState);
-      if (nextAppState === 'active' && isAuthenticated) {
+      if (nextAppState === 'active' && isAuthenticated && !isSessionKickedRef.current) {
         // Always verify session when coming back to foreground
         await verifySession();
 
-        if (!socketRef.current?.connected) {
+        if (!socketRef.current?.connected && !isSessionKickedRef.current) {
           logger.log('[Socket] App became active, reconnecting...');
           connect();
         }
@@ -349,7 +366,7 @@ export function SocketProvider({ children }: SocketProviderProps) {
         // Track that we were offline
         wasOffline = true;
         logger.log('[Socket] Network went offline');
-      } else if (wasOffline && isOnline && isAuthenticated) {
+      } else if (wasOffline && isOnline && isAuthenticated && !isSessionKickedRef.current) {
         // Coming back online after being offline - verify session immediately
         logger.log('[Socket] Network restored - verifying session...');
         wasOffline = false;

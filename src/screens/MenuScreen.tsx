@@ -571,6 +571,7 @@ export function MenuScreen() {
   const {
     data: products,
     isLoading: productsLoading,
+    error: productsError,
     refetch,
     isRefetching,
   } = useQuery({
@@ -1613,6 +1614,36 @@ export function MenuScreen() {
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <View key={i} style={[styles.skeletonBox, { width: (screenWidth - GRID_PADDING * 2 - GRID_GAP) / 2, height: 200, borderRadius: 20 }]} />
           ))}
+        </View>
+      </View>
+    );
+  }
+
+  if (productsError && !products) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
+            {selectedCatalog.location ? (
+              <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
+            ) : null}
+          </View>
+        </View>
+        <View style={styles.centered}>
+          <View style={{ backgroundColor: colors.error + '15', borderRadius: 40, padding: 16, marginBottom: 16 }}>
+            <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>Unable to Load Menu</Text>
+          <Text style={[styles.errorText, { marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }]}>
+            Please check your connection and try again
+          </Text>
+          <TouchableOpacity
+            onPress={() => refetch()}
+            style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}
+          >
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Retry</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );

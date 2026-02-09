@@ -103,7 +103,7 @@ export const preordersApi = {
    */
   complete: async (id: string, paymentIntentId?: string): Promise<Preorder> => {
     const response = await apiClient.post<{ preorder: Preorder }>(`/preorders/${id}/complete`, {
-      ...(paymentIntentId && { paymentIntentId }),
+      ...(paymentIntentId && { stripePaymentIntentId: paymentIntentId }),
     });
     return response.preorder;
   },
@@ -120,5 +120,8 @@ export const preordersApi = {
   /**
    * Get preorder stats for dashboard
    */
-  getStats: () => apiClient.get<PreorderStatsResponse>('/preorders/stats'),
+  getStats: (catalogId?: string) => {
+    const query = catalogId ? `?catalogId=${catalogId}` : '';
+    return apiClient.get<PreorderStatsResponse>(`/preorders/stats${query}`);
+  },
 };

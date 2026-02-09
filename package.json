@@ -9,7 +9,7 @@
     "web": "expo start --web --port 3336",
     "build:dev": "eas build --profile dev --platform android",
     "build:dev:ios": "eas build --profile dev --platform ios --auto-submit",
-    "build:prod": "eas build --profile prod --platform ios",
+    "build:prod": "eas build --profile prod --platform all",
     "submit:ios": "eas submit --platform ios",
     "sim": "npx expo start",
     "postinstall": "npx patch-package"

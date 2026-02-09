@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Catalog, catalogsApi } from '../lib/api';
 import { useAuth } from './AuthContext';
-import { useSocketEvent, SocketEvents } from './SocketContext';
+import { useSocket, useSocketEvent, SocketEvents } from './SocketContext';
 import logger from '../lib/logger';
 
 interface CatalogContextType {
@@ -215,6 +215,19 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
   useSocketEvent(SocketEvents.CATALOG_UPDATED, handleCatalogUpdate);
   useSocketEvent(SocketEvents.CATALOG_CREATED, handleCatalogUpdate);
   useSocketEvent(SocketEvents.CATALOG_DELETED, handleCatalogDelete);
+
+  // Refresh catalogs on socket REconnect (not initial connection)
+  const { isConnected } = useSocket();
+  const wasConnectedRef = useRef(isConnected);
+  const hasEverConnectedRef = useRef(false);
+  useEffect(() => {
+    if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current && isAuthenticated) {
+      logger.log('[CatalogContext] Socket reconnected, refreshing catalogs');
+      refreshCatalogs();
+    }
+    if (isConnected) hasEverConnectedRef.current = true;
+    wasConnectedRef.current = isConnected;
+  }, [isConnected, isAuthenticated, refreshCatalogs]);
 
   return (
     <CatalogContext.Provider

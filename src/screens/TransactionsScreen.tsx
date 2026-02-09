@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -354,6 +354,7 @@ export function TransactionsScreen() {
   const [filter, setFilter] = useState<FilterType>('all');
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   const wasConnectedRef = useRef(isConnected);
+  const hasEverConnectedRef = useRef(false);
 
   // Held orders state - seed from prefetch cache if available
   const prefetchedHeld = queryClient.getQueryData<{ orders: Order[] }>(['held-orders', deviceId]);
@@ -413,14 +414,14 @@ export function TransactionsScreen() {
     }
   }, [activeTab]);
 
-  // Refetch when socket reconnects (to catch any missed events)
+  // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
-    if (isConnected && !wasConnectedRef.current) {
-      // Socket just reconnected - refetch all data to catch missed events
+    if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current) {
       console.log('[TransactionsScreen] Socket reconnected, refetching data...');
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       fetchHeldOrders();
     }
+    if (isConnected) hasEverConnectedRef.current = true;
     wasConnectedRef.current = isConnected;
   }, [isConnected, queryClient, activeTab, fetchHeldOrders]);
 
@@ -464,6 +465,13 @@ export function TransactionsScreen() {
     }
   }, []));
 
+  // Refetch stale data when the tab gains focus (catches any missed socket events)
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    }, [queryClient])
+  );
+
   const {
     data,
     isLoading,
@@ -472,13 +480,12 @@ export function TransactionsScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['transactions', selectedCatalog?.id, deviceId, filter],
+    queryKey: ['transactions', selectedCatalog?.id, filter],
     queryFn: ({ pageParam }) =>
       transactionsApi.list({
         limit: 25,
         starting_after: pageParam,
         catalog_id: selectedCatalog?.id,
-        device_id: deviceId || undefined,
         status: filter,
       }),
     getNextPageParam: (lastPage) => {
@@ -486,7 +493,6 @@ export function TransactionsScreen() {
       return lastPage.data[lastPage.data.length - 1].id;
     },
     initialPageParam: undefined as string | undefined,
-    enabled: !!deviceId, // Wait for device ID to be loaded before fetching
   });
 
   // Filtering is now done server-side via the status query parameter
@@ -502,6 +508,7 @@ export function TransactionsScreen() {
       case 'partially_refunded':
         return colors.warning;
       case 'failed':
+      case 'cancelled':
         return colors.error;
       default:
         return colors.textMuted;
@@ -520,6 +527,8 @@ export function TransactionsScreen() {
         return 'Failed';
       case 'pending':
         return 'Pending';
+      case 'cancelled':
+        return 'Cancelled';
       default:
         return status;
     }
@@ -797,7 +806,7 @@ export function TransactionsScreen() {
               })}
             </View>
 
-            {isLoading || !deviceId ? (
+            {isLoading ? (
               <LoadingTransactionsContent colors={colors} isDark={isDark} />
             ) : transactions.length === 0 ? (
               <EmptyTransactionsContent colors={colors} isDark={isDark} />

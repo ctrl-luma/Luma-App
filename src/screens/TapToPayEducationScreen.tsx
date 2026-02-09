@@ -25,11 +25,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAuth } from '../context/AuthContext';
 import { useDevice } from '../context/DeviceContext';
-import { useTapToPayEducation } from '../hooks/useTapToPayEducation';
 import { authService } from '../lib/api';
 
 import { useTheme } from '../context/ThemeContext';
 import { useTerminal, ConfigurationStage } from '../context/StripeTerminalContext';
+import { StarBackground } from '../components/StarBackground';
 import { glass } from '../lib/colors';
 import { shadows, glow } from '../lib/shadows';
 import { spacing, radius } from '../lib/spacing';
@@ -61,9 +61,6 @@ export function TapToPayEducationScreen() {
   // Auth context for user ID and device context for device ID
   const { user, refreshAuth } = useAuth();
   const { deviceId } = useDevice();
-
-  // Education tracking - mark as seen when user completes this screen
-  const { markEducationSeen } = useTapToPayEducation(user?.id);
 
   // Check if this device has already completed Tap to Pay setup
   const deviceAlreadyRegistered = !!(
@@ -184,13 +181,11 @@ export function TapToPayEducationScreen() {
           } catch (err: any) {
             logger.warn('[TapToPayEducation] Auto-enable failed:', err.message);
             // Still navigate back — don't show enable screen for registered device
-            markEducationSeen();
             navigateBack();
           }
         })();
       } else {
         // iOS < 18, no Apple education to show
-        markEducationSeen();
         navigateBack();
       }
       return;
@@ -203,9 +198,9 @@ export function TapToPayEducationScreen() {
   // Android auto-enable on mount: Connect reader and navigate back immediately
   useEffect(() => {
     if (isAndroid) {
-      // If already connected, just mark as seen and navigate back
+      // If already connected, register device and navigate back
       if (isConnected) {
-        markEducationSeen();
+        registerDevice();
         navigateBack();
         return;
       }
@@ -225,7 +220,7 @@ export function TapToPayEducationScreen() {
       }
       const connected = await connectReader();
       if (connected) {
-        markEducationSeen();
+        await registerDevice();
         navigateBack();
       } else {
         setEnableError('Failed to enable Tap to Pay. Please try again.');
@@ -255,7 +250,6 @@ export function TapToPayEducationScreen() {
     // Mark complete so loading guard doesn't re-show
     educationCompleteRef.current = true;
     setAppleEducationActive(false);
-    markEducationSeen();
     navigateBack();
   };
 
@@ -334,7 +328,6 @@ export function TapToPayEducationScreen() {
   };
 
   const handleClose = () => {
-    markEducationSeen();
     navigateBack();
   };
 
@@ -451,18 +444,30 @@ export function TapToPayEducationScreen() {
     );
   }
 
-  // iOS: Show loading while:
-  // - checking ProximityReaderDiscovery availability
-  // - Apple education is active (native sheet showing)
-  // - already connected and about to auto-launch Apple education
-  // Show blank screen while waiting for ProximityReader check, Apple education sheet,
-  // or auto-connect to complete
+  // iOS loading states:
+  // - Apple education sheet active → blank screen (native sheet covers it)
+  // - Auto-connect in progress for registered device → loading spinner
+  // - Checking ProximityReaderDiscovery for registered device → loading spinner
+  // For unregistered devices, show the enable screen immediately with button disabled
   const pendingAutoEducation = isIOS && autoHandledRef.current && !educationCompleteRef.current;
-  if (proximityDiscoveryAvailable === null || appleEducationActive || pendingAutoEducation) {
+  const showLoadingScreen = appleEducationActive || pendingAutoEducation ||
+    (proximityDiscoveryAvailable === null && deviceAlreadyRegistered);
+
+  if (showLoadingScreen) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#09090b' : colors.background }]} edges={['top', 'bottom', 'left', 'right']} />
+      <StarBackground colors={colors} isDark={isDark}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+          {!appleEducationActive && (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          )}
+        </SafeAreaView>
+      </StarBackground>
     );
   }
+
+  const isButtonDisabled = isEnabling;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
@@ -567,13 +572,13 @@ export function TapToPayEducationScreen() {
         <TouchableOpacity
           onPress={handleButtonPress}
           activeOpacity={0.9}
-          disabled={isEnabling}
+          disabled={isButtonDisabled}
         >
           <LinearGradient
-            colors={isEnabling ? [colors.gray600, colors.gray700] : [colors.primary, colors.primary700]}
+            colors={isButtonDisabled ? [colors.gray600, colors.gray700] : [colors.primary, colors.primary700]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.nextButton}
+            style={[styles.nextButton, isButtonDisabled && { opacity: 0.6 }]}
           >
             {isEnabling ? (
               <ActivityIndicator size="small" color="#fff" />

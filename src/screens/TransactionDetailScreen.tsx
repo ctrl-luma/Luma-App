@@ -360,6 +360,7 @@ export function TransactionDetailScreen() {
       case 'partially_refunded':
         return colors.warning;
       case 'failed':
+      case 'cancelled':
         return colors.error;
       default:
         return colors.textMuted;

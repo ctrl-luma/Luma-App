@@ -11,12 +11,13 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../context/ThemeContext';
 import { useSocketEvent, useSocket, SocketEvents } from '../context/SocketContext';
 import { usePreorders } from '../context/PreordersContext';
+import { useCatalog } from '../context/CatalogContext';
 import { preordersApi, Preorder, PreorderStatus } from '../lib/api/preorders';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
@@ -204,6 +205,7 @@ export function PreordersScreen() {
   const navigation = useNavigation<any>();
   const { isConnected } = useSocket();
   const { counts, refreshCounts } = usePreorders();
+  const { selectedCatalog } = useCatalog();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
@@ -216,7 +218,12 @@ export function PreordersScreen() {
   const [isLoading, setIsLoading] = useState(!prefetchedPending);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const wasConnectedRef = useRef(isConnected);
-  const fetchedTabsRef = useRef<Set<TabType>>(new Set(prefetchedPending ? ['new'] : []));
+  const hasEverConnectedRef = useRef(false);
+
+  // Per-tab cache so switching tabs is instant
+  const tabCacheRef = useRef<Record<string, Preorder[]>>(
+    prefetchedPending?.preorders ? { new: prefetchedPending.preorders } : {}
+  );
 
   // Derive tab counts from context (with safety check)
   const tabCounts = {
@@ -228,15 +235,11 @@ export function PreordersScreen() {
   const styles = createStyles(colors, glassColors, isDark);
 
   const fetchPreorders = useCallback(async () => {
+    if (!selectedCatalog) return;
     try {
       const tab = TABS.find(t => t.key === activeTab)!;
-      console.log('[PreordersScreen] Fetching preorders for tab:', tab.key, 'statuses:', tab.statuses);
-      const response = await preordersApi.list({ status: tab.statuses });
-      console.log('[PreordersScreen] Fetched', response.preorders.length, 'preorders');
-      if (response.preorders.length > 0) {
-        console.log('[PreordersScreen] First preorder:', JSON.stringify(response.preorders[0], null, 2));
-      }
-      fetchedTabsRef.current.add(activeTab);
+      const response = await preordersApi.list({ status: tab.statuses, catalogId: selectedCatalog.id });
+      tabCacheRef.current[activeTab] = response.preorders;
       setPreorders(response.preorders);
     } catch (error) {
       console.error('[PreordersScreen] Failed to fetch preorders:', error);
@@ -244,56 +247,76 @@ export function PreordersScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [activeTab]);
+  }, [activeTab, selectedCatalog]);
 
-  // Fetch on tab change - seed from prefetch cache if available, otherwise show empty (not loading)
+  // Clear per-tab cache when catalog changes
+  const prevCatalogIdRef = useRef(selectedCatalog?.id);
   useEffect(() => {
-    if (!fetchedTabsRef.current.has(activeTab)) {
-      const tab = TABS.find(t => t.key === activeTab)!;
-      const cached = queryClient.getQueryData<{ preorders: Preorder[] }>(['preorders', tab.statuses[0]]);
-      if (cached) {
-        setPreorders(cached.preorders);
-        fetchedTabsRef.current.add(activeTab);
-      } else {
-        // Clear list but don't show loading spinner — fetch will populate it quickly
-        setPreorders([]);
-      }
+    if (selectedCatalog?.id !== prevCatalogIdRef.current) {
+      tabCacheRef.current = {};
+      prevCatalogIdRef.current = selectedCatalog?.id;
+    }
+  }, [selectedCatalog]);
+
+  // On tab switch: show cached data immediately, refetch in background
+  useEffect(() => {
+    const cached = tabCacheRef.current[activeTab];
+    if (cached) {
+      setPreorders(cached);
+      setIsLoading(false);
+    } else {
+      setPreorders([]);
+      setIsLoading(true);
     }
     fetchPreorders();
   }, [activeTab, fetchPreorders]);
 
-  // Refetch when socket reconnects (to catch any missed events)
+  // Refetch list + counts when screen gains focus (e.g. navigating back from detail)
+  useFocusEffect(
+    useCallback(() => {
+      tabCacheRef.current = {};
+      fetchPreorders();
+      refreshCounts();
+    }, [fetchPreorders, refreshCounts])
+  );
+
+  // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
-    if (isConnected && !wasConnectedRef.current) {
+    if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current) {
       console.log('[PreordersScreen] Socket reconnected, refetching data...');
       fetchPreorders();
       refreshCounts();
     }
+    if (isConnected) hasEverConnectedRef.current = true;
     wasConnectedRef.current = isConnected;
   }, [isConnected, fetchPreorders, refreshCounts]);
 
-  // Listen for preorder events via socket - just refetch list, context handles counts
+  // Listen for preorder events via socket - clear all tab caches and refetch
   useSocketEvent(SocketEvents.PREORDER_CREATED, useCallback((data: any) => {
     console.log('[PreordersScreen] PREORDER_CREATED event received!', JSON.stringify(data, null, 2));
     // Play notification sound/vibration for new orders
     if (Platform.OS !== 'web') {
       Vibration.vibrate([0, 200, 100, 200]);
     }
+    tabCacheRef.current = {};
     fetchPreorders();
   }, [fetchPreorders]));
 
   useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((data: any) => {
     console.log('[PreordersScreen] PREORDER_UPDATED event received!', JSON.stringify(data, null, 2));
+    tabCacheRef.current = {};
     fetchPreorders();
   }, [fetchPreorders]));
 
   useSocketEvent(SocketEvents.PREORDER_COMPLETED, useCallback((data: any) => {
     console.log('[PreordersScreen] PREORDER_COMPLETED event received!', JSON.stringify(data, null, 2));
+    tabCacheRef.current = {};
     fetchPreorders();
   }, [fetchPreorders]));
 
   useSocketEvent(SocketEvents.PREORDER_CANCELLED, useCallback((data: any) => {
     console.log('[PreordersScreen] PREORDER_CANCELLED event received!', JSON.stringify(data, null, 2));
+    tabCacheRef.current = {};
     fetchPreorders();
   }, [fetchPreorders]));
 

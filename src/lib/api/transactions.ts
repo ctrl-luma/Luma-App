@@ -20,7 +20,7 @@ export interface Transaction {
   id: string;
   amount: number;
   amountRefunded: number;
-  status: 'succeeded' | 'pending' | 'failed' | 'refunded' | 'partially_refunded';
+  status: 'succeeded' | 'pending' | 'failed' | 'refunded' | 'partially_refunded' | 'cancelled';
   description: string | null;
   customerName: string | null;
   customerEmail: string | null;

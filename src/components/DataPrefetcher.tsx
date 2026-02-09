@@ -63,7 +63,7 @@ export function DataPrefetcher() {
     ['pending', 'preparing', 'ready'].forEach((status) => {
       queryClient.prefetchQuery({
         queryKey: ['preorders', status],
-        queryFn: () => preordersApi.list({ status: [status] }),
+        queryFn: () => preordersApi.list({ status: [status], catalogId: selectedCatalog.id }),
       });
     });
 

@@ -26,7 +26,8 @@ import { useCart } from '../context/CartContext';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
-import { stripeTerminalApi, ordersApi } from '../lib/api';
+import { useQueryClient } from '@tanstack/react-query';
+import { stripeTerminalApi, ordersApi, preordersApi } from '../lib/api';
 import logger from '../lib/logger';
 import { isValidEmail } from '../lib/validation';
 import { StarBackground } from '../components/StarBackground';
@@ -43,6 +44,7 @@ type RouteParams = {
     customerEmail?: string;
     errorMessage?: string;
     skipToCardEntry?: boolean; // Go directly to card entry page
+    preorderId?: string; // If present, complete the preorder on success
   };
 };
 
@@ -54,7 +56,8 @@ export function PaymentResultScreen() {
   const { clearCart } = useCart();
   const { width: screenWidth } = useWindowDimensions();
 
-  const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage, skipToCardEntry } = route.params;
+  const queryClient = useQueryClient();
+  const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage, skipToCardEntry, preorderId } = route.params;
 
   // Dynamic font sizes based on screen width (accounting for 24px padding on each side)
   const amountText = `$${(amount / 100).toFixed(2)}`;
@@ -76,6 +79,13 @@ export function PaymentResultScreen() {
   // Stripe hook for confirming card payments
   const { confirmPayment } = useConfirmPayment();
 
+  // Invalidate transaction cache on any successful payment so History tab is fresh
+  useEffect(() => {
+    if (success) {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    }
+  }, [success, queryClient]);
+
   // Auto-send receipt if customer email was provided during checkout
   useEffect(() => {
     if (success && customerEmail && paymentIntentId && !receiptSent) {
@@ -92,6 +102,24 @@ export function PaymentResultScreen() {
       autoSendReceipt();
     }
   }, [success, customerEmail, paymentIntentId, receiptSent]);
+
+  // Complete preorder after successful payment (pay_at_pickup flow)
+  useEffect(() => {
+    if (success && preorderId && paymentIntentId) {
+      const completePreorder = async () => {
+        try {
+          await preordersApi.complete(preorderId, paymentIntentId);
+          logger.log('[PaymentResult] Preorder completed:', preorderId);
+          // Directly invalidate transactions cache so the History tab shows updated data
+          // (don't rely solely on the socket event which may be delayed)
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        } catch (error) {
+          logger.error('[PaymentResult] Failed to complete preorder:', error);
+        }
+      };
+      completePreorder();
+    }
+  }, [success, preorderId, paymentIntentId, queryClient]);
 
   // Animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -211,6 +239,10 @@ export function PaymentResultScreen() {
   }, []);
 
   const handleNewSale = () => {
+    // Cancel any dangling PaymentIntent on failure path
+    if (!success && paymentIntentId) {
+      stripeTerminalApi.cancelPaymentIntent(paymentIntentId).catch(() => {});
+    }
     // Reset navigation to Menu tab
     navigation.dispatch(
       CommonActions.reset({
@@ -221,6 +253,10 @@ export function PaymentResultScreen() {
   };
 
   const handleTryAgain = () => {
+    // Cancel the failed PaymentIntent so it doesn't linger as "Incomplete" in Stripe
+    if (paymentIntentId) {
+      stripeTerminalApi.cancelPaymentIntent(paymentIntentId).catch(() => {});
+    }
     navigation.goBack();
   };
 
@@ -235,13 +271,19 @@ export function PaymentResultScreen() {
     setProcessingCard(true);
 
     try {
+      // Cancel the original terminal PaymentIntent so it doesn't linger as "Incomplete" in Stripe
+      if (paymentIntentId) {
+        stripeTerminalApi.cancelPaymentIntent(paymentIntentId).catch(() => {});
+      }
+
       // Create a new payment intent for card payment (direct charge on connected account)
       const paymentIntent = await stripeTerminalApi.createPaymentIntent({
         amount: amount / 100, // API expects dollars
-        description: `Order ${orderNumber || 'Payment'}`,
+        description: preorderId ? 'Preorder Payment' : `Order ${orderNumber || 'Payment'}`,
         metadata: {
           orderId: orderId || '',
           orderNumber: orderNumber || '',
+          ...(preorderId && { preorderId }),
         },
         receiptEmail: customerEmail || undefined,
         captureMethod: 'automatic',
@@ -295,6 +337,7 @@ export function PaymentResultScreen() {
                   orderId,
                   orderNumber,
                   customerEmail,
+                  preorderId,
                 },
               },
             ],

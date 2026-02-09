@@ -55,6 +55,7 @@ export function EventsScannerScreen() {
   const { isConnected } = useSocket();
   const queryClient = useQueryClient();
   const wasConnectedRef = useRef(isConnected);
+  const hasEverConnectedRef = useRef(false);
 
   const [selectedEvent, setSelectedEvent] = useState<OrgEvent | null>(null);
   const [lastScan, setLastScan] = useState<ScanRecord | null>(null);
@@ -102,27 +103,19 @@ export function EventsScannerScreen() {
   // Fetch org events for context
   const { data: eventsData, isLoading: eventsLoading, error: eventsError } = useQuery({
     queryKey: ['events'],
-    queryFn: async () => {
-      console.log('[EventsScanner] Fetching events...');
-      const result = await eventsApi.list();
-      console.log('[EventsScanner] Fetch result:', JSON.stringify(result, null, 2));
-      return result;
-    },
+    queryFn: () => eventsApi.list(),
     staleTime: Infinity,
+    placeholderData: () => queryClient.getQueryData(['events']),
   });
 
-  // Refetch on socket reconnect
+  // Refetch on socket REconnect (not initial connection)
   useEffect(() => {
-    if (isConnected && !wasConnectedRef.current) {
+    if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current) {
       queryClient.invalidateQueries({ queryKey: ['events'] });
     }
+    if (isConnected) hasEverConnectedRef.current = true;
     wasConnectedRef.current = isConnected;
   }, [isConnected, queryClient]);
-
-  // Log any errors
-  if (eventsError) {
-    console.error('[EventsScanner] Error fetching events:', eventsError);
-  }
 
   const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
 
@@ -134,22 +127,13 @@ export function EventsScannerScreen() {
     ? eventsData
     : (eventsData?.events || []);
 
-  console.log('[EventsScanner] Raw events data:', JSON.stringify(eventsData, null, 2));
-  console.log('[EventsScanner] All events count:', allEvents.length);
-
   // Filter to published events: upcoming, ongoing, or within 24h after ending
   const activeEvents = allEvents.filter((e: OrgEvent) => {
     const isPublished = e.status === 'published';
     const endTime = new Date(e.endsAt).getTime();
     const oneDayMs = 24 * 60 * 60 * 1000;
-    const isNotExpired = Date.now() < endTime + oneDayMs;
-
-    console.log(`[EventsScanner] Event "${e.name}": status=${e.status}, isPublished=${isPublished}, endsAt=${e.endsAt}, isNotExpired=${isNotExpired}`);
-
-    return isPublished && isNotExpired;
+    return isPublished && Date.now() < endTime + oneDayMs;
   });
-
-  console.log('[EventsScanner] Filtered activeEvents:', activeEvents.length);
 
   const showResult = useCallback((record: ScanRecord) => {
     setLastScan(record);
@@ -218,9 +202,8 @@ export function EventsScannerScreen() {
     });
   };
 
-  // Unified loading state - show skeleton while auth or events are loading
-  // Also check if eventsData is undefined (query hasn't returned yet)
-  const isLoading = isInitializing || eventsLoading || (eventsData === undefined && !eventsError);
+  // Show skeleton while auth or events are loading (and no cached data)
+  const isLoading = isInitializing || (eventsLoading && !eventsData);
 
   // Event selection screen (or loading/empty states)
   if (!selectedEvent) {
@@ -288,47 +271,6 @@ export function EventsScannerScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        ) : !CameraView ? (
-          // Camera not available
-          <View style={styles.emptyStateContainer}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: colors.textMuted + '15' }]}>
-              <Ionicons name="camera-outline" size={32} color={colors.textMuted} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              Camera Not Available
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              The camera module is not installed.{'\n'}Please use a development build.
-            </Text>
-          </View>
-        ) : !permission?.granted ? (
-          // Camera permission needed
-          <View style={styles.emptyStateContainer}>
-            <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary + '15' }]}>
-              <Ionicons name="camera-outline" size={32} color={colors.primary} />
-            </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              Camera Access Required
-            </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              To scan ticket QR codes, please allow{'\n'}camera access for Luma
-            </Text>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={requestPermission}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[colors.primary, '#3B82F6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.primaryButtonGradient}
-              >
-                <Ionicons name="camera" size={18} color="#fff" />
-                <Text style={styles.primaryButtonText}>Enable Camera</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
         ) : eventsError ? (
           // Error state
           <View style={styles.emptyStateContainer}>
@@ -393,6 +335,62 @@ export function EventsScannerScreen() {
             )}
           />
         )}
+        </View>
+      </StarBackground>
+    );
+  }
+
+  // Camera not available or permission not granted — show inline in scanner view
+  if (!CameraView || !permission?.granted) {
+    return (
+      <StarBackground colors={colors} isDark={isDark}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+          <View style={styles.selectHeader}>
+            <TouchableOpacity onPress={() => setSelectedEvent(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Ionicons name="chevron-back" size={20} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontSize: 15 }}>Back</Text>
+            </TouchableOpacity>
+            <Text style={[styles.selectTitle, { color: colors.text }]}>{selectedEvent.name}</Text>
+            <Text style={[styles.selectSubtitle, { color: colors.textSecondary }]}>
+              {!CameraView ? 'Camera module not available' : 'Camera permission required to scan tickets'}
+            </Text>
+          </View>
+          {!CameraView ? (
+            <View style={styles.emptyStateContainer}>
+              <View style={[styles.emptyIconContainer, { backgroundColor: colors.textMuted + '15' }]}>
+                <Ionicons name="camera-outline" size={32} color={colors.textMuted} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Camera Not Available</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                The camera module is not installed.{'\n'}Please use a development build.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary + '15' }]}>
+                <Ionicons name="camera-outline" size={32} color={colors.primary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>Camera Access Required</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+                To scan ticket QR codes, please allow{'\n'}camera access for Luma
+              </Text>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={requestPermission}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[colors.primary, '#3B82F6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.primaryButtonGradient}
+                >
+                  <Ionicons name="camera" size={18} color="#fff" />
+                  <Text style={styles.primaryButtonText}>Enable Camera</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </StarBackground>
     );

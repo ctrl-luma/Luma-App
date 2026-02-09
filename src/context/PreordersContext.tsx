@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { preordersApi } from '../lib/api/preorders';
 import { useSocketEvent, useSocket, SocketEvents } from './SocketContext';
 import { useAuth } from './AuthContext';
+import { useCatalog } from './CatalogContext';
 
 interface PreorderCounts {
   pending: number;
@@ -25,7 +26,9 @@ interface PreordersProviderProps {
 export function PreordersProvider({ children }: PreordersProviderProps) {
   const { isAuthenticated } = useAuth();
   const { isConnected } = useSocket();
+  const { selectedCatalog } = useCatalog();
   const wasConnectedRef = useRef(isConnected);
+  const hasEverConnectedRef = useRef(false);
 
   const [counts, setCounts] = useState<PreorderCounts>({
     pending: 0,
@@ -36,43 +39,42 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshCounts = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !selectedCatalog) return;
 
-    console.log('[PreordersContext] Fetching preorder stats...');
+    console.log('[PreordersContext] Fetching preorder stats for catalog:', selectedCatalog.id);
     try {
-      const stats = await preordersApi.getStats();
-      console.log('[PreordersContext] Stats received from API:', JSON.stringify(stats, null, 2));
+      const stats = await preordersApi.getStats(selectedCatalog.id);
       const newCounts = {
         pending: stats.pending,
         preparing: stats.preparing,
         ready: stats.ready,
         total: stats.pending + stats.preparing + stats.ready,
       };
-      console.log('[PreordersContext] Setting counts:', JSON.stringify(newCounts, null, 2));
       setCounts(newCounts);
     } catch (error) {
       console.error('[PreordersContext] Failed to fetch stats:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, selectedCatalog]);
 
-  // Initial fetch when authenticated
+  // Refetch when authenticated or selected catalog changes
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && selectedCatalog) {
       refreshCounts();
     } else {
       setCounts({ pending: 0, preparing: 0, ready: 0, total: 0 });
       setIsLoading(false);
     }
-  }, [isAuthenticated, refreshCounts]);
+  }, [isAuthenticated, selectedCatalog, refreshCounts]);
 
-  // Refetch when socket reconnects
+  // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
-    if (isConnected && !wasConnectedRef.current && isAuthenticated) {
+    if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current && isAuthenticated) {
       console.log('[PreordersContext] Socket reconnected, refreshing counts...');
       refreshCounts();
     }
+    if (isConnected) hasEverConnectedRef.current = true;
     wasConnectedRef.current = isConnected;
   }, [isConnected, isAuthenticated, refreshCounts]);
 

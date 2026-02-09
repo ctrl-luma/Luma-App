@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Image } from 'react-native';
 import { authService, User, Organization, Subscription, stripeConnectApi, ConnectStatus } from '../lib/api';
-import { setOnSessionKicked } from '../lib/api/client';
+import { setOnSessionKicked, apiClient } from '../lib/api/client';
 import { setOnSocketSessionKicked } from '../lib/session-callbacks';
 import {
   checkBiometricCapabilities,
@@ -210,6 +210,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [loadCachedAuth, refreshProfileFromAPI]);
 
   const signIn = async (email: string, password: string) => {
+    // Reset session kicked state so API client and socket can operate normally
+    apiClient.resetSessionKicked();
     const response = await authService.login({ email, password });
 
     setState(prev => ({

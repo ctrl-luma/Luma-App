@@ -38,11 +38,11 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { CatalogProvider, useCatalog } from './src/context/CatalogContext';
 import { CartProvider } from './src/context/CartContext';
-import { DeviceProvider } from './src/context/DeviceContext';
+import { DeviceProvider, useDevice } from './src/context/DeviceContext';
 import { SocketProvider } from './src/context/SocketContext';
 import { PreordersProvider, usePreorders } from './src/context/PreordersContext';
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
-import { StripeTerminalContextProvider } from './src/context/StripeTerminalContext';
+import { StripeTerminalContextProvider, useTerminal } from './src/context/StripeTerminalContext';
 import { NetworkStatus } from './src/components/NetworkStatus';
 import { DataPrefetcher } from './src/components/DataPrefetcher';
 import { config } from './src/lib/config';
@@ -83,7 +83,6 @@ import { TapToPayEducationScreen } from './src/screens/TapToPayEducationScreen';
 
 // Onboarding components
 import { SetupPaymentsModal } from './src/components/SetupPaymentsModal';
-import { useTapToPayEducation } from './src/hooks/useTapToPayEducation';
 
 // Keep splash screen visible while loading fonts
 SplashScreen.preventAutoHideAsync();
@@ -536,8 +535,8 @@ function TabNavigator() {
   // Only show Events tab for Pro/Enterprise users
   const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
 
-  // Only show Preorders tab if the selected catalog has preorders enabled
-  const showPreordersTab = selectedCatalog?.preorderEnabled === true;
+  // Only show Preorders tab for Pro/Enterprise users with preorders enabled
+  const showPreordersTab = isPro && selectedCatalog?.preorderEnabled === true;
 
   return (
     <Tab.Navigator
@@ -602,13 +601,8 @@ function TabNavigator() {
 function TapToPayOnboardingWrapper() {
   const navigation = useNavigation<any>();
   const { user, connectStatus } = useAuth();
-
-  // Tap to Pay onboarding state - Apple TTPOi 3.2, 3.3
-  // Pass userId to make education state user-specific
-  // Note: Loading states are handled by AuthenticatedNavigator
-  const {
-    shouldShowEducationPrompt,
-  } = useTapToPayEducation(user?.id);
+  const { deviceId } = useDevice();
+  const { isConnected: isTerminalConnected } = useTerminal();
 
   // Track if user has completed onboarding this session
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
@@ -616,16 +610,21 @@ function TapToPayOnboardingWrapper() {
   // Determine if Connect is set up
   const isConnectSetUp = connectStatus?.chargesEnabled === true;
 
-  // Only show modals if user hasn't completed onboarding AND should be prompted
-  // Note: Loading states are handled by AuthenticatedNavigator, so we don't need to check them here
-  const shouldShowAnyModal = !hasCompletedOnboarding && shouldShowEducationPrompt;
+  // Check if this device has already completed Tap to Pay setup (stored in DB)
+  const deviceAlreadyRegistered = !!(
+    deviceId &&
+    user?.tapToPayDeviceIds &&
+    user.tapToPayDeviceIds.includes(deviceId)
+  );
+
+  // Show education if: device not registered AND terminal not connected AND not completed this session
+  const needsEducation = !hasCompletedOnboarding && !deviceAlreadyRegistered && !isTerminalConnected;
 
   // Show Setup Payments modal if Connect is NOT set up (takes priority)
-  const showSetupPaymentsModal = shouldShowAnyModal && !isConnectSetUp;
+  const showSetupPaymentsModal = needsEducation && !isConnectSetUp;
 
   // Navigate directly to education screen if Connect IS set up
-  // The education screen now includes the Enable step as the first slide
-  const shouldNavigateToEducation = shouldShowAnyModal && isConnectSetUp;
+  const shouldNavigateToEducation = needsEducation && isConnectSetUp;
 
   // Handle Setup Payments modal - user clicked "Continue"
   const handleSetupPayments = useCallback(() => {
@@ -669,13 +668,10 @@ function TapToPayOnboardingWrapper() {
 function AuthenticatedNavigator() {
   const { colors, isDark } = useTheme();
   const { isLoading: catalogLoading } = useCatalog();
-  const { user, connectLoading } = useAuth();
-
-  // Also check education loading so we don't flash between loading screens
-  const { isLoading: educationLoading } = useTapToPayEducation(user?.id);
+  const { connectLoading } = useAuth();
 
   // Wait for all loading states to complete before showing content
-  const isLoading = catalogLoading || connectLoading || educationLoading;
+  const isLoading = catalogLoading || connectLoading;
 
   if (isLoading) {
     return <LoadingScreen colors={colors} isDark={isDark} />;
@@ -704,7 +700,7 @@ function AuthenticatedNavigator() {
       <Stack.Screen
         name="TapToPayEducation"
         component={TapToPayEducationScreen}
-        options={{ presentation: 'fullScreenModal' }}
+        options={{ presentation: 'fullScreenModal', headerShown: false }}
       />
       <Stack.Screen
         name="Upgrade"
@@ -889,16 +885,16 @@ export default function App() {
                 <AuthProvider>
                   <SocketProvider>
                     <SocketEventHandlers />
-                    <PreordersProvider>
                     <DeviceProvider>
                       <CatalogProvider>
-                        <CartProvider>
-                          <NetworkStatus />
-                          <AppNavigator />
-                        </CartProvider>
+                        <PreordersProvider>
+                          <CartProvider>
+                            <NetworkStatus />
+                            <AppNavigator />
+                          </CartProvider>
+                        </PreordersProvider>
                       </CatalogProvider>
                     </DeviceProvider>
-                    </PreordersProvider>
                   </SocketProvider>
                 </AuthProvider>
               </ThemeProvider>

@@ -28,6 +28,7 @@ class ApiClient {
   private refreshPromise: Promise<any> | null = null;
   private requestQueue: RequestQueueItem[] = [];
   private isRefreshing = false;
+  private sessionKicked = false;
 
   constructor() {
     this.baseURL = config.apiUrl;
@@ -133,6 +134,7 @@ class ApiClient {
       // Check if session was kicked (logged in on another device)
       if (response.status === 401 && error.code === 'SESSION_KICKED') {
         logger.log('[ApiClient] Session kicked - user logged in on another device');
+        this.sessionKicked = true;
         if (onSessionKickedCallback) {
           onSessionKickedCallback();
         }
@@ -144,7 +146,7 @@ class ApiClient {
       const isAuthEndpoint = authEndpoints.some(auth => endpoint.includes(auth));
 
       // If we get a 401 and haven't retried yet, try to refresh the token
-      if (response.status === 401 && retryCount === 0 && !isAuthEndpoint) {
+      if (response.status === 401 && retryCount === 0 && !isAuthEndpoint && !this.sessionKicked) {
         logger.log('[ApiClient] Got 401 on', endpoint, '- attempting token refresh');
         try {
           const refreshed = await this.handleTokenRefresh();
@@ -291,6 +293,10 @@ class ApiClient {
     });
 
     return this.handleResponse<T>(response, endpoint, 0, 'POST', undefined, { headers });
+  }
+
+  resetSessionKicked() {
+    this.sessionKicked = false;
   }
 }
 

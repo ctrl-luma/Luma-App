@@ -16,6 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useSocketEvent, useSocket, SocketEvents } from '../context/SocketContext';
 import { preordersApi, Preorder, PreorderStatus } from '../lib/api/preorders';
 import { stripeTerminalApi } from '../lib/api/stripe-terminal';
+import { usePreorders } from '../context/PreordersContext';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -91,6 +92,7 @@ export function PreorderDetailScreen() {
   const route = useRoute();
   const { preorderId } = route.params as RouteParams;
   const { isConnected } = useSocket();
+  const { refreshCounts } = usePreorders();
   const glassColors = isDark ? glass.dark : glass.light;
   const insets = useSafeAreaInsets();
 
@@ -99,6 +101,7 @@ export function PreorderDetailScreen() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const wasConnectedRef = useRef(isConnected);
+  const hasEverConnectedRef = useRef(false);
 
   const styles = createStyles(colors, glassColors, isDark);
 
@@ -120,13 +123,13 @@ export function PreorderDetailScreen() {
     }, [fetchPreorder])
   );
 
-  // Refetch when socket reconnects (to catch any missed events)
+  // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
-    if (isConnected && !wasConnectedRef.current) {
-      // Socket just reconnected - refetch data
+    if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current) {
       console.log('[PreorderDetailScreen] Socket reconnected, refetching data...');
       fetchPreorder();
     }
+    if (isConnected) hasEverConnectedRef.current = true;
     wasConnectedRef.current = isConnected;
   }, [isConnected, fetchPreorder]);
 
@@ -144,6 +147,7 @@ export function PreorderDetailScreen() {
     try {
       const updated = await preordersApi.updateStatus(preorder.id, newStatus);
       setPreorder(updated);
+      refreshCounts();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to update order status');
     } finally {
@@ -180,10 +184,11 @@ export function PreorderDetailScreen() {
                 });
 
                 // Navigate to payment processing screen
+                // amount must be in cents for consistency with CheckoutScreen flow
                 navigation.navigate('PaymentProcessing', {
                   paymentIntentId: paymentIntent.id,
                   clientSecret: paymentIntent.clientSecret,
-                  amount: preorder.totalAmount,
+                  amount: Math.round(preorder.totalAmount * 100),
                   customerEmail: preorder.customerEmail,
                   preorderId: preorder.id,
                 });
@@ -205,6 +210,7 @@ export function PreorderDetailScreen() {
       try {
         const updated = await preordersApi.complete(preorder.id);
         setPreorder(updated);
+        refreshCounts();
         Alert.alert('Success', 'Order marked as picked up!');
       } catch (error: any) {
         Alert.alert('Error', error.message || 'Failed to complete order');
@@ -233,6 +239,7 @@ export function PreorderDetailScreen() {
             setIsCancelling(true);
             try {
               await preordersApi.cancel(preorder.id);
+              refreshCounts();
               Alert.alert(
                 isPaid ? 'Cancelled & Refunded' : 'Cancelled',
                 isPaid
