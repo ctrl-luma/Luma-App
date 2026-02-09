@@ -591,18 +591,18 @@ export function SignUpScreen() {
             autoComplete="password-new"
             editable={!isFormDisabled}
             error={errors.password}
-            rightIcon={
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={appColors.gray400}
-                />
-              </TouchableOpacity>
-            }
+            // rightIcon={
+            //   <TouchableOpacity
+            //     onPress={() => setShowPassword(!showPassword)}
+            //     style={styles.eyeButton}
+            //   >
+            //     <Ionicons
+            //       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+            //       size={20}
+            //       color={appColors.gray400}
+            //     />
+            //   </TouchableOpacity>
+            // }
           />
           {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
         </View>
