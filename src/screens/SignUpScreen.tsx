@@ -30,7 +30,7 @@ import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
 import { config } from '../lib/config';
 import logger from '../lib/logger';
-import { isValidEmail } from '../lib/validation';
+import { isValidEmail, getPhoneMaxLength } from '../lib/validation';
 
 // Types
 type Step = 'account' | 'business' | 'plan' | 'confirmation';
@@ -74,12 +74,13 @@ const PLANS = {
     features: [
       'Tap to Pay on iPhone & Android',
       'Simple menu builder',
-      '1 custom catalog',
+      '1 custom menu',
       'Daily payout summary',
       '1 User',
     ],
     notIncluded: [
-      'Event mode',
+      'Events & ticketing',
+      'Online ordering & preorders',
       'Tip reports & tracking',
       'Revenue splits',
       'Additional staff accounts',
@@ -136,6 +137,7 @@ export function SignUpScreen() {
   const [iapProduct, setIapProduct] = useState<SubscriptionProduct | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
+  const [phoneMaxLength, setPhoneMaxLength] = useState(10); // US default
 
   // Combined loading state for disabling form fields
   const isFormDisabled = isLoading || isCheckingEmail || isCheckingPassword || isPurchasing;
@@ -685,13 +687,17 @@ export function SignUpScreen() {
                 : digits;
               updateField('phone', phone);
             }}
+            onChangeCountry={(country) => {
+              setPhoneMaxLength(getPhoneMaxLength(country.cca2));
+            }}
             placeholder="(555) 123-4567"
             textInputProps={{
-              placeholderTextColor: colors.textMuted,
+              placeholderTextColor: appColors.gray500,
               selectionColor: colors.primary,
+              maxLength: phoneMaxLength,
             }}
             renderDropdownImage={
-              <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
+              <Ionicons name="chevron-down" size={14} color={appColors.gray500} />
             }
             disabled={isFormDisabled}
             containerStyle={styles.phoneContainer}
@@ -1711,18 +1717,18 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontFamily: fonts.semiBold,
       color: colors.primary,
     },
-    // Phone input styles
+    // Phone input styles - matches Input component
     phoneContainer: {
-      backgroundColor: glassColors.backgroundElevated,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: glassColors.border,
+      backgroundColor: 'rgba(31, 41, 55, 0.5)',
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: appColors.gray700,
       width: '100%',
     },
     phoneTextContainer: {
       backgroundColor: 'transparent',
-      borderRadius: 16,
-      paddingVertical: 4,
+      borderRadius: 12,
+      paddingVertical: 0,
       paddingHorizontal: 8,
     },
     phoneInput: {

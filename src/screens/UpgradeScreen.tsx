@@ -23,7 +23,7 @@ import { shadows } from '../lib/shadows';
 import logger from '../lib/logger';
 
 const PRO_FEATURES = [
-  { icon: 'infinite-outline', text: 'Unlimited custom catalogs' },
+  { icon: 'infinite-outline', text: 'Unlimited custom menus' },
   { icon: 'calendar-outline', text: 'Unlimited events & locations' },
   { icon: 'people-outline', text: 'Unlimited users & devices' },
   { icon: 'person-add-outline', text: 'Staff account management' },

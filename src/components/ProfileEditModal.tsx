@@ -22,6 +22,7 @@ import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api/client';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
+import { getPhoneMaxLength } from '../lib/validation';
 import { shadows } from '../lib/shadows';
 import logger from '../lib/logger';
 
@@ -41,6 +42,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [formattedPhone, setFormattedPhone] = useState('');
+  const [phoneMaxLength, setPhoneMaxLength] = useState(10);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -317,10 +319,14 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 layout="first"
                 withDarkTheme={isDark}
                 onChangeFormattedText={(text) => setPhone(text)}
+                onChangeCountry={(country) => {
+                  setPhoneMaxLength(getPhoneMaxLength(country.cca2));
+                }}
                 placeholder="(555) 123-4567"
                 textInputProps={{
                   placeholderTextColor: colors.textMuted,
                   selectionColor: colors.primary,
+                  maxLength: phoneMaxLength,
                 }}
                 renderDropdownImage={
                   <Ionicons name="chevron-down" size={14} color={colors.textMuted} />

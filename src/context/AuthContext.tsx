@@ -252,7 +252,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Fetch Stripe Connect status
   const refreshConnectStatus = useCallback(async () => {
     try {
-      setState(prev => ({ ...prev, connectLoading: true }));
       const status = await stripeConnectApi.getStatus();
       // Only require chargesEnabled for Tap to Pay - payoutsEnabled is needed for receiving money
       // but users can still accept payments before completing full onboarding (bank account setup)
