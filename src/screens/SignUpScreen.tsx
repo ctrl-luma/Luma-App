@@ -588,8 +588,7 @@ export function SignUpScreen() {
             onChangeText={(value) => updateField('password', value)}
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
-            autoComplete="off"
-            textContentType="none"
+            autoComplete="password-new"
             editable={!isFormDisabled}
             error={errors.password}
             rightIcon={
@@ -616,8 +615,7 @@ export function SignUpScreen() {
             onChangeText={(value) => updateField('confirmPassword', value)}
             placeholder="Re-enter your password"
             secureTextEntry={!showPassword}
-            autoComplete="off"
-            textContentType="none"
+            autoComplete="password-new"
             editable={!isFormDisabled}
             error={errors.confirmPassword}
           />

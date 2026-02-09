@@ -2619,6 +2619,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, cardWidth: nu
       gap: 12,
       justifyContent: 'flex-end',
     },
+    bottomActionsEmpty: {
+      justifyContent: 'flex-end',
+    },
     goToCartButton: {
       flex: 1,
       flexDirection: 'row',

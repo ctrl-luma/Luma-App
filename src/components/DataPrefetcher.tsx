@@ -60,7 +60,7 @@ export function DataPrefetcher() {
     });
 
     // Preorders: prefetch all status tabs so no loading on tab switch
-    ['pending', 'preparing', 'ready'].forEach((status) => {
+    (['pending', 'preparing', 'ready'] as const).forEach((status) => {
       queryClient.prefetchQuery({
         queryKey: ['preorders', status],
         queryFn: () => preordersApi.list({ status: [status], catalogId: selectedCatalog.id }),
