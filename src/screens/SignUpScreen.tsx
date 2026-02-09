@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Animated,
   Keyboard,
   Linking,
+  InteractionManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -138,9 +139,35 @@ export function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
   const [phoneMaxLength, setPhoneMaxLength] = useState(10); // US default
+  const [phoneInputReady, setPhoneInputReady] = useState(false);
 
   // Combined loading state for disabling form fields
   const isFormDisabled = isLoading || isCheckingEmail || isCheckingPassword || isPurchasing;
+
+  // Memoize PhoneInput props to prevent heavy re-renders on every keystroke
+  const phoneOnChangeFormatted = useCallback((text: string) => {
+    const digits = text.replace(/\D/g, '');
+    const phone = digits.length === 11 && digits.startsWith('1')
+      ? digits.slice(1)
+      : digits;
+    setFormData(prev => ({ ...prev, phone }));
+  }, []);
+  const phoneOnChangeCountry = useCallback((country: any) => {
+    setPhoneMaxLength(getPhoneMaxLength(country.cca2));
+  }, []);
+  const phoneTextInputProps = useMemo(() => ({
+    placeholderTextColor: appColors.gray500,
+    selectionColor: colors.primary,
+    maxLength: phoneMaxLength,
+  }), [colors.primary, phoneMaxLength]);
+  const phoneDropdownImage = useMemo(() => (
+    <Ionicons name="chevron-down" size={14} color={appColors.gray500} />
+  ), []);
+  const phoneCountryPickerProps = useMemo(() => ({
+    withEmoji: false,
+    withFilter: true,
+    withFlag: true,
+  }), []);
 
   // Steps configuration
   const steps: Step[] = ['account', 'business', 'plan', 'confirmation'];
@@ -160,6 +187,16 @@ export function SignUpScreen() {
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, [currentStep]);
+
+  // Lazy-mount PhoneInput after business step transition to avoid blocking JS thread
+  useEffect(() => {
+    if (currentStep === 'business' && !phoneInputReady) {
+      const handle = InteractionManager.runAfterInteractions(() => {
+        setPhoneInputReady(true);
+      });
+      return () => handle.cancel();
+    }
+  }, [currentStep, phoneInputReady]);
 
   // Initialize IAP and fetch products
   useEffect(() => {
@@ -183,7 +220,7 @@ export function SignUpScreen() {
     };
   }, []);
 
-  const styles = createStyles(colors, glassColors, isDark);
+  const styles = useMemo(() => createStyles(colors, glassColors, isDark), [colors, glassColors, isDark]);
 
   // Update form field
   const updateField = (field: keyof FormData, value: string | boolean) => {
@@ -676,44 +713,34 @@ export function SignUpScreen() {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Phone Number (Optional)</Text>
-          <PhoneInput
-            defaultCode="US"
-            layout="first"
-            withDarkTheme={isDark}
-            onChangeFormattedText={(text) => {
-              // Extract digits from E.164 format and store
-              const digits = text.replace(/\D/g, '');
-              // Remove country code (1) if present
-              const phone = digits.length === 11 && digits.startsWith('1')
-                ? digits.slice(1)
-                : digits;
-              updateField('phone', phone);
-            }}
-            onChangeCountry={(country) => {
-              setPhoneMaxLength(getPhoneMaxLength(country.cca2));
-            }}
-            placeholder="(555) 123-4567"
-            textInputProps={{
-              placeholderTextColor: appColors.gray500,
-              selectionColor: colors.primary,
-              maxLength: phoneMaxLength,
-            }}
-            renderDropdownImage={
-              <Ionicons name="chevron-down" size={14} color={appColors.gray500} />
-            }
-            disabled={isFormDisabled}
-            containerStyle={styles.phoneContainer}
-            textContainerStyle={styles.phoneTextContainer}
-            textInputStyle={styles.phoneInput}
-            codeTextStyle={styles.phoneCode}
-            flagButtonStyle={styles.phoneFlagButton}
-            countryPickerButtonStyle={styles.phoneCountryButton}
-            countryPickerProps={{
-              withEmoji: false,
-              withFilter: true,
-              withFlag: true,
-            }}
-          />
+          {phoneInputReady ? (
+            <PhoneInput
+              defaultCode="US"
+              layout="first"
+              withDarkTheme={isDark}
+              onChangeFormattedText={phoneOnChangeFormatted}
+              onChangeCountry={phoneOnChangeCountry}
+              placeholder="(555) 123-4567"
+              textInputProps={phoneTextInputProps}
+              renderDropdownImage={phoneDropdownImage}
+              disabled={isFormDisabled}
+              containerStyle={styles.phoneContainer}
+              textContainerStyle={styles.phoneTextContainer}
+              textInputStyle={styles.phoneInput}
+              codeTextStyle={styles.phoneCode}
+              flagButtonStyle={styles.phoneFlagButton}
+              countryPickerButtonStyle={styles.phoneCountryButton}
+              countryPickerProps={phoneCountryPickerProps}
+            />
+          ) : (
+            <View style={styles.phoneContainer}>
+              <View style={styles.phoneTextContainer}>
+                <Text style={[styles.phoneInput, { lineHeight: 48, color: appColors.gray500 }]}>
+                  (555) 123-4567
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity
