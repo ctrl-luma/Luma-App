@@ -588,21 +588,21 @@ export function SignUpScreen() {
             onChangeText={(value) => updateField('password', value)}
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
-            autoComplete="password-new"
+            textContentType="oneTimeCode"
             editable={!isFormDisabled}
             error={errors.password}
-            // rightIcon={
-            //   <TouchableOpacity
-            //     onPress={() => setShowPassword(!showPassword)}
-            //     style={styles.eyeButton}
-            //   >
-            //     <Ionicons
-            //       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-            //       size={20}
-            //       color={appColors.gray400}
-            //     />
-            //   </TouchableOpacity>
-            // }
+            rightIcon={
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeButton}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={20}
+                  color={appColors.gray400}
+                />
+              </TouchableOpacity>
+            }
           />
           {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
         </View>
@@ -615,7 +615,7 @@ export function SignUpScreen() {
             onChangeText={(value) => updateField('confirmPassword', value)}
             placeholder="Re-enter your password"
             secureTextEntry={!showPassword}
-            autoComplete="password-new"
+            textContentType="oneTimeCode"
             editable={!isFormDisabled}
             error={errors.confirmPassword}
           />
