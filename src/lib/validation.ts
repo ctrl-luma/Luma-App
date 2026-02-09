@@ -24,18 +24,44 @@ export function isValidEmailOrEmpty(email: string): boolean {
 }
 
 /**
- * Returns the maximum national phone number length for a given country code.
- * Uses ITU E.164 national number lengths for common countries.
+ * Returns the max phone input length (formatted) for a given country code.
+ * Uses google-libphonenumber (transitive dep via react-native-phone-number-input)
+ * to dynamically determine the correct length for any country.
  */
-const PHONE_MAX_LENGTHS: Record<string, number> = {
-  US: 10, CA: 10, MX: 10,
-  GB: 10, DE: 11, FR: 9, IT: 10, ES: 9, NL: 9, BE: 9, AT: 11, CH: 9, IE: 9, PT: 9,
-  AU: 9, NZ: 9, JP: 10, KR: 10, CN: 11, IN: 10, PH: 10, SG: 8, HK: 8,
-  BR: 11, AR: 10, CO: 10, CL: 9, PE: 9,
-  ZA: 9, NG: 10, KE: 9, EG: 10,
-  AE: 9, SA: 9, IL: 9,
-};
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const libphone = require('google-libphonenumber');
+const phoneUtil = libphone.PhoneNumberUtil.getInstance();
+const PhoneNumberType = libphone.PhoneNumberType;
+const AsYouTypeFormatter = libphone.AsYouTypeFormatter;
+
+const phoneMaxLengthCache: Record<string, number> = {};
 
 export function getPhoneMaxLength(countryCode: string): number {
-  return PHONE_MAX_LENGTHS[countryCode] || 15;
+  if (phoneMaxLengthCache[countryCode]) {
+    return phoneMaxLengthCache[countryCode];
+  }
+  try {
+    // Get an example mobile number for the country — mobile numbers are typically the longest
+    const example = phoneUtil.getExampleNumberForType(countryCode, PhoneNumberType.MOBILE);
+    if (example) {
+      const nationalNumber = example.getNationalNumber();
+      if (nationalNumber) {
+        // Format the example number to get the formatted length (includes spaces, dashes, parens)
+        // maxLength on TextInput applies to formatted text, not raw digits
+        const formatter = new AsYouTypeFormatter(countryCode);
+        const digits = nationalNumber.toString();
+        let formatted = '';
+        for (const digit of digits) {
+          formatted = formatter.inputDigit(digit);
+        }
+        // Add 4 chars buffer for countries with variable-length numbers
+        const length = formatted.length + 4;
+        phoneMaxLengthCache[countryCode] = length;
+        return length;
+      }
+    }
+  } catch {
+    // Fall through to default
+  }
+  return 20;
 }
