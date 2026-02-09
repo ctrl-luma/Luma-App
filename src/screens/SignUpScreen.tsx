@@ -589,6 +589,7 @@ export function SignUpScreen() {
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
             autoComplete="off"
+            textContentType="none"
             editable={!isFormDisabled}
             error={errors.password}
             rightIcon={
@@ -616,6 +617,7 @@ export function SignUpScreen() {
             placeholder="Re-enter your password"
             secureTextEntry={!showPassword}
             autoComplete="off"
+            textContentType="none"
             editable={!isFormDisabled}
             error={errors.confirmPassword}
           />
