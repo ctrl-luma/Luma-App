@@ -316,7 +316,7 @@ export function TapToPayEducationScreen() {
         errorMsg.includes('no connected account')
       ) {
         setIsConnectSetupError(true);
-        setEnableError('You need to set up payment processing before enabling Tap to Pay.');
+        setEnableError('You need to link your banking first.');
       } else {
         setEnableError(err.message || 'Failed to enable Tap to Pay');
       }

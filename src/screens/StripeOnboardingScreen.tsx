@@ -282,10 +282,12 @@ export function StripeOnboardingScreen() {
     try {
       setIsFetchingUrl(true);
       setError(null);
+      logger.log('[StripeOnboarding] Fetching onboarding URL...');
       const response = await stripeConnectApi.getOnboardingLink();
+      logger.log('[StripeOnboarding] Got onboarding URL:', response.onboardingUrl);
       setOnboardingUrl(response.onboardingUrl);
     } catch (err: any) {
-      logger.error('Failed to get onboarding URL:', err);
+      logger.error('[StripeOnboarding] Failed to get onboarding URL:', err);
       setError(err.message || 'Failed to load onboarding. Please try again.');
     } finally {
       setIsFetchingUrl(false);
@@ -321,15 +323,30 @@ export function StripeOnboardingScreen() {
   // before the WebView renders the Luma-Vendor page
   const handleShouldStartLoad = (request: { url: string }) => {
     const { url } = request;
+    logger.log('[StripeOnboarding] onShouldStartLoad:', { url, onboardingUrl, hasShownCompletion });
+
     // Allow everything during warmup (no onboarding URL yet)
-    if (!onboardingUrl) return true;
+    if (!onboardingUrl) {
+      logger.log('[StripeOnboarding] Allowing: warmup phase');
+      return true;
+    }
     // Allow empty/blank pages
-    if (!url || url === 'about:blank') return true;
+    if (!url || url === 'about:blank') {
+      logger.log('[StripeOnboarding] Allowing: blank page');
+      return true;
+    }
     // Allow all Stripe URLs during onboarding
-    if (url.includes('stripe.com')) return true;
+    if (url.includes('stripe.com')) {
+      logger.log('[StripeOnboarding] Allowing: Stripe URL');
+      return true;
+    }
     // Allow the initial onboarding URL load
-    if (url === onboardingUrl) return true;
+    if (url === onboardingUrl) {
+      logger.log('[StripeOnboarding] Allowing: exact onboarding URL match');
+      return true;
+    }
     // Any other URL is the callback redirect — close before it loads
+    logger.log('[StripeOnboarding] BLOCKING URL — treating as callback redirect:', url);
     if (!hasShownCompletion) {
       setHasShownCompletion(true);
       handleClose();
