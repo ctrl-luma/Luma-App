@@ -18,7 +18,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,6 +56,7 @@ const STAGE_MESSAGES: Record<ConfigurationStage, string> = {
 export function TapToPayEducationScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
 
   // Auth context for user ID and device context for device ID
@@ -146,6 +147,7 @@ export function TapToPayEducationScreen() {
   const [isEnabling, setIsEnabling] = useState(false);
   const [enableError, setEnableError] = useState<string | null>(null);
   const [isConnectSetupError, setIsConnectSetupError] = useState(false);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
 
   const styles = createStyles(colors, glassColors, isDark);
 
@@ -350,7 +352,7 @@ export function TapToPayEducationScreen() {
   // Android: Show simple enabling/success UI (no education slides needed)
   if (isAndroid) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color={colors.text} />
@@ -440,7 +442,7 @@ export function TapToPayEducationScreen() {
             </>
           )}
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -453,16 +455,27 @@ export function TapToPayEducationScreen() {
   const showLoadingScreen = appleEducationActive || pendingAutoEducation ||
     (proximityDiscoveryAvailable === null && deviceAlreadyRegistered);
 
+  // Stop animations after 5s so they don't lag the native Apple education sheet
+  useEffect(() => {
+    if (showLoadingScreen && !loadingTimedOut) {
+      const timer = setTimeout(() => setLoadingTimedOut(true), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [showLoadingScreen, loadingTimedOut]);
+
   if (showLoadingScreen) {
+    if (loadingTimedOut) {
+      return <View style={{ flex: 1, backgroundColor: '#000' }} />;
+    }
     return (
       <StarBackground colors={colors} isDark={isDark}>
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+        <View style={{ flex: 1, paddingTop: insets.top }}>
           {!appleEducationActive && (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           )}
-        </SafeAreaView>
+        </View>
       </StarBackground>
     );
   }
@@ -470,7 +483,7 @@ export function TapToPayEducationScreen() {
   const isButtonDisabled = isEnabling;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
@@ -593,7 +606,7 @@ export function TapToPayEducationScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

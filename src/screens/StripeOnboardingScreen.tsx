@@ -264,20 +264,22 @@ export function StripeOnboardingScreen() {
   const webViewRef = useRef<WebView>(null);
 
   const [onboardingUrl, setOnboardingUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isFetchingUrl, setIsFetchingUrl] = useState(true);
+  const [isWebViewLoading, setIsWebViewLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasShownCompletion, setHasShownCompletion] = useState(false);
 
   const styles = createStyles(colors);
 
   // Fetch the onboarding URL when the screen mounts
+  // WebView mounts immediately to warm its engine in parallel
   useEffect(() => {
     fetchOnboardingUrl();
   }, []);
 
   const fetchOnboardingUrl = async () => {
     try {
-      setIsLoading(true);
+      setIsFetchingUrl(true);
       setError(null);
       const response = await stripeConnectApi.getOnboardingLink();
       setOnboardingUrl(response.onboardingUrl);
@@ -285,7 +287,7 @@ export function StripeOnboardingScreen() {
       logger.error('Failed to get onboarding URL:', err);
       setError(err.message || 'Failed to load onboarding. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsFetchingUrl(false);
     }
   };
 
@@ -330,41 +332,8 @@ export function StripeOnboardingScreen() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Banking</Text>
-          <View style={styles.placeholder} />
-        </View>
-        <LoadingWithStars colors={colors} isDark={isDark} />
-      </SafeAreaView>
-    );
-  }
-
-  if (error) {
-    return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Banking</Text>
-          <View style={styles.placeholder} />
-        </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchOnboardingUrl}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Show loading overlay while API is fetching or WebView is loading the Stripe page
+  const showLoading = isFetchingUrl || (onboardingUrl && isWebViewLoading);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
@@ -376,16 +345,16 @@ export function StripeOnboardingScreen() {
         <View style={styles.placeholder} />
       </View>
 
-      {onboardingUrl && (
+      {/* WebView mounts immediately to warm the engine while the API call runs */}
+      <View style={styles.webView}>
         <WebView
           ref={webViewRef}
-          source={{ uri: onboardingUrl }}
+          source={onboardingUrl ? { uri: onboardingUrl } : { html: '' }}
           style={styles.webView}
           onNavigationStateChange={handleNavigationStateChange}
-          startInLoadingState={true}
-          renderLoading={() => (
-            <LoadingWithStars colors={colors} isDark={isDark} />
-          )}
+          onLoadEnd={() => {
+            if (onboardingUrl) setIsWebViewLoading(false);
+          }}
           javaScriptEnabled={true}
           domStorageEnabled={true}
           sharedCookiesEnabled={true}
@@ -394,7 +363,25 @@ export function StripeOnboardingScreen() {
           automaticallyAdjustContentInsets={false}
           scalesPageToFit={true}
         />
-      )}
+
+        {/* Loading overlay on top of WebView */}
+        {showLoading && !error && (
+          <View style={StyleSheet.absoluteFill}>
+            <LoadingWithStars colors={colors} isDark={isDark} />
+          </View>
+        )}
+
+        {/* Error overlay */}
+        {error && (
+          <View style={[StyleSheet.absoluteFill, styles.errorContainer]}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchOnboardingUrl}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -431,6 +418,7 @@ const createStyles = (colors: any) =>
       alignItems: 'center',
       padding: 24,
       gap: 16,
+      backgroundColor: colors.background,
     },
     errorText: {
       fontSize: 16,
