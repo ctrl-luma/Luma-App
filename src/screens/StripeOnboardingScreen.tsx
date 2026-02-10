@@ -297,8 +297,9 @@ export function StripeOnboardingScreen() {
 
     // Route based on returnTo parameter
     if (returnTo === 'education') {
-      // Coming from initial onboarding - go to Tap to Pay education
-      navigation.navigate('TapToPayEducation');
+      // Replace so StripeOnboarding is removed from the stack —
+      // prevents loop where education's goBack() returns here
+      navigation.replace('TapToPayEducation');
     } else if (returnTo === 'settings') {
       // Coming from Settings - go back to Settings
       navigation.goBack();
@@ -315,21 +316,22 @@ export function StripeOnboardingScreen() {
     }
   };
 
-  const handleNavigationStateChange = (navState: any) => {
-    // Prevent handling multiple times
-    if (hasShownCompletion) return;
-
-    // Check if we've been redirected back (onboarding complete or user returned)
-    // The return URL is typically the vendor dashboard /connect page
-    if (navState.url && (
-      navState.url.includes('/connect') && !navState.url.includes('stripe.com')
-    )) {
-      // Mark as handled to prevent duplicate closes
+  // Intercept navigations before they load — catch the Stripe callback redirect
+  // before the WebView renders the Luma-Vendor page
+  const handleShouldStartLoad = (request: { url: string }) => {
+    const { url } = request;
+    // Allow empty/blank pages (WebView warmup)
+    if (!url || url === 'about:blank') return true;
+    // Allow all Stripe URLs during onboarding
+    if (url.includes('stripe.com')) return true;
+    // Allow the initial onboarding URL load
+    if (onboardingUrl && url === onboardingUrl) return true;
+    // Any other URL is the callback redirect — close before it loads
+    if (!hasShownCompletion) {
       setHasShownCompletion(true);
-
-      // Silently close and refresh status - no popup needed
       handleClose();
     }
+    return false;
   };
 
   // Show loading overlay while API is fetching or WebView is loading the Stripe page
@@ -351,7 +353,7 @@ export function StripeOnboardingScreen() {
           ref={webViewRef}
           source={onboardingUrl ? { uri: onboardingUrl } : { html: '' }}
           style={styles.webView}
-          onNavigationStateChange={handleNavigationStateChange}
+          onShouldStartLoadWithRequest={handleShouldStartLoad}
           onLoadEnd={() => {
             if (onboardingUrl) setIsWebViewLoading(false);
           }}
