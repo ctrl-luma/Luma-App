@@ -129,6 +129,13 @@ export function SplitPaymentScreen() {
       });
       console.log('[SplitPayment] Payment intent created:', piResponse.id, 'clientSecret present:', !!piResponse.clientSecret);
 
+      // Initialize Stripe SDK with connected account for Terminal PI retrieval
+      await initStripe({
+        publishableKey: config.stripePublishableKey,
+        merchantIdentifier: 'merchant.com.lumapos',
+        stripeAccountId: piResponse.stripeAccountId,
+      });
+
       // Process payment through the Terminal context (retrieve → collect → confirm)
       console.log('[SplitPayment] Processing payment via terminal context...');
       const result = await terminalProcessPayment(piResponse.clientSecret);

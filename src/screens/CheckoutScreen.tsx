@@ -627,6 +627,15 @@ export function CheckoutScreen() {
         receiptEmail,
       });
 
+      // Debug: Log PI details to diagnose account mismatch
+      console.log('CheckoutScreen: PaymentIntent created', {
+        id: paymentIntent.id,
+        stripeAccountId: paymentIntent.stripeAccountId,
+        clientSecretPrefix: paymentIntent.clientSecret?.substring(0, 30),
+        hasClientSecret: !!paymentIntent.clientSecret,
+        amount: paymentIntent.amount,
+      });
+
       // 3. Link PaymentIntent to order
       await ordersApi.linkPaymentIntent(order.id, paymentIntent.id);
 
@@ -634,6 +643,7 @@ export function CheckoutScreen() {
       navigation.navigate('PaymentProcessing', {
         paymentIntentId: paymentIntent.id,
         clientSecret: paymentIntent.clientSecret,
+        stripeAccountId: paymentIntent.stripeAccountId,
         amount: grandTotal,
         orderId: order.id,
         orderNumber: order.orderNumber,

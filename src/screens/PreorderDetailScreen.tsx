@@ -188,6 +188,7 @@ export function PreorderDetailScreen() {
                 navigation.navigate('PaymentProcessing', {
                   paymentIntentId: paymentIntent.id,
                   clientSecret: paymentIntent.clientSecret,
+                  stripeAccountId: paymentIntent.stripeAccountId,
                   amount: Math.round(preorder.totalAmount * 100),
                   customerEmail: preorder.customerEmail,
                   preorderId: preorder.id,

@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
+import { initStripe } from '@stripe/stripe-react-native';
 import { useTheme } from '../context/ThemeContext';
 import { useTerminal } from '../context/StripeTerminalContext';
 import { stripeTerminalApi } from '../lib/api';
@@ -18,12 +19,14 @@ import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 import { StarBackground } from '../components/StarBackground';
+import { config } from '../lib/config';
 
 
 type RouteParams = {
   PaymentProcessing: {
     paymentIntentId: string;
     clientSecret: string;
+    stripeAccountId: string;
     amount: number;
     orderId?: string;
     orderNumber?: string;
@@ -39,7 +42,7 @@ export function PaymentProcessingScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const { initializeTerminal, connectReader, processPayment: terminalProcessPayment, cancelPayment } = useTerminal();
 
-  const { paymentIntentId, clientSecret, amount, orderId, orderNumber, customerEmail, preorderId } = route.params;
+  const { paymentIntentId, clientSecret, stripeAccountId, amount, orderId, orderNumber, customerEmail, preorderId } = route.params;
   const [isCancelling, setIsCancelling] = useState(false);
   const [statusText, setStatusText] = useState('Preparing payment...');
   const isCancelledRef = React.useRef(false);
@@ -70,6 +73,14 @@ export function PaymentProcessingScreen() {
       } catch (connectErr: any) {
         throw new Error(`Connection failed: ${connectErr.message}`);
       }
+
+      // Initialize Stripe SDK with connected account for Terminal PI retrieval
+      // This ensures retrievePaymentIntent finds the PI on the connected account
+      await initStripe({
+        publishableKey: config.stripePublishableKey,
+        merchantIdentifier: 'merchant.com.lumapos',
+        stripeAccountId,
+      });
 
       setStatusText('Starting payment...');
 
