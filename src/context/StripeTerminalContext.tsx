@@ -497,8 +497,14 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     // If already connected, skip discovery and connection
     if (isConnected) {
       logger.log('[StripeTerminal] Reader already connected, reusing connection');
+      setConfigurationStage('ready');
+      setConfigurationProgress(100);
       return true;
     }
+
+    // Reset progress for this connect flow
+    setConfigurationProgress(0);
+    setConfigurationStage('fetching_location');
 
     // Ensure we have a location ID (required for Tap to Pay)
     let currentLocationId = locationId;
@@ -522,6 +528,8 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
 
     // Discover Tap to Pay readers
+    setConfigurationProgress(30);
+    setConfigurationStage('discovering_reader');
     const useSimulator = false; // Set to true to test without real NFC hardware
     logger.log('[StripeTerminal] Discovering Tap to Pay reader...');
     logger.log('[StripeTerminal] Discovery params: { discoveryMethod: "tapToPay", simulated:', useSimulator, '}');
@@ -589,6 +597,8 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
 
     // Connect to the Tap to Pay reader with the location ID
+    setConfigurationProgress(60);
+    setConfigurationStage('connecting_reader');
     // Retry logic for "No such location" error (can happen with newly created locations)
     const MAX_CONNECT_RETRIES = 3;
     const RETRY_DELAY_MS = 2000;
@@ -631,6 +641,8 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
         logger.log('[StripeTerminal] ========== CONNECTED SUCCESSFULLY ==========');
         logger.log('[StripeTerminal] Connected reader:', connectResult.reader?.serialNumber || 'tap-to-pay');
+        setConfigurationProgress(100);
+        setConfigurationStage('ready');
 
         // Apple TTPOi Requirement: Check T&C acceptance status from the reader (not cached locally)
         // The SDK retrieves this status from Apple each time
