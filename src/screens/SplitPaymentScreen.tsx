@@ -131,7 +131,7 @@ export function SplitPaymentScreen() {
 
       // Process payment through the Terminal context (retrieve → collect → confirm)
       console.log('[SplitPayment] Processing payment via terminal context...');
-      const result = await terminalProcessPayment(piResponse.id);
+      const result = await terminalProcessPayment(piResponse.clientSecret);
       console.log('[SplitPayment] Payment result status:', result.status);
 
       if (result.status !== 'succeeded') {
