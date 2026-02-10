@@ -72,6 +72,8 @@ class AuthService {
   private static readonly SESSION_VERSION_KEY = 'sessionVersion';
   private static readonly SUBSCRIPTION_KEY = 'subscription';
 
+  private refreshPromise: Promise<AuthTokens | null> | null = null;
+
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     // Get device info for tracking
     const deviceId = await getDeviceId();
@@ -147,11 +149,22 @@ class AuthService {
   }
 
   async refreshTokens(): Promise<AuthTokens | null> {
+    if (this.refreshPromise) {
+      logger.log('[AuthService] refreshTokens already in-flight, returning existing promise');
+      return this.refreshPromise;
+    }
+
     const refreshToken = await this.getRefreshToken();
     if (!refreshToken) {
       return null;
     }
-    return this.refreshTokensWithToken(refreshToken);
+
+    this.refreshPromise = this.refreshTokensWithToken(refreshToken)
+      .finally(() => {
+        this.refreshPromise = null;
+      });
+
+    return this.refreshPromise;
   }
 
   /**
