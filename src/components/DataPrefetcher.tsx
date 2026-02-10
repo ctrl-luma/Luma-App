@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCatalog } from '../context/CatalogContext';
 import { useDevice } from '../context/DeviceContext';
+import { useAuth } from '../context/AuthContext';
 import { productsApi, categoriesApi, transactionsApi, ordersApi, preordersApi, eventsApi } from '../lib/api';
 import { billingService } from '../lib/api/billing';
 import logger from '../lib/logger';
@@ -14,7 +15,9 @@ export function DataPrefetcher() {
   const queryClient = useQueryClient();
   const { selectedCatalog } = useCatalog();
   const { deviceId } = useDevice();
+  const { subscription } = useAuth();
   const hasPrefetched = useRef(false);
+  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
 
   useEffect(() => {
     if (hasPrefetched.current) return;
@@ -67,11 +70,13 @@ export function DataPrefetcher() {
       });
     });
 
-    // Events: for ticket scanner screen
-    queryClient.prefetchQuery({
-      queryKey: ['events'],
-      queryFn: () => eventsApi.list(),
-    });
+    // Events: for ticket scanner screen (Pro/Enterprise only)
+    if (isPro) {
+      queryClient.prefetchQuery({
+        queryKey: ['events'],
+        queryFn: () => eventsApi.list(),
+      });
+    }
   }, [selectedCatalog?.id, deviceId, queryClient]);
 
   return null;

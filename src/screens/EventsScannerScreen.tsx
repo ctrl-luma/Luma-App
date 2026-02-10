@@ -100,11 +100,14 @@ export function EventsScannerScreen() {
   const permissionHook = useCameraPermissions ? useCameraPermissions() : [null, null];
   const [permission, requestPermission] = permissionHook || [null, null];
 
-  // Fetch org events for context
+  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
+
+  // Fetch org events for context (Pro/Enterprise only)
   const { data: eventsData, isLoading: eventsLoading, error: eventsError } = useQuery({
     queryKey: ['events'],
     queryFn: () => eventsApi.list(),
     staleTime: Infinity,
+    enabled: isPro,
     placeholderData: () => queryClient.getQueryData(['events']),
   });
 
@@ -116,8 +119,6 @@ export function EventsScannerScreen() {
     if (isConnected) hasEverConnectedRef.current = true;
     wasConnectedRef.current = isConnected;
   }, [isConnected, queryClient]);
-
-  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
 
   // Show loading while auth/subscription is loading to prevent flash
   const isInitializing = authLoading || (subscription === undefined && !authLoading);

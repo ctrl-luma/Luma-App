@@ -71,6 +71,10 @@ export function PaymentProcessingScreen() {
       try {
         await connectReader();
       } catch (connectErr: any) {
+        // If the error is already user-friendly (e.g. merchant blocked), pass it through directly
+        if (connectErr.message?.includes('contact support')) {
+          throw connectErr;
+        }
         throw new Error(`Connection failed: ${connectErr.message}`);
       }
 

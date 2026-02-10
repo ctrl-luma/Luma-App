@@ -633,7 +633,11 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
             continue; // Retry
           }
 
-          const errMsg = `Connect: ${connectResult.error.message || connectResult.error.code || 'Unknown error'}`;
+          // User-friendly error messages for known error codes
+          const isMerchantBlocked = connectResult.error.code === 'TapToPayReaderMerchantBlocked';
+          const errMsg = isMerchantBlocked
+            ? 'Your account has been blocked from Tap to Pay. Please contact support.'
+            : `Connect: ${connectResult.error.message || connectResult.error.code || 'Unknown error'}`;
           setError(errMsg);
           setIsConnected(false);
           throw new Error(errMsg);
