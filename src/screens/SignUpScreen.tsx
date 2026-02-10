@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  FlatList,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -113,7 +114,7 @@ export function SignUpScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation<any>();
   const { signIn } = useAuth();
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<FlatList>(null);
   const phoneRef = useRef<PhoneInput>(null);
   const phoneE164 = useRef('');
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -183,7 +184,7 @@ export function SignUpScreen() {
 
   // Scroll to top when step changes
   useEffect(() => {
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    scrollViewRef.current?.scrollToOffset({ offset: 0, animated: true });
   }, [currentStep]);
 
   // Lazy-mount PhoneInput after business step transition to avoid blocking JS thread
@@ -1106,17 +1107,22 @@ export function SignUpScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <ScrollView
+          <FlatList
             ref={scrollViewRef}
+            data={[]}
+            renderItem={null}
+            ListHeaderComponent={
+              <>
+                {currentStep === 'account' && renderAccountStep()}
+                {currentStep === 'business' && renderBusinessStep()}
+                {currentStep === 'plan' && renderPlanStep()}
+                {currentStep === 'confirmation' && renderConfirmationStep()}
+              </>
+            }
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-          >
-            {currentStep === 'account' && renderAccountStep()}
-            {currentStep === 'business' && renderBusinessStep()}
-            {currentStep === 'plan' && renderPlanStep()}
-            {currentStep === 'confirmation' && renderConfirmationStep()}
-          </ScrollView>
+          />
         </KeyboardAvoidingView>
 
         {/* Footer with button */}
