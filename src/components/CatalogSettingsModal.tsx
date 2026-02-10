@@ -252,13 +252,13 @@ export function CatalogSettingsModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
         <Pressable style={styles.overlay} onPress={onClose} />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.content}
-        >
+        <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -620,8 +620,8 @@ export function CatalogSettingsModal({
               </View>
             )}
           </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -630,24 +630,17 @@ const createStyles = (colors: any, glassColors: any, isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
+      justifyContent: 'flex-end',
     },
     overlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
     content: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
       backgroundColor: colors.card,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      height: SCREEN_HEIGHT * 0.85,
+      maxHeight: SCREEN_HEIGHT * 0.85,
     },
     header: {
       flexDirection: 'row',

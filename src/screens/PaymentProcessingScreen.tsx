@@ -39,7 +39,7 @@ export function PaymentProcessingScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const { initializeTerminal, connectReader, processPayment: terminalProcessPayment, cancelPayment } = useTerminal();
 
-  const { paymentIntentId, amount, orderId, orderNumber, customerEmail, preorderId } = route.params;
+  const { paymentIntentId, clientSecret, amount, orderId, orderNumber, customerEmail, preorderId } = route.params;
   const [isCancelling, setIsCancelling] = useState(false);
   const [statusText, setStatusText] = useState('Preparing payment...');
   const isCancelledRef = React.useRef(false);
@@ -73,7 +73,7 @@ export function PaymentProcessingScreen() {
 
       setStatusText('Starting payment...');
 
-      const result = await terminalProcessPayment(paymentIntentId);
+      const result = await terminalProcessPayment(clientSecret);
 
       if (result.status === 'succeeded') {
         navigation.replace('PaymentResult', {

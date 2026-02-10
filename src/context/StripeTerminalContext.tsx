@@ -143,7 +143,7 @@ interface StripeTerminalContextValue {
   termsAcceptance: TermsAcceptanceStatus;
   initializeTerminal: () => Promise<void>;
   connectReader: () => Promise<boolean>;
-  processPayment: (paymentIntentId: string) => Promise<{ status: string; paymentIntent: any }>;
+  processPayment: (clientSecret: string) => Promise<{ status: string; paymentIntent: any }>;
   cancelPayment: () => Promise<void>;
   warmTerminal: () => Promise<void>;
   checkDeviceCompatibility: () => DeviceCompatibility;
@@ -706,17 +706,18 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
   }, [isInitialized, isConnected, chargesEnabled, connectReader]);
 
-  const processPayment = useCallback(async (paymentIntentId: string) => {
+  const processPayment = useCallback(async (clientSecret: string) => {
     logger.log('[StripeTerminal] ========== PROCESS PAYMENT START ==========');
-    logger.log('[StripeTerminal] PaymentIntent ID:', paymentIntentId);
+    logger.log('[StripeTerminal] Client secret provided:', clientSecret ? 'yes' : 'no');
 
     try {
       setIsProcessing(true);
       setError(null);
 
-      // Step 1: Retrieve the payment intent
+      // Step 1: Retrieve the payment intent using client secret
+      // NOTE: The Terminal SDK's retrievePaymentIntent requires the client_secret, NOT the PI ID
       logger.log('[StripeTerminal] Step 1: Retrieving payment intent...');
-      const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(paymentIntentId);
+      const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(clientSecret);
 
       if (retrieveError) {
         logger.error('[StripeTerminal] Retrieve error:', retrieveError);
