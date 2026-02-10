@@ -452,8 +452,11 @@ export function TapToPayEducationScreen() {
   // - Checking ProximityReaderDiscovery for registered device → loading spinner
   // For unregistered devices, show the enable screen immediately with button disabled
   const pendingAutoEducation = isIOS && autoHandledRef.current && !educationCompleteRef.current;
+  // For registered devices, stay on loading until education flow completes —
+  // prevents a flash of the enable screen between the proximity check
+  // resolving and the useEffect setting autoHandledRef
   const showLoadingScreen = appleEducationActive || pendingAutoEducation ||
-    (proximityDiscoveryAvailable === null && deviceAlreadyRegistered);
+    (deviceAlreadyRegistered && !educationCompleteRef.current);
 
   // Stop animations after 5s so they don't lag the native Apple education sheet
   useEffect(() => {
@@ -469,13 +472,7 @@ export function TapToPayEducationScreen() {
     }
     return (
       <StarBackground colors={colors} isDark={isDark}>
-        <View style={{ flex: 1, paddingTop: insets.top }}>
-          {!appleEducationActive && (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          )}
-        </View>
+        <View style={{ flex: 1, paddingTop: insets.top }} />
       </StarBackground>
     );
   }
