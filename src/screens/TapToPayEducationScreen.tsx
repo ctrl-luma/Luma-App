@@ -562,8 +562,10 @@ export function TapToPayEducationScreen() {
             {/* Error message */}
             {(enableError || terminalError) && (
               <View style={styles.errorContainer}>
-                <Ionicons name="alert-circle" size={18} color={colors.error} />
-                <Text style={styles.errorText}>{enableError || terminalError}</Text>
+                <View style={styles.errorRow}>
+                  <Ionicons name="alert-circle" size={18} color={colors.error} />
+                  <Text style={styles.errorText}>{enableError || terminalError}</Text>
+                </View>
                 {isConnectSetupError && (
                   <TouchableOpacity
                     style={styles.setupPaymentsButton}
@@ -817,10 +819,16 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       borderWidth: 1,
       borderColor: colors.error + '30',
     },
+    errorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+    },
     errorText: {
       fontSize: 14,
       color: colors.error,
-      textAlign: 'center',
+      textAlign: 'left',
+      flex: 1,
     },
     setupPaymentsButton: {
       flexDirection: 'row',

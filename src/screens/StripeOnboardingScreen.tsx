@@ -295,6 +295,7 @@ export function StripeOnboardingScreen() {
   };
 
   const handleClose = () => {
+    logger.log('[StripeOnboarding] handleClose called, returnTo:', returnTo);
     // Refresh connect status when closing
     refreshConnectStatus();
 
@@ -320,38 +321,34 @@ export function StripeOnboardingScreen() {
   };
 
   // Intercept navigations before they load — catch the Stripe callback redirect
-  // before the WebView renders the Luma-Vendor page
+  // before the WebView renders the Luma-Vendor page.
+  // Stripe loads third-party resources (hcaptcha, analytics, iframes) so we can't
+  // block everything non-Stripe. Instead, only intercept our own callback URL.
   const handleShouldStartLoad = (request: { url: string }) => {
     const { url } = request;
-    logger.log('[StripeOnboarding] onShouldStartLoad:', { url, onboardingUrl, hasShownCompletion });
+    logger.log('[StripeOnboarding] onShouldStartLoad:', url);
 
     // Allow everything during warmup (no onboarding URL yet)
-    if (!onboardingUrl) {
-      logger.log('[StripeOnboarding] Allowing: warmup phase');
-      return true;
-    }
+    if (!onboardingUrl) return true;
     // Allow empty/blank pages
-    if (!url || url === 'about:blank') {
-      logger.log('[StripeOnboarding] Allowing: blank page');
-      return true;
+    if (!url || url === 'about:blank') return true;
+
+    // Block only our callback URL — Stripe redirects here when onboarding completes.
+    // The callback is configured as {dashboardUrl}/connect (e.g. portal.lumapos.co/connect)
+    // Covers: portal.lumapos.co, dev.lumapos.co, lumapos.co, localhost:*
+    const isCallbackRedirect =
+      url.includes('lumapos.co') || url.includes('localhost');
+
+    if (isCallbackRedirect) {
+      logger.log('[StripeOnboarding] Detected callback redirect, closing:', url);
+      if (!hasShownCompletion) {
+        setHasShownCompletion(true);
+        handleClose();
+      }
+      return false;
     }
-    // Allow all Stripe URLs during onboarding
-    if (url.includes('stripe.com')) {
-      logger.log('[StripeOnboarding] Allowing: Stripe URL');
-      return true;
-    }
-    // Allow the initial onboarding URL load
-    if (url === onboardingUrl) {
-      logger.log('[StripeOnboarding] Allowing: exact onboarding URL match');
-      return true;
-    }
-    // Any other URL is the callback redirect — close before it loads
-    logger.log('[StripeOnboarding] BLOCKING URL — treating as callback redirect:', url);
-    if (!hasShownCompletion) {
-      setHasShownCompletion(true);
-      handleClose();
-    }
-    return false;
+
+    return true;
   };
 
   // Show loading overlay while API is fetching or WebView is loading the Stripe page
@@ -374,7 +371,8 @@ export function StripeOnboardingScreen() {
           source={onboardingUrl ? { uri: onboardingUrl } : { html: '' }}
           style={styles.webView}
           onShouldStartLoadWithRequest={handleShouldStartLoad}
-          onLoadEnd={() => {
+          onLoadEnd={(event) => {
+            logger.log('[StripeOnboarding] onLoadEnd, url:', event.nativeEvent.url, 'onboardingUrl:', onboardingUrl);
             if (onboardingUrl) setIsWebViewLoading(false);
           }}
           javaScriptEnabled={true}
