@@ -550,6 +550,7 @@ export function MenuScreen() {
   const [notesModalVisible, setNotesModalVisible] = useState(false);
   const [notesProduct, setNotesProduct] = useState<Product | null>(null);
   const [quickChargeVisible, setQuickChargeVisible] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
   // Bulk selection state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -594,6 +595,15 @@ export function MenuScreen() {
     queryFn: () => libraryProductsApi.list(),
     enabled: canManage && isEditMode,
   });
+
+  const handleManualRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  }, [refetch]);
 
   // Listen for real-time updates to products and categories
   // Use refetchQueries instead of invalidateQueries for immediate updates (bypasses stale time)
@@ -1849,8 +1859,8 @@ export function MenuScreen() {
           contentContainerStyle={styles.productList}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
+              refreshing={isManualRefreshing}
+              onRefresh={handleManualRefresh}
               tintColor={colors.primary}
             />
           }
@@ -1866,8 +1876,8 @@ export function MenuScreen() {
           columnWrapperStyle={numColumns > 1 ? styles.productRow : undefined}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
+              refreshing={isManualRefreshing}
+              onRefresh={handleManualRefresh}
               tintColor={colors.primary}
             />
           }
