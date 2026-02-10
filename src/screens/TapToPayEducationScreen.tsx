@@ -475,7 +475,7 @@ export function TapToPayEducationScreen() {
     if (loadingTimedOut) {
       return <View style={{ flex: 1, backgroundColor: isDark ? '#09090b' : colors.background }} />;
     }
-    return <LoadingWithStars message="" />;
+    return <LoadingWithStars />;
   }
 
   const isButtonDisabled = isEnabling;

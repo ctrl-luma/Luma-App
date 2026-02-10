@@ -142,15 +142,71 @@ export function StarryBackground({ children, height = 200, showGradient = true }
   );
 }
 
-// Full screen loading with stars
-interface LoadingWithStarsProps {
-  message?: string;
+// Central glowing star for loading
+function GlowingStar({ size = 32, color, glowColor, pulseAnim }: { size?: number; color: string; glowColor: string; pulseAnim: Animated.Value }) {
+  return (
+    <Animated.View style={{
+      width: size * 2,
+      height: size * 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      opacity: pulseAnim,
+      transform: [{ scale: pulseAnim }],
+    }}>
+      <View style={{
+        position: 'absolute',
+        width: size * 1.5,
+        height: size * 1.5,
+        borderRadius: size,
+        backgroundColor: glowColor,
+        shadowColor: color,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: size,
+      }} />
+      <View style={{
+        position: 'absolute',
+        width: 3,
+        height: size,
+        backgroundColor: color,
+        borderRadius: 1.5,
+        shadowColor: color,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 8,
+      }} />
+      <View style={{
+        position: 'absolute',
+        width: size,
+        height: 3,
+        backgroundColor: color,
+        borderRadius: 1.5,
+        shadowColor: color,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 8,
+      }} />
+      <View style={{
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: color,
+        shadowColor: color,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 1,
+        shadowRadius: 10,
+      }} />
+    </Animated.View>
+  );
 }
 
-export function LoadingWithStars({ message = 'Loading...' }: LoadingWithStarsProps) {
+// Full screen loading with glowing star
+export function LoadingWithStars() {
   const { colors, isDark } = useTheme();
+  const sparkleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(0.7)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -161,41 +217,89 @@ export function LoadingWithStars({ message = 'Loading...' }: LoadingWithStarsPro
 
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.6,
-          duration: 800,
+        Animated.timing(sparkleAnim, {
+          toValue: 1,
+          duration: 2000,
           useNativeDriver: true,
         }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
+        Animated.timing(sparkleAnim, {
+          toValue: 0,
+          duration: 2000,
           useNativeDriver: true,
         }),
       ])
     ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.7,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 8000,
+        useNativeDriver: true,
+      })
+    ).start();
   }, []);
 
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const starColor = isDark ? '#fff' : colors.primary;
+  const glowColor = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(99,102,241,0.2)';
+
   return (
-    <View style={[styles.fullScreen, { backgroundColor: isDark ? '#09090b' : colors.background }]}>
-      <StarryBackground height={300}>
-        <Animated.View style={[styles.loadingContent, { opacity: fadeAnim }]}>
-          <Animated.View style={[styles.loadingIconContainer, {
-            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(99,102,241,0.1)',
-            borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(99,102,241,0.15)',
-            opacity: pulseAnim,
-          }]}>
-            <View style={[styles.loadingDot, { backgroundColor: isDark ? '#fff' : colors.primary }]} />
-            <View style={[styles.loadingDot, { backgroundColor: isDark ? '#fff' : colors.primary, marginHorizontal: 8 }]} />
-            <View style={[styles.loadingDot, { backgroundColor: isDark ? '#fff' : colors.primary }]} />
-          </Animated.View>
-          {message ? (
-            <Animated.Text style={[styles.loadingText, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary, opacity: pulseAnim }]}>
-              {message}
-            </Animated.Text>
-          ) : null}
+    <Animated.View style={[styles.loadingContainer, { backgroundColor: isDark ? '#09090b' : colors.background, opacity: fadeAnim }]}>
+      <LinearGradient
+        colors={isDark
+          ? ['transparent', 'rgba(99, 102, 241, 0.08)', 'rgba(139, 92, 246, 0.05)', 'transparent']
+          : ['transparent', 'rgba(99, 102, 241, 0.05)', 'rgba(139, 92, 246, 0.03)', 'transparent']
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: sparkleAnim }]}>
+        <FourPointStar style={{ top: 40, left: 30 }} size={14} color={isDark ? 'rgba(255,255,255,0.7)' : 'rgba(99,102,241,0.4)'} />
+        <Star style={{ top: 80, left: 70 }} size={4} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(99,102,241,0.3)'} />
+        <Star style={{ top: 60, right: 50 }} size={6} color={isDark ? 'rgba(255,255,255,0.6)' : 'rgba(139,92,246,0.35)'} />
+        <FourPointStar style={{ top: 100, right: 35 }} size={12} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(99,102,241,0.3)'} />
+        <Star style={{ top: 130, left: 45 }} size={3} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(139,92,246,0.25)'} />
+        <Star style={{ top: 70, left: SCREEN_WIDTH * 0.45 }} size={5} color={isDark ? 'rgba(255,255,255,0.55)' : 'rgba(99,102,241,0.3)'} />
+        <Star style={{ top: 150, right: 80 }} size={4} color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(139,92,246,0.25)'} />
+      </Animated.View>
+
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: Animated.subtract(1, sparkleAnim) }]}>
+        <Star style={{ top: 50, left: 50 }} size={5} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(99,102,241,0.3)'} />
+        <FourPointStar style={{ top: 85, right: 40 }} size={16} color={isDark ? 'rgba(255,255,255,0.6)' : 'rgba(139,92,246,0.35)'} />
+        <Star style={{ top: 120, left: 30 }} size={4} color={isDark ? 'rgba(255,255,255,0.45)' : 'rgba(99,102,241,0.25)'} />
+        <Star style={{ top: 75, left: SCREEN_WIDTH * 0.55 }} size={6} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(139,92,246,0.3)'} />
+        <FourPointStar style={{ top: 35, right: 90 }} size={10} color={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(99,102,241,0.25)'} />
+        <Star style={{ top: 140, right: 55 }} size={3} color={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(139,92,246,0.25)'} />
+        <Star style={{ top: 95, left: 90 }} size={5} color={isDark ? 'rgba(255,255,255,0.55)' : 'rgba(99,102,241,0.3)'} />
+      </Animated.View>
+
+      <View style={styles.loadingContent}>
+        <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+          <GlowingStar size={36} color={starColor} glowColor={glowColor} pulseAnim={pulseAnim} />
         </Animated.View>
-      </StarryBackground>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -208,33 +312,16 @@ const styles = StyleSheet.create({
     flex: 1,
     zIndex: 10,
   },
-  fullScreen: {
+  loadingContainer: {
+    flex: 1,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  loadingContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loadingContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 60,
-  },
-  loadingIconContainer: {
-    flexDirection: 'row',
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  loadingDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  loadingText: {
-    fontSize: 16,
-    fontWeight: '400',
+    paddingHorizontal: 40,
+    zIndex: 10,
   },
 });
