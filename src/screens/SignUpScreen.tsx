@@ -31,7 +31,7 @@ import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
 import { config } from '../lib/config';
 import logger from '../lib/logger';
-import { isValidEmail, getPhoneMaxLength } from '../lib/validation';
+import { isValidEmail } from '../lib/validation';
 
 // Types
 type Step = 'account' | 'business' | 'plan' | 'confirmation';
@@ -114,6 +114,8 @@ export function SignUpScreen() {
   const navigation = useNavigation<any>();
   const { signIn } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
+  const phoneRef = useRef<PhoneInput>(null);
+  const phoneE164 = useRef('');
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   // Form state
@@ -138,7 +140,6 @@ export function SignUpScreen() {
   const [iapProduct, setIapProduct] = useState<SubscriptionProduct | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
-  const [phoneMaxLength, setPhoneMaxLength] = useState(10); // US default
   const [phoneInputReady, setPhoneInputReady] = useState(false);
 
   // Combined loading state for disabling form fields
@@ -146,20 +147,17 @@ export function SignUpScreen() {
 
   // Memoize PhoneInput props to prevent heavy re-renders on every keystroke
   const phoneOnChangeFormatted = useCallback((text: string) => {
+    phoneE164.current = text;
     const digits = text.replace(/\D/g, '');
     const phone = digits.length === 11 && digits.startsWith('1')
       ? digits.slice(1)
       : digits;
     setFormData(prev => ({ ...prev, phone }));
   }, []);
-  const phoneOnChangeCountry = useCallback((country: any) => {
-    setPhoneMaxLength(getPhoneMaxLength(country.cca2));
-  }, []);
   const phoneTextInputProps = useMemo(() => ({
     placeholderTextColor: appColors.gray500,
     selectionColor: colors.primary,
-    maxLength: phoneMaxLength,
-  }), [colors.primary, phoneMaxLength]);
+  }), [colors.primary]);
   const phoneDropdownImage = useMemo(() => (
     <Ionicons name="chevron-down" size={14} color={appColors.gray500} />
   ), []);
@@ -313,6 +311,9 @@ export function SignUpScreen() {
       }
       if (!formData.acceptTerms) {
         newErrors.acceptTerms = 'You must accept the terms and privacy policy';
+      }
+      if (formData.phone && phoneRef.current && !phoneRef.current.isValidNumber(phoneE164.current)) {
+        newErrors.phone = 'Please enter a valid phone number';
       }
     }
 
@@ -715,11 +716,11 @@ export function SignUpScreen() {
           <Text style={styles.label}>Phone Number (Optional)</Text>
           {phoneInputReady ? (
             <PhoneInput
+              ref={phoneRef}
               defaultCode="US"
               layout="first"
               withDarkTheme={isDark}
               onChangeFormattedText={phoneOnChangeFormatted}
-              onChangeCountry={phoneOnChangeCountry}
               placeholder="(555) 123-4567"
               textInputProps={phoneTextInputProps}
               renderDropdownImage={phoneDropdownImage}
@@ -741,6 +742,7 @@ export function SignUpScreen() {
               </View>
             </View>
           )}
+          {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
         </View>
 
         <TouchableOpacity
