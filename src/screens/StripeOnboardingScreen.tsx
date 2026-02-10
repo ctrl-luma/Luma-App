@@ -7,7 +7,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -261,6 +261,7 @@ export function StripeOnboardingScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const { refreshConnectStatus } = useAuth();
+  const insets = useSafeAreaInsets();
   const webViewRef = useRef<WebView>(null);
 
   const [onboardingUrl, setOnboardingUrl] = useState<string | null>(null);
@@ -320,12 +321,14 @@ export function StripeOnboardingScreen() {
   // before the WebView renders the Luma-Vendor page
   const handleShouldStartLoad = (request: { url: string }) => {
     const { url } = request;
-    // Allow empty/blank pages (WebView warmup)
+    // Allow everything during warmup (no onboarding URL yet)
+    if (!onboardingUrl) return true;
+    // Allow empty/blank pages
     if (!url || url === 'about:blank') return true;
     // Allow all Stripe URLs during onboarding
     if (url.includes('stripe.com')) return true;
     // Allow the initial onboarding URL load
-    if (onboardingUrl && url === onboardingUrl) return true;
+    if (url === onboardingUrl) return true;
     // Any other URL is the callback redirect — close before it loads
     if (!hasShownCompletion) {
       setHasShownCompletion(true);
@@ -338,7 +341,7 @@ export function StripeOnboardingScreen() {
   const showLoading = isFetchingUrl || (onboardingUrl && isWebViewLoading);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color={colors.text} />
@@ -384,7 +387,7 @@ export function StripeOnboardingScreen() {
           </View>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
