@@ -30,6 +30,7 @@ const PRO_FEATURES = [
   { icon: 'git-branch-outline', text: 'Revenue splits (venue/promoter)' },
   { icon: 'cash-outline', text: 'Tip reports & tracking' },
   { icon: 'wallet-outline', text: 'Tip pooling & tip-out rules' },
+  { icon: 'document-text-outline', text: 'Custom invoicing' },
   { icon: 'analytics-outline', text: 'Analytics dashboard' },
   { icon: 'download-outline', text: 'Export to CSV/PDF' },
 ];

@@ -102,6 +102,7 @@ const PLANS = {
       'Revenue splits',
       'Tip reports & tracking',
       'Tip pooling & tip-out rules',
+      'Custom invoicing',
       'Analytics dashboard',
       'Export to CSV/PDF',
     ],

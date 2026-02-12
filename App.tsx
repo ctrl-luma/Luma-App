@@ -650,12 +650,18 @@ function TapToPayOnboardingWrapper() {
     }
   }, [shouldNavigateToEducation, navigation]);
 
+  // Handle skip — dismiss modal and go straight to the app
+  const handleSkipPayments = useCallback(() => {
+    setHasCompletedOnboarding(true);
+  }, []);
+
   // Show Setup Payments modal if Connect isn't set up
   if (showSetupPaymentsModal) {
     return (
       <SetupPaymentsModal
         visible={true}
         onSetup={handleSetupPayments}
+        onSkip={handleSkipPayments}
       />
     );
   }
