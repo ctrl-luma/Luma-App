@@ -71,7 +71,7 @@ export function NetworkStatus() {
         size={18}
         color="#fff"
       />
-      <Text style={styles.text}>
+      <Text style={styles.text} maxFontSizeMultiplier={1.5}>
         {isOffline ? 'No Internet Connection' : 'Back Online'}
       </Text>
     </Animated.View>

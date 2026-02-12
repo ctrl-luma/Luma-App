@@ -163,7 +163,7 @@ export function CategoryManagerModal({
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Manage Categories</Text>
+            <Text style={styles.title} maxFontSizeMultiplier={1.3}>Manage Categories</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -209,7 +209,7 @@ export function CategoryManagerModal({
             {sortedCategories.length > 0 && (
               <View style={styles.infoHint}>
                 <Ionicons name="information-circle-outline" size={18} color={colors.textSecondary} />
-                <Text style={styles.infoHintText}>
+                <Text style={styles.infoHintText} maxFontSizeMultiplier={1.5}>
                   Products can be assigned to categories when editing them
                 </Text>
               </View>
@@ -218,8 +218,8 @@ export function CategoryManagerModal({
             {sortedCategories.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="folder-open-outline" size={56} color={colors.textMuted} />
-                <Text style={styles.emptyStateText}>No categories yet</Text>
-                <Text style={styles.emptyStateSubtext}>
+                <Text style={styles.emptyStateText} maxFontSizeMultiplier={1.3}>No categories yet</Text>
+                <Text style={styles.emptyStateSubtext} maxFontSizeMultiplier={1.5}>
                   Create your first category above to organize your products
                 </Text>
               </View>
@@ -268,16 +268,16 @@ export function CategoryManagerModal({
                             <Text style={[
                               styles.categoryName,
                               !category.isActive && styles.categoryNameInactive
-                            ]}>
+                            ]} maxFontSizeMultiplier={1.5}>
                               {category.name}
                             </Text>
                             {!category.isActive && (
                               <View style={styles.hiddenBadge}>
-                                <Text style={styles.hiddenBadgeText}>Hidden</Text>
+                                <Text style={styles.hiddenBadgeText} maxFontSizeMultiplier={1.5}>Hidden</Text>
                               </View>
                             )}
                           </View>
-                          <Text style={styles.productCount}>
+                          <Text style={styles.productCount} maxFontSizeMultiplier={1.5}>
                             {category.productCount} {category.productCount === 1 ? 'product' : 'products'}
                           </Text>
                         </TouchableOpacity>

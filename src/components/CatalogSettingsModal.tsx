@@ -264,7 +264,7 @@ export function CatalogSettingsModal({
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.title}>Menu Settings</Text>
+            <Text style={styles.title} maxFontSizeMultiplier={1.3}>Menu Settings</Text>
             <TouchableOpacity
               onPress={handleSave}
               disabled={isSaving}
@@ -273,7 +273,7 @@ export function CatalogSettingsModal({
               {isSaving ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.saveButtonText}>Save</Text>
+                <Text style={styles.saveButtonText} maxFontSizeMultiplier={1.3}>Save</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -285,7 +285,7 @@ export function CatalogSettingsModal({
           >
             {/* Name */}
             <View style={styles.section}>
-              <Text style={styles.label}>Menu Name *</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Menu Name *</Text>
               <TextInput
                 style={styles.input}
                 value={name}
@@ -298,7 +298,7 @@ export function CatalogSettingsModal({
 
             {/* Description */}
             <View style={styles.section}>
-              <Text style={styles.label}>Description</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Description</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={description}
@@ -313,7 +313,7 @@ export function CatalogSettingsModal({
 
             {/* Location */}
             <View style={styles.section}>
-              <Text style={styles.label}>Location</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Location</Text>
               <View style={styles.inputWithIcon}>
                 <Ionicons name="location-outline" size={20} color={colors.textMuted} />
                 <TextInput
@@ -329,7 +329,7 @@ export function CatalogSettingsModal({
 
             {/* Date */}
             <View style={styles.section}>
-              <Text style={styles.label}>Date</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Date</Text>
               <TouchableOpacity
                 style={styles.dateSelector}
                 onPress={() => setShowDatePicker(true)}
@@ -338,7 +338,7 @@ export function CatalogSettingsModal({
                 <Text style={[
                   styles.dateSelectorText,
                   !date && styles.dateSelectorPlaceholder
-                ]}>
+                ]} maxFontSizeMultiplier={1.5}>
                   {date ? formatDate(date) : 'Select a date (optional)'}
                 </Text>
                 {date && (
@@ -355,10 +355,10 @@ export function CatalogSettingsModal({
                   <View style={styles.datePickerContainer}>
                     <View style={styles.datePickerHeader}>
                       <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                        <Text style={styles.datePickerCancel}>Cancel</Text>
+                        <Text style={styles.datePickerCancel} maxFontSizeMultiplier={1.5}>Cancel</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                        <Text style={styles.datePickerDone}>Done</Text>
+                        <Text style={styles.datePickerDone} maxFontSizeMultiplier={1.5}>Done</Text>
                       </TouchableOpacity>
                     </View>
                     <DateTimePicker
@@ -385,8 +385,8 @@ export function CatalogSettingsModal({
             <View style={styles.section}>
               <View style={styles.toggleRow}>
                 <View style={styles.toggleInfo}>
-                  <Text style={styles.label}>Active</Text>
-                  <Text style={styles.toggleDescription}>
+                  <Text style={styles.label} maxFontSizeMultiplier={1.5}>Active</Text>
+                  <Text style={styles.toggleDescription} maxFontSizeMultiplier={1.5}>
                     Show this menu in the app
                   </Text>
                 </View>
@@ -396,7 +396,7 @@ export function CatalogSettingsModal({
 
             {/* Layout Type */}
             <View style={styles.section}>
-              <Text style={styles.label}>Product Layout</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Product Layout</Text>
               <View style={styles.layoutOptions}>
                 {LAYOUT_OPTIONS.map(option => (
                   <TouchableOpacity
@@ -415,7 +415,7 @@ export function CatalogSettingsModal({
                     <Text style={[
                       styles.layoutOptionText,
                       layoutType === option.value && styles.layoutOptionTextSelected
-                    ]}>
+                    ]} maxFontSizeMultiplier={1.3}>
                       {option.label}
                     </Text>
                   </TouchableOpacity>
@@ -425,7 +425,7 @@ export function CatalogSettingsModal({
 
             {/* Tax Rate */}
             <View style={styles.section}>
-              <Text style={styles.label}>Tax Rate</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Tax Rate</Text>
               <View style={styles.taxInputContainer}>
                 <TextInput
                   style={styles.taxInput}
@@ -435,7 +435,7 @@ export function CatalogSettingsModal({
                   placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
                 />
-                <Text style={styles.taxSymbol}>%</Text>
+                <Text style={styles.taxSymbol} maxFontSizeMultiplier={1.5}>%</Text>
               </View>
             </View>
 
@@ -446,8 +446,8 @@ export function CatalogSettingsModal({
             <View style={styles.section}>
               <View style={styles.toggleRow}>
                 <View style={styles.toggleInfo}>
-                  <Text style={styles.label}>Show Tip Screen</Text>
-                  <Text style={styles.toggleDescription}>
+                  <Text style={styles.label} maxFontSizeMultiplier={1.5}>Show Tip Screen</Text>
+                  <Text style={styles.toggleDescription} maxFontSizeMultiplier={1.5}>
                     Show tip options during checkout
                   </Text>
                 </View>
@@ -460,7 +460,7 @@ export function CatalogSettingsModal({
               <>
                 <View style={styles.section}>
                   <View style={styles.tipHeader}>
-                    <Text style={styles.label}>Tip Options</Text>
+                    <Text style={styles.label} maxFontSizeMultiplier={1.5}>Tip Options</Text>
                     {tipPercentages.length < 6 && (
                       <TouchableOpacity onPress={handleAddTipPercentage}>
                         <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
@@ -494,7 +494,7 @@ export function CatalogSettingsModal({
                               onPress={() => handleStartEditTip(index)}
                               style={styles.tipValueButton}
                             >
-                              <Text style={styles.tipText}>{percentage}%</Text>
+                              <Text style={styles.tipText} maxFontSizeMultiplier={1.5}>{percentage}%</Text>
                             </TouchableOpacity>
                             {tipPercentages.length > 1 && (
                               <TouchableOpacity
@@ -514,8 +514,8 @@ export function CatalogSettingsModal({
                 <View style={styles.section}>
                   <View style={styles.toggleRow}>
                     <View style={styles.toggleInfo}>
-                      <Text style={styles.label}>Allow Custom Tip</Text>
-                      <Text style={styles.toggleDescription}>
+                      <Text style={styles.label} maxFontSizeMultiplier={1.5}>Allow Custom Tip</Text>
+                      <Text style={styles.toggleDescription} maxFontSizeMultiplier={1.5}>
                         Let customers enter a custom tip amount
                       </Text>
                     </View>
@@ -529,8 +529,8 @@ export function CatalogSettingsModal({
             <View style={styles.section}>
               <View style={styles.toggleRow}>
                 <View style={styles.toggleInfo}>
-                  <Text style={styles.label}>Prompt for Email</Text>
-                  <Text style={styles.toggleDescription}>
+                  <Text style={styles.label} maxFontSizeMultiplier={1.5}>Prompt for Email</Text>
+                  <Text style={styles.toggleDescription} maxFontSizeMultiplier={1.5}>
                     Ask for customer email during checkout
                   </Text>
                 </View>
@@ -547,9 +547,9 @@ export function CatalogSettingsModal({
                 <View style={styles.toggleInfo}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Ionicons name="receipt-outline" size={16} color={colors.primary} />
-                    <Text style={styles.label}>Pre-Orders</Text>
+                    <Text style={styles.label} maxFontSizeMultiplier={1.5}>Pre-Orders</Text>
                   </View>
-                  <Text style={styles.toggleDescription}>
+                  <Text style={styles.toggleDescription} maxFontSizeMultiplier={1.5}>
                     {catalog?.preorderEnabled
                       ? 'Pre-orders are enabled for this menu'
                       : 'Allow customers to order ahead via QR code'}
@@ -562,14 +562,14 @@ export function CatalogSettingsModal({
                   <Text style={[
                     styles.preorderBadgeText,
                     catalog?.preorderEnabled && styles.preorderBadgeTextEnabled
-                  ]}>
+                  ]} maxFontSizeMultiplier={1.5}>
                     {catalog?.preorderEnabled ? 'Enabled' : 'Disabled'}
                   </Text>
                 </View>
               </View>
               <View style={styles.preorderNote}>
                 <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
-                <Text style={styles.preorderNoteText}>
+                <Text style={styles.preorderNoteText} maxFontSizeMultiplier={1.5}>
                   Configure pre-order settings, QR codes, and payment options in the Vendor Dashboard
                 </Text>
               </View>
@@ -578,7 +578,7 @@ export function CatalogSettingsModal({
             {/* Catalog Actions */}
             {(onDuplicate || onDelete) && (
               <View style={styles.actionsSection}>
-                <Text style={styles.actionsSectionTitle}>Menu Actions</Text>
+                <Text style={styles.actionsSectionTitle} maxFontSizeMultiplier={1.5}>Menu Actions</Text>
 
                 {onDuplicate && (
                   <TouchableOpacity
@@ -591,7 +591,7 @@ export function CatalogSettingsModal({
                     ) : (
                       <>
                         <Ionicons name="copy-outline" size={20} color={colors.primary} />
-                        <Text style={[styles.actionButtonText, { color: colors.primary }]}>
+                        <Text style={[styles.actionButtonText, { color: colors.primary }]} maxFontSizeMultiplier={1.3}>
                           Duplicate Catalog
                         </Text>
                       </>
@@ -610,7 +610,7 @@ export function CatalogSettingsModal({
                     ) : (
                       <>
                         <Ionicons name="trash-outline" size={20} color={colors.error} />
-                        <Text style={[styles.actionButtonText, { color: colors.error }]}>
+                        <Text style={[styles.actionButtonText, { color: colors.error }]} maxFontSizeMultiplier={1.3}>
                           Delete Catalog
                         </Text>
                       </>

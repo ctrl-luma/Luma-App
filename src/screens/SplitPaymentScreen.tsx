@@ -334,7 +334,7 @@ export function SplitPaymentScreen() {
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Split Payment</Text>
+          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Split Payment</Text>
           <View style={{ width: 48 }} />
         </View>
 
@@ -347,25 +347,25 @@ export function SplitPaymentScreen() {
           {/* Order Summary */}
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Order Total</Text>
-              <Text style={styles.summaryValue}>${(totalAmount / 100).toFixed(2)}</Text>
+              <Text style={styles.summaryLabel} maxFontSizeMultiplier={1.5}>Order Total</Text>
+              <Text style={styles.summaryValue} maxFontSizeMultiplier={1.3}>${(totalAmount / 100).toFixed(2)}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Paid</Text>
-              <Text style={[styles.summaryValue, { color: colors.success }]}>
+              <Text style={styles.summaryLabel} maxFontSizeMultiplier={1.5}>Total Paid</Text>
+              <Text style={[styles.summaryValue, { color: colors.success }]} maxFontSizeMultiplier={1.3}>
                 ${(totalPaid / 100).toFixed(2)}
               </Text>
             </View>
             <View style={[styles.summaryRow, styles.remainingRow]}>
-              <Text style={styles.remainingLabel}>Remaining</Text>
-              <Text style={styles.remainingValue}>${(remainingBalance / 100).toFixed(2)}</Text>
+              <Text style={styles.remainingLabel} maxFontSizeMultiplier={1.5}>Remaining</Text>
+              <Text style={styles.remainingValue} maxFontSizeMultiplier={1.2}>${(remainingBalance / 100).toFixed(2)}</Text>
             </View>
           </View>
 
           {/* Existing Payments */}
           {payments.length > 0 && (
             <View style={styles.paymentsSection}>
-              <Text style={styles.sectionTitle}>Payments</Text>
+              <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.5}>Payments</Text>
               {payments.map((payment, index) => (
                 <View key={payment.id || index} style={styles.paymentRow}>
                   <View style={styles.paymentLeft}>
@@ -374,11 +374,11 @@ export function SplitPaymentScreen() {
                       size={20}
                       color={colors.primary}
                     />
-                    <Text style={styles.paymentMethod}>
+                    <Text style={styles.paymentMethod} maxFontSizeMultiplier={1.5}>
                       {getPaymentMethodLabel(payment.paymentMethod)}
                     </Text>
                   </View>
-                  <Text style={styles.paymentAmount}>
+                  <Text style={styles.paymentAmount} maxFontSizeMultiplier={1.5}>
                     ${(payment.amount / 100).toFixed(2)}
                   </Text>
                 </View>
@@ -395,11 +395,11 @@ export function SplitPaymentScreen() {
                   onPress={() => setShowAddPayment(true)}
                 >
                   <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
-                  <Text style={styles.addPaymentButtonText}>Add Payment</Text>
+                  <Text style={styles.addPaymentButtonText} maxFontSizeMultiplier={1.3}>Add Payment</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={styles.paymentForm}>
-                  <Text style={styles.formTitle}>Add Payment</Text>
+                  <Text style={styles.formTitle} maxFontSizeMultiplier={1.3}>Add Payment</Text>
 
                   {/* Payment Method Selection */}
                   <View style={styles.methodSelection}>
@@ -422,6 +422,7 @@ export function SplitPaymentScreen() {
                             styles.methodButtonText,
                             selectedMethod === method && styles.methodButtonTextSelected,
                           ]}
+                          maxFontSizeMultiplier={1.3}
                         >
                           {getPaymentMethodLabel(method)}
                         </Text>
@@ -431,9 +432,9 @@ export function SplitPaymentScreen() {
 
                   {/* Amount Input */}
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Payment Amount</Text>
+                    <Text style={styles.inputLabel} maxFontSizeMultiplier={1.5}>Payment Amount</Text>
                     <View style={styles.amountInputContainer}>
-                      <Text style={styles.dollarSign}>$</Text>
+                      <Text style={styles.dollarSign} maxFontSizeMultiplier={1.3}>$</Text>
                       <TextInput
                         style={styles.amountInput}
                         value={paymentAmount}
@@ -446,7 +447,7 @@ export function SplitPaymentScreen() {
                         style={styles.remainingButton}
                         onPress={handlePayRemaining}
                       >
-                        <Text style={styles.remainingButtonText}>Remaining</Text>
+                        <Text style={styles.remainingButtonText} maxFontSizeMultiplier={1.3}>Remaining</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -454,9 +455,9 @@ export function SplitPaymentScreen() {
                   {/* Cash Tendered (for cash payments) */}
                   {selectedMethod === 'cash' && (
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Cash Tendered</Text>
+                      <Text style={styles.inputLabel} maxFontSizeMultiplier={1.5}>Cash Tendered</Text>
                       <View style={styles.amountInputContainer}>
-                        <Text style={styles.dollarSign}>$</Text>
+                        <Text style={styles.dollarSign} maxFontSizeMultiplier={1.3}>$</Text>
                         <TextInput
                           style={styles.amountInput}
                           value={cashTendered}
@@ -469,8 +470,8 @@ export function SplitPaymentScreen() {
                       {/* Change calculation */}
                       {cashTendered && paymentAmount && (
                         <View style={styles.changeDisplay}>
-                          <Text style={styles.changeLabel}>Change Due:</Text>
-                          <Text style={styles.changeAmount}>
+                          <Text style={styles.changeLabel} maxFontSizeMultiplier={1.5}>Change Due:</Text>
+                          <Text style={styles.changeAmount} maxFontSizeMultiplier={1.3}>
                             ${Math.max(0, (parseFloat(cashTendered) - parseFloat(paymentAmount))).toFixed(2)}
                           </Text>
                         </View>
@@ -481,7 +482,7 @@ export function SplitPaymentScreen() {
                   {/* Card Entry (for manual card payments) */}
                   {selectedMethod === 'card' && (
                     <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Card Details</Text>
+                      <Text style={styles.inputLabel} maxFontSizeMultiplier={1.5}>Card Details</Text>
                       <CardField
                         postalCodeEnabled={false}
                         cardStyle={{
@@ -508,7 +509,7 @@ export function SplitPaymentScreen() {
                         resetPaymentForm();
                       }}
                     >
-                      <Text style={styles.cancelFormButtonText}>Cancel</Text>
+                      <Text style={styles.cancelFormButtonText} maxFontSizeMultiplier={1.3}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
@@ -523,7 +524,7 @@ export function SplitPaymentScreen() {
                       ) : (
                         <>
                           <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                          <Text style={styles.processButtonText}>Process</Text>
+                          <Text style={styles.processButtonText} maxFontSizeMultiplier={1.3}>Process</Text>
                         </>
                       )}
                     </TouchableOpacity>
@@ -542,7 +543,7 @@ export function SplitPaymentScreen() {
               onPress={handleOrderComplete}
             >
               <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              <Text style={styles.completeButtonText}>Payment Complete</Text>
+              <Text style={styles.completeButtonText} maxFontSizeMultiplier={1.3}>Payment Complete</Text>
             </TouchableOpacity>
           </View>
         )}

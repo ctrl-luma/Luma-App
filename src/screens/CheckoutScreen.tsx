@@ -676,7 +676,7 @@ export function CheckoutScreen() {
           >
             <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
+          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>
             {resumedOrder ? 'Resume Order' : 'Checkout'}
           </Text>
           <View style={styles.headerRight}>
@@ -705,7 +705,7 @@ export function CheckoutScreen() {
                   navigation.goBack();
                 }}
               >
-                <Text style={styles.clearButtonText}>Clear</Text>
+                <Text style={styles.clearButtonText} maxFontSizeMultiplier={1.3}>Clear</Text>
               </TouchableOpacity>
             ) : (
               <View style={{ width: 44 }} />
@@ -728,7 +728,7 @@ export function CheckoutScreen() {
         {/* 1. Tip Selection (first) - hide for resumed orders since tip is already set */}
         {showTipScreen && !resumedOrder && (
           <View style={styles.tipSection}>
-            <Text style={styles.tipTitle}>Add a Tip</Text>
+            <Text style={styles.tipTitle} maxFontSizeMultiplier={1.3}>Add a Tip</Text>
             <View style={styles.tipOptions}>
               {tipOptions.map((option, index) => {
                 const isSelected = selectedTipIndex === index;
@@ -747,6 +747,7 @@ export function CheckoutScreen() {
                           styles.tipButtonLabel,
                           isSelected && styles.tipButtonLabelSelected,
                         ]}
+                        maxFontSizeMultiplier={1.3}
                       >
                         {option.label}
                       </Text>
@@ -756,6 +757,7 @@ export function CheckoutScreen() {
                             styles.tipButtonAmount,
                             isSelected && styles.tipButtonAmountSelected,
                           ]}
+                          maxFontSizeMultiplier={1.3}
                         >
                           ${(calculatedTip / 100).toFixed(2)}
                         </Text>
@@ -769,9 +771,9 @@ export function CheckoutScreen() {
             {/* Custom Tip Input */}
             {showCustomTipInput && (
               <View style={styles.customTipContainer}>
-                <Text style={styles.customTipLabel}>Custom amount:</Text>
+                <Text style={styles.customTipLabel} maxFontSizeMultiplier={1.5}>Custom amount:</Text>
                 <View style={styles.customTipInputRow}>
-                  <Text style={styles.customTipDollar}>$</Text>
+                  <Text style={styles.customTipDollar} maxFontSizeMultiplier={1.2}>$</Text>
                   <TextInput
                     style={styles.customTipInput}
                     placeholder="0"
@@ -795,7 +797,7 @@ export function CheckoutScreen() {
             >
               <View style={styles.customerInfoHeaderLeft}>
                 <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
-                <Text style={styles.customerInfoTitle}>
+                <Text style={styles.customerInfoTitle} maxFontSizeMultiplier={1.5}>
                   {customerEmail || orderNotes ? 'Customer Info' : 'Add Customer Info'}
                 </Text>
                 {(customerEmail || orderNotes) && !showCustomerInfo && (
@@ -824,7 +826,7 @@ export function CheckoutScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                     />
-                    {emailError && <Text style={styles.inputErrorText}>{emailError}</Text>}
+                    {emailError && <Text style={styles.inputErrorText} maxFontSizeMultiplier={1.5}>{emailError}</Text>}
                   </View>
                 )}
                 <TextInput
@@ -843,7 +845,7 @@ export function CheckoutScreen() {
 
         {/* 3. Payment Method Selection */}
           <View style={styles.paymentMethodSection}>
-            <Text style={styles.paymentMethodTitle}>Payment Method</Text>
+            <Text style={styles.paymentMethodTitle} maxFontSizeMultiplier={1.3}>Payment Method</Text>
             <View style={styles.paymentMethodOptions}>
               <TouchableOpacity
                 style={[
@@ -862,6 +864,7 @@ export function CheckoutScreen() {
                     styles.paymentMethodButtonText,
                     paymentMethod === 'tap_to_pay' && styles.paymentMethodButtonTextSelected,
                   ]}
+                  maxFontSizeMultiplier={1.3}
                 >
                   {Platform.OS === 'ios' ? 'Tap to Pay' : 'Card'}
                 </Text>
@@ -883,6 +886,7 @@ export function CheckoutScreen() {
                     styles.paymentMethodButtonText,
                     paymentMethod === 'cash' && styles.paymentMethodButtonTextSelected,
                   ]}
+                  maxFontSizeMultiplier={1.3}
                 >
                   Cash
                 </Text>
@@ -904,6 +908,7 @@ export function CheckoutScreen() {
                     styles.paymentMethodButtonText,
                     paymentMethod === 'split' && styles.paymentMethodButtonTextSelected,
                   ]}
+                  maxFontSizeMultiplier={1.3}
                 >
                   Split
                 </Text>
@@ -917,24 +922,24 @@ export function CheckoutScreen() {
             <>
               <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
-                  <Text style={styles.totalsLabel}>Quick Charge</Text>
-                  <Text style={styles.totalsValue}>${(subtotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Quick Charge</Text>
+                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(subtotal / 100).toFixed(2)}</Text>
                 </View>
                 {taxAmount > 0 && (
                   <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Tax ({taxRate}%)</Text>
-                    <Text style={styles.totalsValue}>${(taxAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tax ({taxRate}%)</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(taxAmount / 100).toFixed(2)}</Text>
                   </View>
                 )}
                 {tipAmount > 0 && (
                   <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Tip ({tipPercentage}%)</Text>
-                    <Text style={styles.totalsValue}>${(tipAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tip ({tipPercentage}%)</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(tipAmount / 100).toFixed(2)}</Text>
                   </View>
                 )}
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(grandTotal / 100).toFixed(2)}</Text>
                 </View>
               </View>
             </>
@@ -953,17 +958,17 @@ export function CheckoutScreen() {
                     )}
                   </View>
                   <View style={styles.itemInfo}>
-                    <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.itemName} maxFontSizeMultiplier={1.5} numberOfLines={1}>{item.name}</Text>
                     {item.notes ? (
-                      <Text style={styles.itemNotes} numberOfLines={1}>{item.notes}</Text>
+                      <Text style={styles.itemNotes} maxFontSizeMultiplier={1.5} numberOfLines={1}>{item.notes}</Text>
                     ) : (
-                      <Text style={styles.itemUnitPrice}>${(item.unitPrice / 100).toFixed(2)} each</Text>
+                      <Text style={styles.itemUnitPrice} maxFontSizeMultiplier={1.5}>${(item.unitPrice / 100).toFixed(2)} each</Text>
                     )}
                   </View>
                   <View style={styles.quantityControls}>
-                    <Text style={styles.quantityText}>x{item.quantity}</Text>
+                    <Text style={styles.quantityText} maxFontSizeMultiplier={1.5}>x{item.quantity}</Text>
                   </View>
-                  <Text style={styles.itemPrice} numberOfLines={1} adjustsFontSizeToFit>
+                  <Text style={styles.itemPrice} maxFontSizeMultiplier={1.5} numberOfLines={1} adjustsFontSizeToFit>
                     ${((item.unitPrice * item.quantity) / 100).toFixed(2)}
                   </Text>
                 </View>
@@ -971,24 +976,24 @@ export function CheckoutScreen() {
               {/* Totals */}
               <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
-                  <Text style={styles.totalsLabel}>Subtotal</Text>
-                  <Text style={styles.totalsValue}>${(subtotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Subtotal</Text>
+                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(subtotal / 100).toFixed(2)}</Text>
                 </View>
                 {taxAmount > 0 && (
                   <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Tax ({taxRate}%)</Text>
-                    <Text style={styles.totalsValue}>${(taxAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tax ({taxRate}%)</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(taxAmount / 100).toFixed(2)}</Text>
                   </View>
                 )}
                 {tipAmount > 0 && (
                   <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Tip ({tipPercentage}%)</Text>
-                    <Text style={styles.totalsValue}>${(tipAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tip ({tipPercentage}%)</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(tipAmount / 100).toFixed(2)}</Text>
                   </View>
                 )}
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(grandTotal / 100).toFixed(2)}</Text>
                 </View>
               </View>
             </>
@@ -1043,11 +1048,11 @@ export function CheckoutScreen() {
                         )}
                       </View>
                       <View style={styles.itemInfo}>
-                        <Text style={styles.itemName} numberOfLines={1}>{item.product.name}</Text>
+                        <Text style={styles.itemName} maxFontSizeMultiplier={1.5} numberOfLines={1}>{item.product.name}</Text>
                         {item.notes ? (
-                          <Text style={styles.itemNotes} numberOfLines={1}>{item.notes}</Text>
+                          <Text style={styles.itemNotes} maxFontSizeMultiplier={1.5} numberOfLines={1}>{item.notes}</Text>
                         ) : (
-                          <Text style={styles.itemUnitPrice}>${(item.product.price / 100).toFixed(2)} each</Text>
+                          <Text style={styles.itemUnitPrice} maxFontSizeMultiplier={1.5}>${(item.product.price / 100).toFixed(2)} each</Text>
                         )}
                       </View>
                       <View style={styles.quantityControls}>
@@ -1058,12 +1063,12 @@ export function CheckoutScreen() {
                             color={item.quantity === 1 ? colors.error : colors.text}
                           />
                         </TouchableOpacity>
-                        <Text style={styles.quantityText}>{item.quantity}</Text>
+                        <Text style={styles.quantityText} maxFontSizeMultiplier={1.5}>{item.quantity}</Text>
                         <TouchableOpacity style={styles.quantityButton} onPress={() => incrementItem(item.cartKey)}>
                           <Ionicons name="add" size={16} color={colors.text} />
                         </TouchableOpacity>
                       </View>
-                      <Text style={styles.itemPrice} numberOfLines={1} adjustsFontSizeToFit>
+                      <Text style={styles.itemPrice} maxFontSizeMultiplier={1.5} numberOfLines={1} adjustsFontSizeToFit>
                         ${((item.product.price * item.quantity) / 100).toFixed(2)}
                       </Text>
                     </View>
@@ -1073,24 +1078,24 @@ export function CheckoutScreen() {
               {/* Totals */}
               <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
-                  <Text style={styles.totalsLabel}>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)</Text>
-                  <Text style={styles.totalsValue}>${(subtotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)</Text>
+                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(subtotal / 100).toFixed(2)}</Text>
                 </View>
                 {taxAmount > 0 && (
                   <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Tax ({taxRate}%)</Text>
-                    <Text style={styles.totalsValue}>${(taxAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tax ({taxRate}%)</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(taxAmount / 100).toFixed(2)}</Text>
                   </View>
                 )}
                 {tipAmount > 0 && (
                   <View style={styles.totalsRow}>
-                    <Text style={styles.totalsLabel}>Tip ({tipPercentage}%)</Text>
-                    <Text style={styles.totalsValue}>${(tipAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tip ({tipPercentage}%)</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(tipAmount / 100).toFixed(2)}</Text>
                   </View>
                 )}
                 <View style={styles.totalRow}>
-                  <Text style={styles.totalLabel}>Total</Text>
-                  <Text style={styles.totalAmount}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(grandTotal / 100).toFixed(2)}</Text>
                 </View>
               </View>
             </>
@@ -1123,17 +1128,17 @@ export function CheckoutScreen() {
                     <Ionicons name="wifi" size={22} color={isDark ? '#09090b' : '#fff'} style={styles.tapToPayIconRotated} />
                   </View>
                   {/* Apple TTPOi 5.4: Region-correct copy */}
-                  <Text style={[styles.payButtonText, { color: isDark ? '#09090b' : '#fff' }]}>{TAP_TO_PAY_LABEL}</Text>
+                  <Text style={[styles.payButtonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>{TAP_TO_PAY_LABEL}</Text>
                 </>
               ) : paymentMethod === 'cash' ? (
                 <>
                   <Ionicons name="cash-outline" size={22} color="#fff" />
-                  <Text style={styles.payButtonText}>Pay with Cash</Text>
+                  <Text style={styles.payButtonText} maxFontSizeMultiplier={1.3}>Pay with Cash</Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="git-branch-outline" size={22} color="#fff" />
-                  <Text style={styles.payButtonText}>Split Payment</Text>
+                  <Text style={styles.payButtonText} maxFontSizeMultiplier={1.3}>Split Payment</Text>
                 </>
               )}
             </>
@@ -1159,8 +1164,8 @@ export function CheckoutScreen() {
             style={[styles.modalContent, { backgroundColor: colors.card }]}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={styles.modalTitle}>Hold Order</Text>
-            <Text style={styles.modalSubtitle}>
+            <Text style={styles.modalTitle} maxFontSizeMultiplier={1.3}>Hold Order</Text>
+            <Text style={styles.modalSubtitle} maxFontSizeMultiplier={1.5}>
               Give this order a name so you can find it later
             </Text>
             <TextInput
@@ -1180,7 +1185,7 @@ export function CheckoutScreen() {
                   setHoldName('');
                 }}
               >
-                <Text style={styles.modalCancelButtonText}>Cancel</Text>
+                <Text style={styles.modalCancelButtonText} maxFontSizeMultiplier={1.3}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalConfirmButton, isHolding && styles.modalConfirmButtonDisabled]}
@@ -1192,7 +1197,7 @@ export function CheckoutScreen() {
                 ) : (
                   <>
                     <Ionicons name="pause-circle" size={18} color="#fff" />
-                    <Text style={styles.modalConfirmButtonText}>Hold Order</Text>
+                    <Text style={styles.modalConfirmButtonText} maxFontSizeMultiplier={1.3}>Hold Order</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -1478,7 +1483,8 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     tipButtonInner: {
       backgroundColor: glassColors.background,
       borderRadius: 12,
-      height: 70,
+      minHeight: 70,
+      paddingVertical: 8,
       alignItems: 'center',
       justifyContent: 'center',
     },

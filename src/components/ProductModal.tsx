@@ -211,7 +211,7 @@ export function ProductModal({
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={styles.title}>
+            <Text style={styles.title} maxFontSizeMultiplier={1.3}>
               {isEditing ? 'Edit Product' : 'Add Product'}
             </Text>
             <TouchableOpacity
@@ -222,7 +222,7 @@ export function ProductModal({
               {isSaving ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.saveButtonText}>Save</Text>
+                <Text style={styles.saveButtonText} maxFontSizeMultiplier={1.3}>Save</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -234,7 +234,7 @@ export function ProductModal({
           >
             {/* Image Picker */}
             <View style={styles.section}>
-              <Text style={styles.label}>Product Image</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Product Image</Text>
               <TouchableOpacity
                 style={styles.imagePicker}
                 onPress={handlePickImage}
@@ -257,7 +257,7 @@ export function ProductModal({
                 ) : (
                   <View style={styles.imagePlaceholder}>
                     <Ionicons name="camera-outline" size={40} color={colors.textMuted} />
-                    <Text style={styles.imagePlaceholderText}>Tap to add image</Text>
+                    <Text style={styles.imagePlaceholderText} maxFontSizeMultiplier={1.5}>Tap to add image</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -265,7 +265,7 @@ export function ProductModal({
 
             {/* Name */}
             <View style={styles.section}>
-              <Text style={styles.label}>Name *</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Name *</Text>
               <TextInput
                 style={styles.input}
                 value={name}
@@ -278,7 +278,7 @@ export function ProductModal({
 
             {/* Description */}
             <View style={styles.section}>
-              <Text style={styles.label}>Description</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Description</Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={description}
@@ -293,9 +293,9 @@ export function ProductModal({
 
             {/* Price */}
             <View style={styles.section}>
-              <Text style={styles.label}>Price *</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Price *</Text>
               <View style={styles.priceInputContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
+                <Text style={styles.currencySymbol} maxFontSizeMultiplier={1.3}>$</Text>
                 <TextInput
                   style={styles.priceInput}
                   value={priceString}
@@ -310,10 +310,10 @@ export function ProductModal({
             {/* Category */}
             <View style={styles.section}>
               <View style={styles.labelRow}>
-                <Text style={styles.label}>Category</Text>
+                <Text style={styles.label} maxFontSizeMultiplier={1.5}>Category</Text>
                 {onOpenCategoryManager && (
                   <TouchableOpacity onPress={onOpenCategoryManager}>
-                    <Text style={styles.manageLink}>Manage</Text>
+                    <Text style={styles.manageLink} maxFontSizeMultiplier={1.5}>Manage</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -325,7 +325,7 @@ export function ProductModal({
                   <Text style={[
                     styles.categorySelectorText,
                     !selectedCategory && styles.categorySelectorPlaceholder
-                  ]}>
+                  ]} maxFontSizeMultiplier={1.5}>
                     {selectedCategory?.name || 'No category'}
                   </Text>
                   <Ionicons
@@ -359,7 +359,7 @@ export function ProductModal({
                     <Text style={[
                       styles.categoryOptionText,
                       categoryId === null && styles.categoryOptionTextSelected
-                    ]}>
+                    ]} maxFontSizeMultiplier={1.5}>
                       No category
                     </Text>
                     {categoryId === null && (
@@ -381,7 +381,7 @@ export function ProductModal({
                       <Text style={[
                         styles.categoryOptionText,
                         categoryId === category.id && styles.categoryOptionTextSelected
-                      ]}>
+                      ]} maxFontSizeMultiplier={1.5}>
                         {category.name}
                       </Text>
                       {categoryId === category.id && (
@@ -397,8 +397,8 @@ export function ProductModal({
             <View style={styles.section}>
               <View style={styles.toggleRow}>
                 <View>
-                  <Text style={styles.label}>Available</Text>
-                  <Text style={styles.toggleDescription}>
+                  <Text style={styles.label} maxFontSizeMultiplier={1.5}>Available</Text>
+                  <Text style={styles.toggleDescription} maxFontSizeMultiplier={1.5}>
                     Show this product on the menu
                   </Text>
                 </View>

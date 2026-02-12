@@ -342,52 +342,52 @@ export function PreordersScreen() {
       >
         <View style={styles.orderHeader}>
           <View style={styles.orderTitleRow}>
-            <Text style={styles.orderNumber}>#{item.dailyNumber}</Text>
+            <Text style={styles.orderNumber} maxFontSizeMultiplier={1.3}>#{item.dailyNumber}</Text>
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.statusText, { color: statusColor }]}>
+              <Text style={[styles.statusText, { color: statusColor }]} maxFontSizeMultiplier={1.5}>
                 {getStatusLabel(item.status)}
               </Text>
             </View>
           </View>
           <View style={styles.orderTimeRow}>
-            <Text style={styles.orderTime}>{item.createdAt ? formatTimeAgo(item.createdAt) : '—'}</Text>
+            <Text style={styles.orderTime} maxFontSizeMultiplier={1.5}>{item.createdAt ? formatTimeAgo(item.createdAt) : '—'}</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </View>
         </View>
 
         <View style={styles.customerRow}>
           <Ionicons name="person-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.customerName}>{item.customerName || 'Customer'}</Text>
+          <Text style={styles.customerName} maxFontSizeMultiplier={1.5}>{item.customerName || 'Customer'}</Text>
           {item.paymentType === 'pay_now' && (
             <View style={styles.paidBadge}>
               <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-              <Text style={styles.paidText}>Paid</Text>
+              <Text style={styles.paidText} maxFontSizeMultiplier={1.5}>Paid</Text>
             </View>
           )}
           {item.paymentType === 'pay_at_pickup' && (
             <View style={styles.unpaidBadge}>
               <Ionicons name="card-outline" size={14} color={colors.warning} />
-              <Text style={styles.unpaidText}>Pay at Pickup</Text>
+              <Text style={styles.unpaidText} maxFontSizeMultiplier={1.5}>Pay at Pickup</Text>
             </View>
           )}
         </View>
 
         <View style={styles.orderDetails}>
           <View style={styles.orderInfo}>
-            <Text style={styles.itemCount}>
+            <Text style={styles.itemCount} maxFontSizeMultiplier={1.5}>
               {itemCount} {itemCount === 1 ? 'item' : 'items'}
             </Text>
             {item.orderNotes && (
               <View style={styles.notesIndicator}>
                 <Ionicons name="document-text-outline" size={14} color={colors.textSecondary} />
-                <Text style={styles.notesText} numberOfLines={1}>
+                <Text style={styles.notesText} numberOfLines={1} maxFontSizeMultiplier={1.5}>
                   {item.orderNotes}
                 </Text>
               </View>
             )}
           </View>
-          <Text style={styles.orderTotal}>
+          <Text style={styles.orderTotal} maxFontSizeMultiplier={1.3}>
             ${(item.totalAmount || 0).toFixed(2)}
           </Text>
         </View>
@@ -416,15 +416,15 @@ export function PreordersScreen() {
     return (
       <View style={styles.emptyState}>
         <Ionicons name="receipt-outline" size={64} color={colors.textMuted} />
-        <Text style={styles.emptyTitle}>{config.title}</Text>
-        <Text style={styles.emptySubtitle}>{config.subtitle}</Text>
+        <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.3}>{config.title}</Text>
+        <Text style={styles.emptySubtitle} maxFontSizeMultiplier={1.5}>{config.subtitle}</Text>
       </View>
     );
   };
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>
-      <Text style={styles.headerTitle}>Orders</Text>
+      <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Orders</Text>
       <View style={styles.tabBar}>
         {TABS.map(tab => {
           const count = tabCounts[tab.key];
@@ -435,12 +435,12 @@ export function PreordersScreen() {
               style={[styles.tab, isActive && styles.tabActive]}
               onPress={() => setActiveTab(tab.key)}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]} maxFontSizeMultiplier={1.3}>
                 {tab.label}
               </Text>
               {typeof count === 'number' && count > 0 ? (
                 <View style={[styles.tabBadge, isActive && styles.tabBadgeActive]}>
-                  <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]}>
+                  <Text style={[styles.tabBadgeText, isActive && styles.tabBadgeTextActive]} maxFontSizeMultiplier={1.3}>
                     {String(count)}
                   </Text>
                 </View>

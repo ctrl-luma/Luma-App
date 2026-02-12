@@ -58,10 +58,10 @@ function EmptyTransactionsContent({ colors, isDark }: { colors: any; isDark: boo
         }]}>
           <Ionicons name="receipt-outline" size={44} color={isDark ? 'rgba(255,255,255,0.95)' : colors.primary} />
         </View>
-        <Text style={[emptyStyles.title, { color: isDark ? '#fff' : colors.text }]}>
+        <Text maxFontSizeMultiplier={1.2} style={[emptyStyles.title, { color: isDark ? '#fff' : colors.text }]}>
           No transactions yet
         </Text>
-        <Text style={[emptyStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
+        <Text maxFontSizeMultiplier={1.5} style={[emptyStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
           Transactions will appear here after you accept payments
         </Text>
       </View>
@@ -303,7 +303,7 @@ function AnimatedTransactionItem({
           />
           <View style={styles.transactionInfo}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Text style={styles.transactionAmount}>
+              <Text maxFontSizeMultiplier={1.3} style={styles.transactionAmount}>
                 ${(item.amount / 100).toFixed(2)}
               </Text>
               {sourceBadge && (
@@ -313,7 +313,7 @@ function AnimatedTransactionItem({
                   paddingVertical: 2,
                   borderRadius: 6,
                 }}>
-                  <Text style={{
+                  <Text maxFontSizeMultiplier={1.5} style={{
                     fontSize: 10,
                     fontFamily: fonts.semiBold,
                     color: sourceBadge.color,
@@ -323,14 +323,14 @@ function AnimatedTransactionItem({
                 </View>
               )}
             </View>
-            <Text style={styles.transactionMeta}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.transactionMeta}>
               {getMetaText()}
             </Text>
           </View>
         </View>
         <View style={styles.transactionRight}>
-          <Text style={styles.transactionDate}>{formatDate(item.created)}</Text>
-          <Text style={[styles.statusBadge, { color: getStatusColor(item.status) }]}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.transactionDate}>{formatDate(item.created)}</Text>
+          <Text maxFontSizeMultiplier={1.5} style={[styles.statusBadge, { color: getStatusColor(item.status) }]}>
             {getStatusLabel(item.status)}
           </Text>
         </View>
@@ -663,7 +663,7 @@ export function TransactionsScreen() {
         onPress={() => handleCancelOrder(item)}
       >
         <Ionicons name="trash-outline" size={22} color="#fff" />
-        <Text style={styles.heldDeleteText}>Cancel</Text>
+        <Text maxFontSizeMultiplier={1.3} style={styles.heldDeleteText}>Cancel</Text>
       </TouchableOpacity>
     );
 
@@ -680,19 +680,19 @@ export function TransactionsScreen() {
           <View style={styles.heldOrderLeft}>
             <Ionicons name="time-outline" size={20} color={colors.primary} />
             <View style={styles.heldOrderInfo}>
-              <Text style={styles.heldOrderName} numberOfLines={1}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.heldOrderName} numberOfLines={1}>
                 {item.holdName || `Order #${item.orderNumber}`}
               </Text>
-              <Text style={styles.heldOrderMeta}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.heldOrderMeta}>
                 {itemCount} {itemCount === 1 ? 'item' : 'items'} • {item.heldAt ? formatTimeAgo(item.heldAt) : ''}
               </Text>
             </View>
           </View>
           <View style={styles.heldOrderRight}>
-            <Text style={styles.heldOrderTotal}>
+            <Text maxFontSizeMultiplier={1.3} style={styles.heldOrderTotal}>
               ${(item.totalAmount / 100).toFixed(2)}
             </Text>
-            <Text style={styles.heldOrderTapText}>Tap to resume</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.heldOrderTapText}>Tap to resume</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
@@ -703,8 +703,8 @@ export function TransactionsScreen() {
   const renderEmptyHeld = () => (
     <View style={styles.emptyHeldContainer}>
       <Ionicons name="pause-circle-outline" size={64} color={colors.textMuted} />
-      <Text style={styles.emptyHeldTitle}>No Held Orders</Text>
-      <Text style={styles.emptyHeldSubtitle}>
+      <Text maxFontSizeMultiplier={1.3} style={styles.emptyHeldTitle}>No Held Orders</Text>
+      <Text maxFontSizeMultiplier={1.5} style={styles.emptyHeldSubtitle}>
         Orders you put on hold will appear here.{'\n'}
         Tap "Hold Order" at checkout to save an order for later.
       </Text>
@@ -715,13 +715,13 @@ export function TransactionsScreen() {
     <StarBackground colors={colors} isDark={isDark}>
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>History</Text>
+          <Text maxFontSizeMultiplier={1.3} style={styles.title}>History</Text>
           <View style={styles.tabBar}>
             <TouchableOpacity
               style={[styles.tab, activeTab === 'transactions' && styles.tabActive]}
               onPress={() => setActiveTab('transactions')}
             >
-              <Text style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>
+              <Text maxFontSizeMultiplier={1.3} style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>
                 Transactions
               </Text>
             </TouchableOpacity>
@@ -729,12 +729,12 @@ export function TransactionsScreen() {
               style={[styles.tab, activeTab === 'held' && styles.tabActive]}
               onPress={() => setActiveTab('held')}
             >
-              <Text style={[styles.tabText, activeTab === 'held' && styles.tabTextActive]}>
+              <Text maxFontSizeMultiplier={1.3} style={[styles.tabText, activeTab === 'held' && styles.tabTextActive]}>
                 Held Orders
               </Text>
               {heldOrders.length > 0 && (
                 <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{heldOrders.length}</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.tabBadgeText}>{heldOrders.length}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -794,6 +794,7 @@ export function TransactionsScreen() {
                     onPress={() => setFilter(f)}
                   >
                     <Text
+                      maxFontSizeMultiplier={1.3}
                       style={[
                         styles.filterText,
                         isActive && { color: colorSet.text, fontFamily: fonts.semiBold },

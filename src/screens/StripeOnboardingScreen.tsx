@@ -360,7 +360,7 @@ export function StripeOnboardingScreen() {
         <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Banking</Text>
+        <Text style={styles.title} maxFontSizeMultiplier={1.3}>Banking</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -395,9 +395,9 @@ export function StripeOnboardingScreen() {
         {error && (
           <View style={[StyleSheet.absoluteFill, styles.errorContainer]}>
             <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.errorText} maxFontSizeMultiplier={1.5}>{error}</Text>
             <TouchableOpacity style={styles.retryButton} onPress={fetchOnboardingUrl}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
+              <Text style={styles.retryButtonText} maxFontSizeMultiplier={1.3}>Try Again</Text>
             </TouchableOpacity>
           </View>
         )}

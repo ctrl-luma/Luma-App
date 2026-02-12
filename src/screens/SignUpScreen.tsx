@@ -554,15 +554,15 @@ export function SignUpScreen() {
         <View style={styles.stepTitleIcon}>
           <Ionicons name="person-add-outline" size={20} color={colors.primary} />
         </View>
-        <Text style={styles.stepTitle}>Create your account</Text>
+        <Text maxFontSizeMultiplier={1.2} style={styles.stepTitle}>Create your account</Text>
       </View>
-      <Text style={styles.stepSubtitle}>
+      <Text maxFontSizeMultiplier={1.5} style={styles.stepSubtitle}>
         Enter your email and create a password to get started
       </Text>
 
       <View style={styles.form}>
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.label}>Email</Text>
           <Input
             icon="mail-outline"
             value={formData.email}
@@ -580,11 +580,11 @@ export function SignUpScreen() {
               </View>
             ) : undefined}
           />
-          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+          {errors.email && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.email}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.label}>Password</Text>
           <Input
             icon="lock-closed-outline"
             value={formData.password}
@@ -607,11 +607,11 @@ export function SignUpScreen() {
               </TouchableOpacity>
             }
           />
-          {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+          {errors.password && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.password}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Confirm Password</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.label}>Confirm Password</Text>
           <Input
             icon="lock-closed-outline"
             value={formData.confirmPassword}
@@ -622,7 +622,7 @@ export function SignUpScreen() {
             editable={!isFormDisabled}
             error={errors.confirmPassword}
           />
-          {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+          {errors.confirmPassword && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.confirmPassword}</Text>}
         </View>
       </View>
     </View>
@@ -635,16 +635,16 @@ export function SignUpScreen() {
         <View style={styles.stepTitleIcon}>
           <Ionicons name="storefront-outline" size={20} color={colors.primary} />
         </View>
-        <Text style={styles.stepTitle}>Tell us about your business</Text>
+        <Text maxFontSizeMultiplier={1.2} style={styles.stepTitle}>Tell us about your business</Text>
       </View>
-      <Text style={styles.stepSubtitle}>
+      <Text maxFontSizeMultiplier={1.5} style={styles.stepSubtitle}>
         This information helps us customize your experience
       </Text>
 
       <View style={styles.form}>
         <View style={styles.row}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>First Name</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.label}>First Name</Text>
             <Input
               icon="person-outline"
               value={formData.firstName}
@@ -655,11 +655,11 @@ export function SignUpScreen() {
               editable={!isFormDisabled}
               error={errors.firstName}
             />
-            {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
+            {errors.firstName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.firstName}</Text>}
           </View>
 
           <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-            <Text style={styles.label}>Last Name</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.label}>Last Name</Text>
             <Input
               value={formData.lastName}
               onChangeText={(value) => updateField('lastName', value)}
@@ -669,12 +669,12 @@ export function SignUpScreen() {
               editable={!isFormDisabled}
               error={errors.lastName}
             />
-            {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
+            {errors.lastName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.lastName}</Text>}
           </View>
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Business Name</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.label}>Business Name</Text>
           <Input
             icon="storefront-outline"
             value={formData.businessName}
@@ -685,11 +685,11 @@ export function SignUpScreen() {
             editable={!isFormDisabled}
             error={errors.businessName}
           />
-          {errors.businessName && <Text style={styles.errorText}>{errors.businessName}</Text>}
+          {errors.businessName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.businessName}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Business Type</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.label}>Business Type</Text>
           <TouchableOpacity
             style={[
               styles.selectButton,
@@ -703,7 +703,7 @@ export function SignUpScreen() {
             disabled={isFormDisabled}
           >
             <Ionicons name="briefcase-outline" size={20} color={appColors.gray400} />
-            <Text style={[
+            <Text maxFontSizeMultiplier={1.3} style={[
               styles.selectButtonText,
               !formData.businessType && styles.selectButtonPlaceholder,
             ]}>
@@ -711,11 +711,11 @@ export function SignUpScreen() {
             </Text>
             <Ionicons name="chevron-down" size={20} color={appColors.gray400} />
           </TouchableOpacity>
-          {errors.businessType && <Text style={styles.errorText}>{errors.businessType}</Text>}
+          {errors.businessType && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.businessType}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Phone Number (Optional)</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.label}>Phone Number (Optional)</Text>
           {phoneInputReady ? (
             <PhoneInput
               ref={phoneRef}
@@ -738,13 +738,13 @@ export function SignUpScreen() {
           ) : (
             <View style={styles.phoneContainer}>
               <View style={styles.phoneTextContainer}>
-                <Text style={[styles.phoneInput, { lineHeight: 48, color: appColors.gray500 }]}>
+                <Text maxFontSizeMultiplier={1.5} style={[styles.phoneInput, { lineHeight: 48, color: appColors.gray500 }]}>
                   (555) 123-4567
                 </Text>
               </View>
             </View>
           )}
-          {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+          {errors.phone && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.phone}</Text>}
         </View>
 
         <TouchableOpacity
@@ -762,9 +762,10 @@ export function SignUpScreen() {
               <Ionicons name="checkmark" size={14} color="#fff" />
             )}
           </View>
-          <Text style={styles.checkboxLabel}>
+          <Text maxFontSizeMultiplier={1.3} style={styles.checkboxLabel}>
             I agree to the{' '}
             <Text
+              maxFontSizeMultiplier={1.3}
               style={styles.link}
               onPress={(e) => {
                 e.stopPropagation();
@@ -776,6 +777,7 @@ export function SignUpScreen() {
             </Text>
             {' '}and{' '}
             <Text
+              maxFontSizeMultiplier={1.3}
               style={styles.link}
               onPress={(e) => {
                 e.stopPropagation();
@@ -787,7 +789,7 @@ export function SignUpScreen() {
             </Text>
           </Text>
         </TouchableOpacity>
-        {errors.acceptTerms && <Text style={styles.errorText}>{errors.acceptTerms}</Text>}
+        {errors.acceptTerms && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.acceptTerms}</Text>}
       </View>
 
       {/* Business Type Picker Modal */}
@@ -799,7 +801,7 @@ export function SignUpScreen() {
           />
           <View style={styles.pickerContent}>
             <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>Select Business Type</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.pickerTitle}>Select Business Type</Text>
               <TouchableOpacity onPress={() => setShowBusinessTypePicker(false)}>
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -817,7 +819,7 @@ export function SignUpScreen() {
                     setShowBusinessTypePicker(false);
                   }}
                 >
-                  <Text style={[
+                  <Text maxFontSizeMultiplier={1.3} style={[
                     styles.pickerOptionText,
                     formData.businessType === type && styles.pickerOptionTextSelected,
                   ]}>
@@ -842,9 +844,9 @@ export function SignUpScreen() {
         <View style={styles.stepTitleIcon}>
           <Ionicons name="rocket-outline" size={20} color={colors.primary} />
         </View>
-        <Text style={styles.stepTitle}>Choose your plan</Text>
+        <Text maxFontSizeMultiplier={1.2} style={styles.stepTitle}>Choose your plan</Text>
       </View>
-      <Text style={styles.stepSubtitle}>
+      <Text maxFontSizeMultiplier={1.5} style={styles.stepSubtitle}>
         Start free or unlock all features with Pro
       </Text>
 
@@ -860,29 +862,29 @@ export function SignUpScreen() {
           disabled={isFormDisabled}
         >
           <View style={styles.planHeader}>
-            <Text style={styles.planName}>{PLANS.starter.name}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planName}>{PLANS.starter.name}</Text>
             <View style={styles.planPriceRow}>
-              <Text style={styles.planPrice}>{PLANS.starter.price}</Text>
+              <Text maxFontSizeMultiplier={1.2} style={styles.planPrice}>{PLANS.starter.price}</Text>
             </View>
-            <Text style={styles.planPriceSubtext}>{PLANS.starter.priceSubtext}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planPriceSubtext}>{PLANS.starter.priceSubtext}</Text>
           </View>
 
           <View style={styles.planFee}>
-            <Text style={styles.planFeeLabel}>Transaction fee</Text>
-            <Text style={styles.planFeeValue}>{PLANS.starter.transactionFee}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planFeeLabel}>Transaction fee</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planFeeValue}>{PLANS.starter.transactionFee}</Text>
           </View>
 
           <View style={styles.planFeatures}>
             {PLANS.starter.features.map((feature, index) => (
               <View key={index} style={styles.featureRow}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                <Text style={styles.featureText}>{feature}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.featureText}>{feature}</Text>
               </View>
             ))}
             {PLANS.starter.notIncluded?.map((feature, index) => (
               <View key={`not-${index}`} style={styles.featureRow}>
                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-                <Text style={[styles.featureText, styles.featureTextMuted]}>{feature}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={[styles.featureText, styles.featureTextMuted]}>{feature}</Text>
               </View>
             ))}
           </View>
@@ -890,7 +892,7 @@ export function SignUpScreen() {
           {formData.selectedPlan === 'starter' && (
             <View style={styles.selectedBadge}>
               <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-              <Text style={styles.selectedBadgeText}>Selected</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.selectedBadgeText}>Selected</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -907,29 +909,29 @@ export function SignUpScreen() {
           disabled={isFormDisabled}
         >
           <View style={styles.popularBadge}>
-            <Text style={styles.popularBadgeText}>Most Popular</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.popularBadgeText}>Most Popular</Text>
           </View>
 
           <View style={styles.planHeader}>
-            <Text style={styles.planName}>{PLANS.pro.name}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planName}>{PLANS.pro.name}</Text>
             <View style={styles.planPriceRow}>
-              <Text style={styles.planPrice}>
+              <Text maxFontSizeMultiplier={1.2} style={styles.planPrice}>
                 {iapProduct?.localizedPrice || PLANS.pro.price}
               </Text>
             </View>
-            <Text style={styles.planPriceSubtext}>{PLANS.pro.priceSubtext}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planPriceSubtext}>{PLANS.pro.priceSubtext}</Text>
           </View>
 
           <View style={styles.planFee}>
-            <Text style={styles.planFeeLabel}>Transaction fee</Text>
-            <Text style={styles.planFeeValue}>{PLANS.pro.transactionFee}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planFeeLabel}>Transaction fee</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.planFeeValue}>{PLANS.pro.transactionFee}</Text>
           </View>
 
           <View style={styles.planFeatures}>
             {PLANS.pro.features.map((feature, index) => (
               <View key={index} style={styles.featureRow}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-                <Text style={styles.featureText}>{feature}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.featureText}>{feature}</Text>
               </View>
             ))}
           </View>
@@ -937,7 +939,7 @@ export function SignUpScreen() {
           {formData.selectedPlan === 'pro' && (
             <View style={styles.selectedBadge}>
               <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
-              <Text style={styles.selectedBadgeText}>Selected</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.selectedBadgeText}>Selected</Text>
             </View>
           )}
         </TouchableOpacity>
@@ -963,8 +965,8 @@ export function SignUpScreen() {
         </View>
       </View>
 
-      <Text style={styles.confirmationTitle}>Welcome to Luma!</Text>
-      <Text style={styles.confirmationSubtitle}>
+      <Text maxFontSizeMultiplier={1.2} style={styles.confirmationTitle}>Welcome to Luma!</Text>
+      <Text maxFontSizeMultiplier={1.5} style={styles.confirmationSubtitle}>
         Your account has been created successfully
       </Text>
 
@@ -973,13 +975,13 @@ export function SignUpScreen() {
           <View style={styles.checklistIconWrapper}>
             <Ionicons name="checkmark" size={14} color={colors.success} />
           </View>
-          <Text style={styles.checklistText}>Account created</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.checklistText}>Account created</Text>
         </View>
         <View style={styles.checklistItem}>
           <View style={styles.checklistIconWrapper}>
             <Ionicons name="checkmark" size={14} color={colors.success} />
           </View>
-          <Text style={styles.checklistText}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.checklistText}>
             {formData.selectedPlan === 'pro' ? 'Pro plan activated' : 'Starter plan activated'}
           </Text>
         </View>
@@ -987,20 +989,20 @@ export function SignUpScreen() {
           <View style={[styles.checklistIconWrapper, styles.checklistIconLoading]}>
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
-          <Text style={styles.checklistText}>Signing you in...</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.checklistText}>Signing you in...</Text>
         </View>
       </View>
 
       {/* Next Steps */}
       <View style={styles.nextStepsContainer}>
-        <Text style={styles.nextStepsTitle}>Next Step</Text>
+        <Text maxFontSizeMultiplier={1.5} style={styles.nextStepsTitle}>Next Step</Text>
         <View style={styles.nextStepsCard}>
           <View style={styles.nextStepsIconContainer}>
             <Ionicons name="wallet-outline" size={22} color={colors.primary} />
           </View>
           <View style={styles.nextStepsContent}>
-            <Text style={styles.nextStepsHeading}>Link Your Bank Account</Text>
-            <Text style={styles.nextStepsDescription}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.nextStepsHeading}>Link Your Bank Account</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.nextStepsDescription}>
               Visit the Vendor Portal to connect your bank account and start accepting payments.
             </Text>
           </View>
@@ -1079,7 +1081,7 @@ export function SignUpScreen() {
               })}
             </View>
           ) : (
-            <Text style={styles.stepLabel}>Complete</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.stepLabel}>Complete</Text>
           )}
 
           <View style={styles.backButton} />
@@ -1144,13 +1146,13 @@ export function SignUpScreen() {
                 {isLoading || isPurchasing ? (
                   <View style={styles.buttonLoadingContent}>
                     <ActivityIndicator color="#fff" size="small" />
-                    <Text style={styles.nextButtonText}>
+                    <Text maxFontSizeMultiplier={1.3} style={styles.nextButtonText}>
                       {isPurchasing ? 'Processing...' : 'Creating account...'}
                     </Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={styles.nextButtonText}>
+                    <Text maxFontSizeMultiplier={1.3} style={styles.nextButtonText}>
                       {currentStep === 'plan'
                         ? formData.selectedPlan === 'pro'
                           ? 'Subscribe to Pro'
@@ -1165,9 +1167,9 @@ export function SignUpScreen() {
 
             {currentStep === 'account' && (
               <View style={styles.signInRow}>
-                <Text style={styles.signInText}>Already have an account? </Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.signInText}>Already have an account? </Text>
                 <TouchableOpacity onPress={() => navigation.goBack()}>
-                  <Text style={styles.signInLink}>Sign in</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.signInLink}>Sign in</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1429,7 +1431,8 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       color: colors.text,
     },
     pickerList: {
-      paddingVertical: 8,
+      paddingTop: 8,
+      paddingBottom: 24,
     },
     pickerOption: {
       flexDirection: 'row',

@@ -120,6 +120,7 @@ function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: Ke
               fontFamily: isAction ? fonts.medium : fonts.semiBold,
               color: isAction ? colors.textSecondary : colors.text,
             }}
+            maxFontSizeMultiplier={1.3}
           >
             {keyValue}
           </Text>
@@ -258,15 +259,15 @@ export function ChargeScreen() {
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Quick Charge</Text>
+          <Text style={styles.title} maxFontSizeMultiplier={1.3}>Quick Charge</Text>
       </View>
 
       {/* Centered Content - Amount & Keypad */}
       <View style={styles.mainContent}>
         {/* Amount Display */}
         <View style={styles.amountContainer}>
-          <Text style={[styles.currencySymbol, { fontSize: responsiveSizes.currencyFontSize }]}>$</Text>
-          <Text style={[styles.amount, { fontSize: responsiveSizes.amountFontSize }]}>{displayAmount}</Text>
+          <Text style={[styles.currencySymbol, { fontSize: responsiveSizes.currencyFontSize }]} maxFontSizeMultiplier={1.2}>$</Text>
+          <Text style={[styles.amount, { fontSize: responsiveSizes.amountFontSize }]} maxFontSizeMultiplier={1.2}>{displayAmount}</Text>
         </View>
 
         {/* Keypad */}
@@ -305,12 +306,12 @@ export function ChargeScreen() {
           ]}
         >
           <Ionicons name="flash" size={22} color={chargeDisabled ? colors.textMuted : (isDark ? '#09090b' : '#fff')} />
-          <Text style={[styles.chargeButtonText, { color: chargeDisabled ? colors.textMuted : (isDark ? '#09090b' : '#fff') }]}>
+          <Text style={[styles.chargeButtonText, { color: chargeDisabled ? colors.textMuted : (isDark ? '#09090b' : '#fff') }]} maxFontSizeMultiplier={1.3}>
             {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
           </Text>
         </Pressable>
 
-        <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
+        <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]} maxFontSizeMultiplier={1.5}>
           Minimum charge is $0.50
         </Text>
       </View>

@@ -149,7 +149,7 @@ export function PaymentProcessingScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           {/* Amount Display */}
-          <Text style={styles.amount}>${(amount / 100).toFixed(2)}</Text>
+          <Text style={styles.amount} maxFontSizeMultiplier={1.2}>${(amount / 100).toFixed(2)}</Text>
 
           {/* Loading indicator */}
           <View style={styles.loaderContainer}>
@@ -157,7 +157,7 @@ export function PaymentProcessingScreen() {
           </View>
 
           {/* Status */}
-          <Text style={styles.statusText}>{statusText}</Text>
+          <Text style={styles.statusText} maxFontSizeMultiplier={1.5}>{statusText}</Text>
 
         </View>
 
@@ -169,7 +169,7 @@ export function PaymentProcessingScreen() {
             disabled={isCancelling}
             activeOpacity={0.7}
           >
-            <Text style={styles.cancelButtonText}>
+            <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.3}>
               {isCancelling ? 'Cancelling...' : 'Cancel'}
             </Text>
           </TouchableOpacity>

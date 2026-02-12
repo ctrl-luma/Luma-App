@@ -213,8 +213,8 @@ export function EventsScannerScreen() {
         <View style={[styles.container, { paddingTop: insets.top }]}>
           {/* Header - always visible */}
           <View style={styles.selectHeader}>
-          <Text style={[styles.selectTitle, { color: colors.text }]}>Ticket Scanner</Text>
-          <Text style={[styles.selectSubtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.selectTitle, { color: colors.text }]} maxFontSizeMultiplier={1.2}>Ticket Scanner</Text>
+          <Text style={[styles.selectSubtitle, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
             {isPro ? 'Select an event to start scanning' : 'Scan QR codes to check in guests'}
           </Text>
         </View>
@@ -248,7 +248,7 @@ export function EventsScannerScreen() {
               ].map((feature, index) => (
                 <View key={index} style={styles.proFeatureRow}>
                   <Ionicons name={feature.icon as any} size={18} color={colors.primary} />
-                  <Text style={[styles.proFeatureText, { color: colors.textSecondary }]}>
+                  <Text style={[styles.proFeatureText, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
                     {feature.text}
                   </Text>
                 </View>
@@ -268,7 +268,7 @@ export function EventsScannerScreen() {
                 style={styles.upgradeButtonGradient}
               >
                 <Ionicons name="diamond" size={18} color="#fff" />
-                <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+                <Text style={styles.upgradeButtonText} maxFontSizeMultiplier={1.3}>Upgrade to Pro</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -278,10 +278,10 @@ export function EventsScannerScreen() {
             <View style={[styles.emptyIconContainer, { backgroundColor: colors.error + '15' }]}>
               <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
               Unable to Load Events
             </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
               Please check your connection and try again
             </Text>
           </View>
@@ -291,10 +291,10 @@ export function EventsScannerScreen() {
             <View style={[styles.emptyIconContainer, { backgroundColor: colors.textMuted + '10' }]}>
               <Ionicons name="calendar-outline" size={32} color={colors.textMuted} />
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
               No Active Events
             </Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
               Create and publish an event from the{'\n'}vendor dashboard to start scanning tickets
             </Text>
           </View>
@@ -310,22 +310,22 @@ export function EventsScannerScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.eventCardContent}>
-                  <Text style={[styles.eventName, { color: colors.text }]} numberOfLines={1}>
+                  <Text style={[styles.eventName, { color: colors.text }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                     {item.name}
                   </Text>
-                  <Text style={[styles.eventDate, { color: colors.textSecondary }]}>
+                  <Text style={[styles.eventDate, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
                     {formatEventDateTime(item)}
                   </Text>
                   <View style={styles.eventStats}>
                     <View style={styles.eventStat}>
                       <Ionicons name="ticket-outline" size={14} color={colors.textMuted} />
-                      <Text style={[styles.eventStatText, { color: colors.textMuted }]}>
+                      <Text style={[styles.eventStatText, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
                         {item.ticketsSold} sold
                       </Text>
                     </View>
                     <View style={styles.eventStat}>
                       <Ionicons name="scan-outline" size={14} color={colors.textMuted} />
-                      <Text style={[styles.eventStatText, { color: colors.textMuted }]}>
+                      <Text style={[styles.eventStatText, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
                         {item.ticketsScanned ?? 0} scanned
                       </Text>
                     </View>
@@ -349,10 +349,10 @@ export function EventsScannerScreen() {
           <View style={styles.selectHeader}>
             <TouchableOpacity onPress={() => setSelectedEvent(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
               <Ionicons name="chevron-back" size={20} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontSize: 15 }}>Back</Text>
+              <Text style={{ color: colors.primary, fontSize: 15 }} maxFontSizeMultiplier={1.3}>Back</Text>
             </TouchableOpacity>
-            <Text style={[styles.selectTitle, { color: colors.text }]}>{selectedEvent.name}</Text>
-            <Text style={[styles.selectSubtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.selectTitle, { color: colors.text }]} maxFontSizeMultiplier={1.2}>{selectedEvent.name}</Text>
+            <Text style={[styles.selectSubtitle, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
               {!CameraView ? 'Camera module not available' : 'Camera permission required to scan tickets'}
             </Text>
           </View>
@@ -361,8 +361,8 @@ export function EventsScannerScreen() {
               <View style={[styles.emptyIconContainer, { backgroundColor: colors.textMuted + '15' }]}>
                 <Ionicons name="camera-outline" size={32} color={colors.textMuted} />
               </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>Camera Not Available</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]} maxFontSizeMultiplier={1.3}>Camera Not Available</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
                 The camera module is not installed.{'\n'}Please use a development build.
               </Text>
             </View>
@@ -371,8 +371,8 @@ export function EventsScannerScreen() {
               <View style={[styles.emptyIconContainer, { backgroundColor: colors.primary + '15' }]}>
                 <Ionicons name="camera-outline" size={32} color={colors.primary} />
               </View>
-              <Text style={[styles.emptyTitle, { color: colors.text }]}>Camera Access Required</Text>
-              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              <Text style={[styles.emptyTitle, { color: colors.text }]} maxFontSizeMultiplier={1.3}>Camera Access Required</Text>
+              <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
                 To scan ticket QR codes, please allow{'\n'}camera access for Luma
               </Text>
               <TouchableOpacity
@@ -387,7 +387,7 @@ export function EventsScannerScreen() {
                   style={styles.primaryButtonGradient}
                 >
                   <Ionicons name="camera" size={18} color="#fff" />
-                  <Text style={styles.primaryButtonText}>Enable Camera</Text>
+                  <Text style={styles.primaryButtonText} maxFontSizeMultiplier={1.3}>Enable Camera</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -425,8 +425,8 @@ export function EventsScannerScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.eventSelectorContent}>
-                <Text style={styles.headerTitle} numberOfLines={1}>{selectedEvent.name}</Text>
-                <Text style={styles.headerSubtitle}>
+                <Text style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>{selectedEvent.name}</Text>
+                <Text style={styles.headerSubtitle} maxFontSizeMultiplier={1.5}>
                   {selectedEvent.ticketsScanned ?? 0}/{selectedEvent.ticketsSold} scanned · Tap to change
                 </Text>
               </View>
@@ -443,7 +443,7 @@ export function EventsScannerScreen() {
               <View style={[styles.corner, styles.bottomLeft]} />
               <View style={[styles.corner, styles.bottomRight]} />
             </View>
-            <Text style={styles.scanHint}>
+            <Text style={styles.scanHint} maxFontSizeMultiplier={1.5}>
               {processing ? 'Verifying...' : 'Point camera at ticket QR code'}
             </Text>
           </View>
@@ -472,24 +472,24 @@ export function EventsScannerScreen() {
                 color={lastScan.valid ? '#10B981' : '#EF4444'}
               />
               <View style={styles.resultInfo}>
-                <Text style={styles.resultTitle}>
+                <Text style={styles.resultTitle} maxFontSizeMultiplier={1.3}>
                   {lastScan.valid ? 'Valid Ticket' : 'Invalid'}
                 </Text>
-                <Text style={styles.resultMessage}>
+                <Text style={styles.resultMessage} maxFontSizeMultiplier={1.5}>
                   {lastScan.message}
                 </Text>
                 {lastScan.customerName && (
-                  <Text style={styles.resultDetail}>
+                  <Text style={styles.resultDetail} maxFontSizeMultiplier={1.5}>
                     {lastScan.customerName}
                   </Text>
                 )}
                 {lastScan.tierName && lastScan.tierName !== 'Unknown' && (
-                  <Text style={styles.resultDetail}>
+                  <Text style={styles.resultDetail} maxFontSizeMultiplier={1.5}>
                     {lastScan.tierName}
                   </Text>
                 )}
                 {lastScan.ticketEvent && (
-                  <Text style={styles.resultDetail}>
+                  <Text style={styles.resultDetail} maxFontSizeMultiplier={1.5}>
                     Ticket is for: {lastScan.ticketEvent}
                   </Text>
                 )}
@@ -500,16 +500,16 @@ export function EventsScannerScreen() {
 
         {/* Recent scans - always visible at bottom */}
         <View style={[styles.recentContainer, { paddingBottom: insets.bottom + 16 }]}>
-          <Text style={styles.recentTitle}>
+          <Text style={styles.recentTitle} maxFontSizeMultiplier={1.5}>
             Recent Scans {recentScans.length > 0 ? `(${recentScans.length})` : ''}
           </Text>
           {loadingScans ? (
             <View style={styles.emptyScans}>
-              <Text style={styles.emptyScansText}>Loading scans...</Text>
+              <Text style={styles.emptyScansText} maxFontSizeMultiplier={1.5}>Loading scans...</Text>
             </View>
           ) : recentScans.length === 0 ? (
             <View style={styles.emptyScans}>
-              <Text style={styles.emptyScansText}>No scans yet</Text>
+              <Text style={styles.emptyScansText} maxFontSizeMultiplier={1.5}>No scans yet</Text>
             </View>
           ) : (
             <FlatList
@@ -523,10 +523,10 @@ export function EventsScannerScreen() {
                     color={item.valid ? '#10B981' : '#EF4444'}
                   />
                   <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.recentName}>
+                    <Text style={styles.recentName} maxFontSizeMultiplier={1.5}>
                       {item.customerName || item.message}
                     </Text>
-                    <Text style={styles.recentMeta}>
+                    <Text style={styles.recentMeta} maxFontSizeMultiplier={1.5}>
                       {item.tierName} — {item.timestamp.toLocaleTimeString()}
                     </Text>
                   </View>

@@ -385,7 +385,7 @@ export function TransactionDetailScreen() {
       return (
         <SafeAreaView style={styles.container}>
           <View style={styles.centered}>
-            <Text style={styles.errorText}>Preorder not found</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>Preorder not found</Text>
           </View>
         </SafeAreaView>
       );
@@ -405,98 +405,98 @@ export function TransactionDetailScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Preorder</Text>
+          <Text maxFontSizeMultiplier={1.3} style={styles.headerTitle}>Preorder</Text>
           <View style={{ width: 44 }} />
         </View>
         <ScrollView style={styles.content}>
           <View style={styles.amountCard}>
-            <Text style={styles.amountLabel}>Total</Text>
-            <Text style={styles.amount}>${preorder.totalAmount.toFixed(2)}</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.amountLabel}>Total</Text>
+            <Text maxFontSizeMultiplier={1.2} style={styles.amount}>${preorder.totalAmount.toFixed(2)}</Text>
             <View style={[styles.statusBadge, { backgroundColor: preorderStatusColor + '20' }]}>
               <View style={[styles.statusDot, { backgroundColor: preorderStatusColor }]} />
-              <Text style={[styles.statusText, { color: preorderStatusColor }]}>{preorderStatusLabel}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={[styles.statusText, { color: preorderStatusColor }]}>{preorderStatusLabel}</Text>
             </View>
             {preorder.dailyNumber > 0 && (
               <View style={{ marginTop: 8, backgroundColor: '#a855f720', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
-                <Text style={{ fontSize: 14, fontFamily: fonts.semiBold, color: '#a855f7' }}>#{preorder.dailyNumber}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={{ fontSize: 14, fontFamily: fonts.semiBold, color: '#a855f7' }}>#{preorder.dailyNumber}</Text>
               </View>
             )}
           </View>
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Details</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Details</Text>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Order Number</Text>
-              <Text style={styles.detailValue}>{preorder.orderNumber}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Order Number</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{preorder.orderNumber}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Customer</Text>
-              <Text style={styles.detailValue}>{preorder.customerName}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Customer</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{preorder.customerName}</Text>
             </View>
             {preorder.customerEmail && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Email</Text>
-                <Text style={styles.detailValue}>{preorder.customerEmail}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Email</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{preorder.customerEmail}</Text>
               </View>
             )}
             {preorder.customerPhone && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Phone</Text>
-                <Text style={styles.detailValue}>{preorder.customerPhone}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Phone</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{preorder.customerPhone}</Text>
               </View>
             )}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Catalog</Text>
-              <Text style={styles.detailValue}>{preorder.catalogName}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Catalog</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{preorder.catalogName}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Payment</Text>
-              <Text style={styles.detailValue}>{preorder.paymentType === 'pay_now' ? 'Paid Online' : 'Pay at Pickup'}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Payment</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{preorder.paymentType === 'pay_now' ? 'Paid Online' : 'Pay at Pickup'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Placed</Text>
-              <Text style={styles.detailValue}>{new Date(preorder.createdAt).toLocaleString()}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Placed</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{new Date(preorder.createdAt).toLocaleString()}</Text>
             </View>
             {preorder.pickedUpAt && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Picked Up</Text>
-                <Text style={styles.detailValue}>{new Date(preorder.pickedUpAt).toLocaleString()}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Picked Up</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{new Date(preorder.pickedUpAt).toLocaleString()}</Text>
               </View>
             )}
           </View>
           {preorder.items.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Items</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Items</Text>
               {preorder.items.map((item) => (
                 <View key={item.id} style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{item.quantity}x {item.name}</Text>
-                  <Text style={styles.detailValue}>${(item.unitPrice * item.quantity).toFixed(2)}</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>{item.quantity}x {item.name}</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${(item.unitPrice * item.quantity).toFixed(2)}</Text>
                 </View>
               ))}
             </View>
           )}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Totals</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Totals</Text>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Subtotal</Text>
-              <Text style={styles.detailValue}>${preorder.subtotal.toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Subtotal</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${preorder.subtotal.toFixed(2)}</Text>
             </View>
             {preorder.taxAmount > 0 && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Tax</Text>
-                <Text style={styles.detailValue}>${preorder.taxAmount.toFixed(2)}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Tax</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${preorder.taxAmount.toFixed(2)}</Text>
               </View>
             )}
             {preorder.tipAmount > 0 && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailLabel}>Tip</Text>
-                <Text style={styles.detailValue}>${preorder.tipAmount.toFixed(2)}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Tip</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${preorder.tipAmount.toFixed(2)}</Text>
               </View>
             )}
           </View>
           {preorder.orderNotes && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Notes</Text>
-              <Text style={[styles.detailValue, { textAlign: 'left', maxWidth: '100%' }]}>{preorder.orderNotes}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Notes</Text>
+              <Text maxFontSizeMultiplier={1.5} style={[styles.detailValue, { textAlign: 'left', maxWidth: '100%' }]}>{preorder.orderNotes}</Text>
             </View>
           )}
           {/* Refund action for non-cancelled preorders */}
@@ -512,7 +512,7 @@ export function TransactionDetailScreen() {
                 ) : (
                   <>
                     <Ionicons name="arrow-undo-outline" size={20} color={colors.error} />
-                    <Text style={[styles.actionButtonText, { color: colors.error }]}>
+                    <Text maxFontSizeMultiplier={1.3} style={[styles.actionButtonText, { color: colors.error }]}>
                       Issue Refund
                     </Text>
                   </>
@@ -534,8 +534,8 @@ export function TransactionDetailScreen() {
               <View style={styles.modalIconContainer}>
                 <Ionicons name="arrow-undo" size={32} color={colors.error} />
               </View>
-              <Text style={styles.modalTitle}>Issue Refund</Text>
-              <Text style={styles.modalMessage}>
+              <Text maxFontSizeMultiplier={1.3} style={styles.modalTitle}>Issue Refund</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.modalMessage}>
                 Are you sure you want to refund this preorder for ${preorder.totalAmount.toFixed(2)}? This action cannot be undone.
               </Text>
               <View style={styles.modalButtons}>
@@ -544,7 +544,7 @@ export function TransactionDetailScreen() {
                   onPress={() => setShowRefundModal(false)}
                   disabled={refundMutation.isPending}
                 >
-                  <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonCancelText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.modalButtonDestructive]}
@@ -554,7 +554,7 @@ export function TransactionDetailScreen() {
                   {refundMutation.isPending ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.modalButtonDestructiveText}>Refund</Text>
+                    <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonDestructiveText}>Refund</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -577,13 +577,13 @@ export function TransactionDetailScreen() {
                   color={resultMessage.isError ? colors.error : colors.success}
                 />
               </View>
-              <Text style={styles.modalTitle}>{resultMessage.title}</Text>
-              <Text style={styles.modalMessage}>{resultMessage.message}</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.modalTitle}>{resultMessage.title}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.modalMessage}>{resultMessage.message}</Text>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 20, flex: 0, width: '100%' }]}
                 onPress={() => { setShowResultModal(false); navigation.goBack(); }}
               >
-                <Text style={styles.modalButtonPrimaryText}>OK</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonPrimaryText}>OK</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -598,7 +598,7 @@ export function TransactionDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>Transaction not found</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>Transaction not found</Text>
         </View>
       </SafeAreaView>
     );
@@ -618,15 +618,15 @@ export function TransactionDetailScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transaction</Text>
+        <Text maxFontSizeMultiplier={1.3} style={styles.headerTitle}>Transaction</Text>
         <View style={{ width: 44 }} />
       </View>
 
       <ScrollView style={styles.content}>
         {/* Amount Card */}
         <View style={styles.amountCard}>
-          <Text style={styles.amountLabel}>Amount</Text>
-          <Text style={styles.amount}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.amountLabel}>Amount</Text>
+          <Text maxFontSizeMultiplier={1.2} style={styles.amount}>
             ${(transaction.amount / 100).toFixed(2)}
           </Text>
           <View
@@ -642,6 +642,7 @@ export function TransactionDetailScreen() {
               ]}
             />
             <Text
+              maxFontSizeMultiplier={1.5}
               style={[styles.statusText, { color: getStatusColor(transaction.status) }]}
             >
               {transaction.status.charAt(0).toUpperCase() +
@@ -652,31 +653,31 @@ export function TransactionDetailScreen() {
 
         {/* Details Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Details</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Details</Text>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date</Text>
-            <Text style={styles.detailValue}>{formatDate(transaction.created)}</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Date</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{formatDate(transaction.created)}</Text>
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Transaction ID</Text>
-            <Text style={styles.detailValue} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Transaction ID</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.detailValue} numberOfLines={1}>
               {transaction.id}
             </Text>
           </View>
 
           {transaction.description && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Description</Text>
-              <Text style={styles.detailValue}>{transaction.description}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Description</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{transaction.description}</Text>
             </View>
           )}
 
           {transaction.paymentMethod && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Payment Method</Text>
-              <Text style={styles.detailValue}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Payment Method</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>
                 {transaction.paymentMethod.type === 'cash'
                   ? 'Cash'
                   : transaction.paymentMethod.type === 'split'
@@ -692,29 +693,29 @@ export function TransactionDetailScreen() {
 
           {transaction.cashTendered != null && transaction.cashTendered > 0 && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Cash Tendered</Text>
-              <Text style={styles.detailValue}>${(transaction.cashTendered / 100).toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Cash Tendered</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${(transaction.cashTendered / 100).toFixed(2)}</Text>
             </View>
           )}
 
           {transaction.cashChange != null && transaction.cashChange > 0 && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Change Given</Text>
-              <Text style={styles.detailValue}>${(transaction.cashChange / 100).toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Change Given</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${(transaction.cashChange / 100).toFixed(2)}</Text>
             </View>
           )}
 
           {transaction.customerEmail && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Customer Email</Text>
-              <Text style={styles.detailValue}>{transaction.customerEmail}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Customer Email</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{transaction.customerEmail}</Text>
             </View>
           )}
 
           {transaction.amountRefunded > 0 && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Amount Refunded</Text>
-              <Text style={[styles.detailValue, { color: colors.warning }]}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Amount Refunded</Text>
+              <Text maxFontSizeMultiplier={1.5} style={[styles.detailValue, { color: colors.warning }]}>
                 ${(transaction.amountRefunded / 100).toFixed(2)}
               </Text>
             </View>
@@ -724,7 +725,7 @@ export function TransactionDetailScreen() {
         {/* Payment Breakdown (for split payments) */}
         {transaction.orderPayments && transaction.orderPayments.length > 1 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment Breakdown</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Payment Breakdown</Text>
             {transaction.orderPayments.map((payment) => (
               <View key={payment.id} style={styles.paymentBreakdownItem}>
                 <View style={styles.paymentBreakdownLeft}>
@@ -739,7 +740,7 @@ export function TransactionDetailScreen() {
                     size={18}
                     color={colors.textSecondary}
                   />
-                  <Text style={styles.paymentBreakdownMethod}>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.paymentBreakdownMethod}>
                     {payment.paymentMethod === 'cash'
                       ? 'Cash'
                       : payment.paymentMethod === 'tap_to_pay'
@@ -747,7 +748,7 @@ export function TransactionDetailScreen() {
                       : 'Card'}
                   </Text>
                 </View>
-                <Text style={styles.paymentBreakdownAmount}>
+                <Text maxFontSizeMultiplier={1.5} style={styles.paymentBreakdownAmount}>
                   ${(payment.amount / 100).toFixed(2)}
                 </Text>
               </View>
@@ -758,18 +759,19 @@ export function TransactionDetailScreen() {
         {/* Refunds Section */}
         {transaction.refunds && transaction.refunds.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Refund History</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Refund History</Text>
             {transaction.refunds.map((refund) => (
               <View key={refund.id} style={styles.refundItem}>
                 <View>
-                  <Text style={styles.refundAmount}>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.refundAmount}>
                     -${(refund.amount / 100).toFixed(2)}
                   </Text>
-                  <Text style={styles.refundDate}>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.refundDate}>
                     {formatDate(refund.created)}
                   </Text>
                 </View>
                 <Text
+                  maxFontSizeMultiplier={1.5}
                   style={[
                     styles.refundStatus,
                     { color: refund.status === 'succeeded' ? colors.success : colors.warning },
@@ -787,7 +789,7 @@ export function TransactionDetailScreen() {
           {transaction.receiptUrl && (
             <TouchableOpacity style={styles.actionButton} onPress={handleViewReceipt}>
               <Ionicons name="receipt-outline" size={20} color={colors.text} />
-              <Text style={styles.actionButtonText}>View Receipt</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.actionButtonText}>View Receipt</Text>
             </TouchableOpacity>
           )}
 
@@ -820,7 +822,7 @@ export function TransactionDetailScreen() {
               ) : (
                 <TouchableOpacity style={styles.actionButton} onPress={handleSendReceipt}>
                   <Ionicons name="mail-outline" size={20} color={colors.text} />
-                  <Text style={styles.actionButtonText}>Send Receipt</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.actionButtonText}>Send Receipt</Text>
                 </TouchableOpacity>
               )}
             </>
@@ -837,7 +839,7 @@ export function TransactionDetailScreen() {
               ) : (
                 <>
                   <Ionicons name="arrow-undo-outline" size={20} color={colors.error} />
-                  <Text style={[styles.actionButtonText, { color: colors.error }]}>
+                  <Text maxFontSizeMultiplier={1.3} style={[styles.actionButtonText, { color: colors.error }]}>
                     Issue Refund
                   </Text>
                 </>
@@ -859,8 +861,8 @@ export function TransactionDetailScreen() {
             <View style={styles.modalIconContainer}>
               <Ionicons name="arrow-undo" size={32} color={colors.error} />
             </View>
-            <Text style={styles.modalTitle}>Issue Refund</Text>
-            <Text style={styles.modalMessage}>
+            <Text maxFontSizeMultiplier={1.3} style={styles.modalTitle}>Issue Refund</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.modalMessage}>
               Are you sure you want to refund this transaction? This action cannot be undone.
             </Text>
             <View style={styles.modalButtons}>
@@ -869,7 +871,7 @@ export function TransactionDetailScreen() {
                 onPress={() => setShowRefundModal(false)}
                 disabled={refundMutation.isPending}
               >
-                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonDestructive]}
@@ -879,7 +881,7 @@ export function TransactionDetailScreen() {
                 {refundMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.modalButtonDestructiveText}>Refund</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonDestructiveText}>Refund</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -903,13 +905,13 @@ export function TransactionDetailScreen() {
                 color={resultMessage.isError ? colors.error : colors.success}
               />
             </View>
-            <Text style={styles.modalTitle}>{resultMessage.title}</Text>
-            <Text style={styles.modalMessage}>{resultMessage.message}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.modalTitle}>{resultMessage.title}</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.modalMessage}>{resultMessage.message}</Text>
             <TouchableOpacity
               style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 20, flex: 0, width: '100%' }]}
               onPress={() => setShowResultModal(false)}
             >
-              <Text style={styles.modalButtonPrimaryText}>OK</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonPrimaryText}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -28,7 +28,7 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
     return (
       <View style={styles.compactContainer} accessibilityRole="alert">
         <Ionicons name="information-circle" size={18} color={colors.info} />
-        <Text style={styles.compactText}>Link bank to receive payouts</Text>
+        <Text style={styles.compactText} maxFontSizeMultiplier={1.5}>Link bank to receive payouts</Text>
         {isManager && (
           <TouchableOpacity
             onPress={() => openVendorDashboard('/connect')}
@@ -37,7 +37,7 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
             accessibilityLabel="Set up payouts"
             accessibilityHint="Opens the Vendor Portal to link your bank account for payouts"
           >
-            <Text style={styles.compactButtonText}>Set up</Text>
+            <Text style={styles.compactButtonText} maxFontSizeMultiplier={1.3}>Set up</Text>
             <Ionicons name="open-outline" size={14} color={colors.primary} />
           </TouchableOpacity>
         )}
@@ -52,8 +52,8 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
           <Ionicons name="checkmark-circle" size={24} color={colors.success} />
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Payments ready!</Text>
-          <Text style={styles.message}>
+          <Text style={styles.title} maxFontSizeMultiplier={1.5}>Payments ready!</Text>
+          <Text style={styles.message} maxFontSizeMultiplier={1.5}>
             {isManager
               ? 'You can accept Tap to Pay payments. Link your bank account to receive payouts.'
               : 'You can accept Tap to Pay payments.'}
@@ -69,7 +69,7 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
           accessibilityLabel="Complete Setup"
           accessibilityHint="Opens the Vendor Portal to link your bank account for receiving payouts"
         >
-          <Text style={styles.buttonText}>Complete Setup</Text>
+          <Text style={styles.buttonText} maxFontSizeMultiplier={1.3}>Complete Setup</Text>
           <Ionicons name="open-outline" size={16} color="#fff" />
         </TouchableOpacity>
       )}

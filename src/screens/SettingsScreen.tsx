@@ -126,6 +126,8 @@ export function SettingsScreen() {
   // Biometric toggle loading state (values come from AuthContext)
   const [biometricLoading, setBiometricLoading] = useState(false);
 
+  const needsBankingSetup = !connectLoading && !connectStatus?.chargesEnabled && (user?.role === 'owner' || user?.role === 'admin');
+
   // Refresh biometric status when screen is focused
   useFocusEffect(
     useCallback(() => {
@@ -268,7 +270,7 @@ export function SettingsScreen() {
     <StarBackground colors={colors} isDark={isDark}>
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>Settings</Text>
+          <Text style={styles.title} maxFontSizeMultiplier={1.3}>Settings</Text>
         </View>
 
         <ScrollView
@@ -299,8 +301,8 @@ export function SettingsScreen() {
                     <Ionicons name="storefront" size={24} color="#fff" />
                   </View>
                   <View style={styles.vendorPortalText}>
-                    <Text style={styles.vendorPortalTitle}>Vendor Portal</Text>
-                    <Text style={styles.vendorPortalSubtitle}>Manage products, menus & reports</Text>
+                    <Text style={styles.vendorPortalTitle} maxFontSizeMultiplier={1.3}>Vendor Portal</Text>
+                    <Text style={styles.vendorPortalSubtitle} maxFontSizeMultiplier={1.3}>Manage products, menus & reports</Text>
                   </View>
                 </View>
                 <View style={styles.vendorPortalArrow}>
@@ -313,25 +315,25 @@ export function SettingsScreen() {
 
         {/* 2. Catalog Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Menu</Text>
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.5}>Menu</Text>
           <View style={styles.card}>
             <View style={styles.activeCatalogRow}>
               <View style={styles.activeCatalogInfo}>
                 <View style={styles.activeCatalogBadge}>
                   <View style={styles.activeDot} />
-                  <Text style={styles.activeBadgeText}>Active</Text>
+                  <Text style={styles.activeBadgeText} maxFontSizeMultiplier={1.5}>Active</Text>
                 </View>
-                <Text style={styles.activeCatalogName} numberOfLines={1}>
+                <Text style={styles.activeCatalogName} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                   {selectedCatalog?.name || 'None selected'}
                 </Text>
                 {selectedCatalog?.location && (
-                  <Text style={styles.activeCatalogLocation} numberOfLines={1}>{selectedCatalog.location}</Text>
+                  <Text style={styles.activeCatalogLocation} numberOfLines={1} maxFontSizeMultiplier={1.5}>{selectedCatalog.location}</Text>
                 )}
               </View>
               {catalogs.length > 1 && (
                 <TouchableOpacity style={styles.switchButton} onPress={handleSwitchCatalog}>
                   <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
-                  <Text style={styles.switchButtonText}>Switch</Text>
+                  <Text style={styles.switchButtonText} maxFontSizeMultiplier={1.3}>Switch</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -341,7 +343,7 @@ export function SettingsScreen() {
         {/* 3. Business Section - Subscription + Banking combined (owners/admins only) */}
         {(user?.role === 'owner' || user?.role === 'admin') && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Business</Text>
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.5}>Business</Text>
           <View style={styles.card}>
             {/* Subscription Plan */}
             {!isPro ? (
@@ -365,13 +367,13 @@ export function SettingsScreen() {
                   <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                     <Ionicons name="diamond-outline" size={18} color={colors.primary} />
                   </View>
-                  <Text style={styles.label}>
+                  <Text style={styles.label} maxFontSizeMultiplier={1.3}>
                     {subscriptionInfo?.current_plan?.name || 'Starter Plan'}
                   </Text>
                 </View>
                 <View style={styles.upgradeButton}>
                   <Ionicons name="rocket" size={14} color="#fff" />
-                  <Text style={styles.upgradeButtonText}>Upgrade</Text>
+                  <Text style={styles.upgradeButtonText} maxFontSizeMultiplier={1.3}>Upgrade</Text>
                 </View>
               </TouchableOpacity>
             ) : (
@@ -381,13 +383,13 @@ export function SettingsScreen() {
                     <Ionicons name="diamond" size={18} color={colors.primary} />
                   </View>
                   <View style={styles.labelContainer}>
-                    <Text style={styles.label}>
+                    <Text style={styles.label} maxFontSizeMultiplier={1.5}>
                       {tier === 'pro' ? 'Pro Plan' :
                        tier === 'enterprise' ? 'Enterprise Plan' :
                        subscriptionInfo?.current_plan?.name || 'Starter Plan'}
                     </Text>
                     {subscriptionInfo?.current_plan?.price ? (
-                      <Text style={styles.sublabel}>
+                      <Text style={styles.sublabel} maxFontSizeMultiplier={1.5}>
                         ${(subscriptionInfo.current_plan.price / 100).toFixed(2)}/month
                       </Text>
                     ) : null}
@@ -412,7 +414,7 @@ export function SettingsScreen() {
                         subscriptionInfo?.cancel_at ? colors.warning : colors.success
                       }
                     />
-                    <Text style={[
+                    <Text maxFontSizeMultiplier={1.5} style={[
                       styles.statusBadgeText,
                       {
                         color: status === 'past_due' ? colors.error :
@@ -435,7 +437,7 @@ export function SettingsScreen() {
                     <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
                       <Ionicons name={getSubscriptionPlatformIcon() as any} size={18} color={colors.textSecondary} />
                     </View>
-                    <Text style={styles.label}>Manage Subscription</Text>
+                    <Text style={styles.label} maxFontSizeMultiplier={1.3}>Manage Subscription</Text>
                   </View>
                   <Ionicons name="open-outline" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
@@ -447,21 +449,21 @@ export function SettingsScreen() {
               <>
                 <View style={styles.divider} />
                 <TouchableOpacity
-                  style={styles.row}
+                  style={[styles.row, needsBankingSetup && styles.rowHighlighted]}
                   onPress={() => navigation.navigate('StripeOnboarding', { returnTo: 'settings' })}
                 >
                   <View style={styles.rowLeft}>
-                    <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-                      <Ionicons name="business-outline" size={18} color={colors.primary} />
+                    <View style={[styles.iconContainer, { backgroundColor: needsBankingSetup ? colors.warning + '15' : colors.primary + '15' }]}>
+                      <Ionicons name="business-outline" size={18} color={needsBankingSetup ? colors.warning : colors.primary} />
                     </View>
                     <View style={styles.labelContainer}>
-                      <Text style={styles.label}>Banking</Text>
+                      <Text style={styles.label} maxFontSizeMultiplier={1.3}>Banking</Text>
                       {connectLoading ? (
-                        <Text style={styles.sublabel}>Loading...</Text>
+                        <Text style={styles.sublabel} maxFontSizeMultiplier={1.3}>Loading...</Text>
                       ) : connectStatus?.chargesEnabled ? (
-                        <Text style={styles.sublabel}>Payments & payouts active</Text>
+                        <Text style={styles.sublabel} maxFontSizeMultiplier={1.3}>Payments & payouts active</Text>
                       ) : (
-                        <Text style={styles.sublabel}>Setup required</Text>
+                        <Text style={[styles.sublabel, { color: colors.warning }]} maxFontSizeMultiplier={1.3}>Setup required</Text>
                       )}
                     </View>
                   </View>
@@ -470,12 +472,12 @@ export function SettingsScreen() {
                   ) : connectStatus?.chargesEnabled ? (
                     <View style={styles.statusBadgeSuccess}>
                       <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                      <Text style={[styles.statusBadgeText, { color: colors.success }]}>Active</Text>
+                      <Text style={[styles.statusBadgeText, { color: colors.success }]} maxFontSizeMultiplier={1.3}>Active</Text>
                     </View>
                   ) : (
                     <View style={styles.statusBadgeWarning}>
                       <Ionicons name="alert-circle" size={14} color={colors.warning} />
-                      <Text style={[styles.statusBadgeText, { color: colors.warning }]}>Setup</Text>
+                      <Text style={[styles.statusBadgeText, { color: colors.warning }]} maxFontSizeMultiplier={1.3}>Setup</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -495,8 +497,8 @@ export function SettingsScreen() {
                       <Ionicons name="card-outline" size={18} color={colors.warning} />
                     </View>
                     <View style={styles.labelContainer}>
-                      <Text style={styles.label}>Payment Setup</Text>
-                      <Text style={styles.sublabel}>Required to accept payments</Text>
+                      <Text style={styles.label} maxFontSizeMultiplier={1.3}>Payment Setup</Text>
+                      <Text style={styles.sublabel} maxFontSizeMultiplier={1.3}>Required to accept payments</Text>
                     </View>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -509,7 +511,7 @@ export function SettingsScreen() {
 
         {/* 4. Account Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.5}>Account</Text>
           <View style={styles.card}>
             {/* Profile Card */}
             <TouchableOpacity
@@ -521,21 +523,21 @@ export function SettingsScreen() {
                 <Image source={{ uri: user.avatarUrl }} style={styles.profileAvatarImage} fadeDuration={0} />
               ) : (
                 <View style={styles.profileAvatar}>
-                  <Text style={styles.profileInitials}>
+                  <Text style={styles.profileInitials} maxFontSizeMultiplier={1.3}>
                     {user?.firstName?.charAt(0)?.toUpperCase() || ''}{user?.lastName?.charAt(0)?.toUpperCase() || ''}
                   </Text>
                 </View>
               )}
               <View style={styles.profileInfo}>
-                <Text style={styles.profileName} numberOfLines={1}>
+                <Text style={styles.profileName} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                   {user?.firstName} {user?.lastName}
                 </Text>
-                <Text style={styles.profileEmail} numberOfLines={1}>
+                <Text style={styles.profileEmail} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                   {user?.email}
                 </Text>
                 <View style={styles.profileOrgRow}>
                   <Ionicons name="business-outline" size={12} color={colors.textMuted} />
-                  <Text style={styles.profileOrg} numberOfLines={1}>
+                  <Text style={styles.profileOrg} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                     {organization?.name}
                   </Text>
                 </View>
@@ -560,7 +562,7 @@ export function SettingsScreen() {
                         color={colors.primary}
                       />
                     </View>
-                    <Text style={styles.label}>{biometricCapabilities.biometricName}</Text>
+                    <Text style={styles.label} maxFontSizeMultiplier={1.5}>{biometricCapabilities.biometricName}</Text>
                   </View>
                   {biometricLoading ? (
                     <ActivityIndicator size="small" color={colors.primary} />
@@ -578,39 +580,46 @@ export function SettingsScreen() {
 
         {/* 5. Device Section - Simplified Tap to Pay */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Device</Text>
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.5}>Device</Text>
           <View style={styles.card}>
-            {/* Tap to Pay Status - Only tappable when needs configuration */}
+            {/* Tap to Pay Status - Only tappable when needs configuration and banking is set up */}
             {(() => {
-              const needsSetup = Platform.OS !== 'web' && deviceCompatibility.isCompatible && !isInitialized && !isWarming;
+              const bankingReady = !!connectStatus?.chargesEnabled;
+              const needsSetup = bankingReady && Platform.OS !== 'web' && deviceCompatibility.isCompatible && !isInitialized && !isWarming;
               const RowComponent = needsSetup ? TouchableOpacity : View;
               const rowProps = needsSetup ? { onPress: () => navigation.navigate('TapToPayEducation') } : {};
 
               return (
-                <RowComponent style={styles.row} {...rowProps}>
-                  <View style={styles.rowLeft}>
+                <RowComponent style={[styles.row, !bankingReady && styles.rowDisabled]} {...rowProps}>
+                  <View style={[styles.rowLeft, !bankingReady && { opacity: 0.45 }]}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                       <Ionicons name="phone-portrait-outline" size={18} color={colors.primary} />
                     </View>
                     <View style={styles.labelContainer}>
-                      <Text style={styles.label}>{TAP_TO_PAY_NAME}</Text>
-                      <Text style={styles.sublabel}>
-                        {Platform.OS === 'web'
-                          ? 'Not available on web'
-                          : !deviceCompatibility.isCompatible
-                            ? 'Device not supported'
-                            : isInitialized
-                              ? 'Ready to accept payments'
-                              : isWarming
-                                ? 'Initializing...'
-                                : 'Tap to configure'}
+                      <Text style={styles.label} maxFontSizeMultiplier={1.3}>{TAP_TO_PAY_NAME}</Text>
+                      <Text style={styles.sublabel} maxFontSizeMultiplier={1.3}>
+                        {!bankingReady
+                          ? 'Complete banking setup first'
+                          : Platform.OS === 'web'
+                            ? 'Not available on web'
+                            : !deviceCompatibility.isCompatible
+                              ? 'Device not supported'
+                              : isInitialized
+                                ? 'Ready to accept payments'
+                                : isWarming
+                                  ? 'Initializing...'
+                                  : 'Tap to configure'}
                       </Text>
                     </View>
                   </View>
-                  {Platform.OS === 'web' ? (
+                  {!bankingReady ? (
+                    <View style={styles.statusBadgeMuted}>
+                      <Ionicons name="lock-closed" size={14} color={colors.textMuted} />
+                    </View>
+                  ) : Platform.OS === 'web' ? (
                     <View style={styles.statusBadgeMuted}>
                       <Ionicons name="desktop-outline" size={14} color={colors.textMuted} />
-                      <Text style={[styles.statusBadgeText, { color: colors.textMuted }]}>N/A</Text>
+                      <Text style={[styles.statusBadgeText, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>N/A</Text>
                     </View>
                   ) : !deviceCompatibility.isCompatible ? (
                     <View style={styles.statusBadgeError}>
@@ -619,7 +628,7 @@ export function SettingsScreen() {
                   ) : isInitialized ? (
                     <View style={styles.statusBadgeSuccess}>
                       <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                      <Text style={[styles.statusBadgeText, { color: colors.success }]}>Ready</Text>
+                      <Text style={[styles.statusBadgeText, { color: colors.success }]} maxFontSizeMultiplier={1.5}>Ready</Text>
                     </View>
                   ) : isWarming ? (
                     <View style={styles.statusBadgeWarning}>
@@ -632,6 +641,12 @@ export function SettingsScreen() {
               );
             })()}
 
+            {!connectStatus?.chargesEnabled && (
+              <Text style={styles.rowHint} maxFontSizeMultiplier={1.5}>
+                You must complete banking setup before you can enable {TAP_TO_PAY_NAME}. Go to Banking above to get started.
+              </Text>
+            )}
+
             <View style={styles.divider} />
 
             {/* Dark Mode */}
@@ -640,7 +655,7 @@ export function SettingsScreen() {
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name={isDark ? 'moon' : 'sunny'} size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.label}>Dark Mode</Text>
+                <Text style={styles.label} maxFontSizeMultiplier={1.5}>Dark Mode</Text>
               </View>
               <Toggle value={isDark} onValueChange={toggleTheme} />
             </View>
@@ -649,7 +664,7 @@ export function SettingsScreen() {
 
         {/* 6. Support Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
+          <Text style={styles.sectionTitle} maxFontSizeMultiplier={1.5}>Support</Text>
           <View style={styles.card}>
             {/* Learn Tap to Pay - iOS only (Android auto-enables without education) */}
             {Platform.OS === 'ios' && (
@@ -662,7 +677,7 @@ export function SettingsScreen() {
                     <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                       <Ionicons name="school-outline" size={18} color={colors.primary} />
                     </View>
-                    <Text style={styles.label}>Learn {TAP_TO_PAY_NAME}</Text>
+                    <Text style={styles.label} maxFontSizeMultiplier={1.3}>Learn {TAP_TO_PAY_NAME}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </TouchableOpacity>
@@ -679,7 +694,7 @@ export function SettingsScreen() {
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
                   <Ionicons name="help-circle-outline" size={18} color={colors.primary} />
                 </View>
-                <Text style={styles.label}>Contact Support</Text>
+                <Text style={styles.label} maxFontSizeMultiplier={1.3}>Contact Support</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
@@ -690,13 +705,13 @@ export function SettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText} maxFontSizeMultiplier={1.3}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.version}>Luma v{Constants.expoConfig?.version || '1.0.0'}</Text>
+          <Text style={styles.version} maxFontSizeMultiplier={1.5}>Luma v{Constants.expoConfig?.version || '1.0.0'}</Text>
         </View>
         </View>
       </ScrollView>
@@ -826,6 +841,23 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       paddingHorizontal: 16,
       paddingVertical: 14,
       minHeight: 56,
+    },
+    rowHighlighted: {
+      backgroundColor: colors.warning + '10',
+      borderLeftWidth: 3,
+      borderLeftColor: colors.warning,
+    },
+    rowDisabled: {
+      borderLeftWidth: 3,
+      borderLeftColor: colors.textMuted + '40',
+    },
+    rowHint: {
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      lineHeight: 18,
     },
     rowLeft: {
       flexDirection: 'row',

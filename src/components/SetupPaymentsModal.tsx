@@ -107,12 +107,13 @@ export function SetupPaymentsModal({
             <Text
               style={styles.title}
               accessibilityRole="header"
+              maxFontSizeMultiplier={1.2}
             >
               Set Up Payments
             </Text>
 
             {/* Description */}
-            <Text style={styles.description}>
+            <Text style={styles.description} maxFontSizeMultiplier={1.5}>
               Connect your bank account to start accepting payments. This only takes a few minutes.
             </Text>
 
@@ -127,7 +128,7 @@ export function SetupPaymentsModal({
                   <View style={styles.featureIconBg}>
                     <Ionicons name={feature.icon as any} size={18} color={colors.primary} />
                   </View>
-                  <Text style={styles.featureText}>{feature.text}</Text>
+                  <Text style={styles.featureText} maxFontSizeMultiplier={1.5}>{feature.text}</Text>
                 </View>
               ))}
             </View>
@@ -149,7 +150,7 @@ export function SetupPaymentsModal({
                 end={{ x: 1, y: 1 }}
                 style={styles.setupButton}
               >
-                <Text style={styles.setupButtonText}>Set Up Payments</Text>
+                <Text style={styles.setupButtonText} maxFontSizeMultiplier={1.3}>Set Up Payments</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -163,7 +164,7 @@ export function SetupPaymentsModal({
                 accessibilityLabel="Skip for now"
                 accessibilityHint="Skip payment setup and go to the app. You can set up payments later in Settings."
               >
-                <Text style={styles.skipText}>I'll do this later</Text>
+                <Text style={styles.skipText} maxFontSizeMultiplier={1.3}>I'll do this later</Text>
               </TouchableOpacity>
             )}
           </Animated.View>

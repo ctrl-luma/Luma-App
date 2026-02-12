@@ -73,15 +73,15 @@ export function ForgotPasswordScreen() {
                 style={styles.card}
               >
                 <View style={styles.successIcon}>
-                  <Text style={styles.successIconText}>✓</Text>
+                  <Text maxFontSizeMultiplier={1.2} style={styles.successIconText}>✓</Text>
                 </View>
 
-                <Text style={styles.successTitle}>Check your email</Text>
-                <Text style={styles.successSubtitle}>
+                <Text maxFontSizeMultiplier={1.2} style={styles.successTitle}>Check your email</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.successSubtitle}>
                   We've sent a password reset link to
                 </Text>
-                <Text style={styles.successEmail}>{email}</Text>
-                <Text style={styles.successHint}>
+                <Text maxFontSizeMultiplier={1.5} style={styles.successEmail}>{email}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.successHint}>
                   If you don't see the email, check your spam folder.
                 </Text>
 
@@ -90,7 +90,7 @@ export function ForgotPasswordScreen() {
                   onPress={() => navigation.goBack()}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.buttonText}>Back to login</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Back to login</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -100,7 +100,7 @@ export function ForgotPasswordScreen() {
                   }}
                   style={styles.tryAgainButton}
                 >
-                  <Text style={styles.tryAgainText}>Try a different email</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.tryAgainText}>Try a different email</Text>
                 </TouchableOpacity>
               </LinearGradient>
             </View>
@@ -134,16 +134,16 @@ export function ForgotPasswordScreen() {
                 onPress={() => navigation.goBack()}
                 style={styles.backButton}
               >
-                <Text style={styles.backButtonText}>← Back to login</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.backButtonText}>← Back to login</Text>
               </TouchableOpacity>
 
               {/* Header */}
               <View style={styles.header}>
                 <View style={styles.iconContainer}>
-                  <Text style={styles.iconText}>✉</Text>
+                  <Text maxFontSizeMultiplier={1.2} style={styles.iconText}>✉</Text>
                 </View>
-                <Text style={styles.title}>Forgot password?</Text>
-                <Text style={styles.subtitle}>
+                <Text maxFontSizeMultiplier={1.2} style={styles.title}>Forgot password?</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>
                   No worries, we'll send you reset instructions
                 </Text>
               </View>
@@ -157,13 +157,13 @@ export function ForgotPasswordScreen() {
               >
               {error && (
                 <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{error}</Text>
                 </View>
               )}
 
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.label}>Email</Text>
                   <Input
                     icon="mail-outline"
                     value={email}
@@ -174,7 +174,7 @@ export function ForgotPasswordScreen() {
                     autoCorrect={false}
                     autoComplete="email"
                   />
-                  <Text style={styles.inputHint}>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.inputHint}>
                     Enter the email address associated with your account
                   </Text>
                 </View>
@@ -188,10 +188,10 @@ export function ForgotPasswordScreen() {
                   {loading ? (
                     <View style={styles.buttonContent}>
                       <ActivityIndicator color={colors.text} size="small" />
-                      <Text style={styles.buttonText}>Sending...</Text>
+                      <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Sending...</Text>
                     </View>
                   ) : (
-                    <Text style={styles.buttonText}>Reset password</Text>
+                    <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Reset password</Text>
                   )}
                 </TouchableOpacity>
               </View>

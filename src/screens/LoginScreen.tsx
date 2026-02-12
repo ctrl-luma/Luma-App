@@ -227,8 +227,8 @@ export function LoginScreen() {
                 source={require('../../assets/splash-icon.png')}
                 style={styles.logo}
               />
-              <Text style={styles.title}>Sign In</Text>
-              <Text style={styles.subtitle}>Access your account to start taking payments</Text>
+              <Text maxFontSizeMultiplier={1.2} style={styles.title}>Sign In</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>Access your account to start taking payments</Text>
             </View>
 
             {/* Card */}
@@ -240,13 +240,13 @@ export function LoginScreen() {
             >
               {error && (
                 <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>{error}</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{error}</Text>
                 </View>
               )}
 
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.label}>Email</Text>
                   <Input
                     icon="mail-outline"
                     value={email}
@@ -260,7 +260,7 @@ export function LoginScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Password</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.label}>Password</Text>
                   <Input
                     icon="lock-closed-outline"
                     value={password}
@@ -288,7 +288,7 @@ export function LoginScreen() {
                   onPress={handleForgotPassword}
                   style={styles.forgotPasswordButton}
                 >
-                  <Text style={styles.forgotPassword}>Forgot password?</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.forgotPassword}>Forgot password?</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -300,10 +300,10 @@ export function LoginScreen() {
                   {loading ? (
                     <View style={styles.buttonContent}>
                       <ActivityIndicator color={colors.text} size="small" />
-                      <Text style={styles.buttonText}>Signing in...</Text>
+                      <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Signing in...</Text>
                     </View>
                   ) : (
-                    <Text style={styles.buttonText}>Sign in</Text>
+                    <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Sign in</Text>
                   )}
                 </TouchableOpacity>
 
@@ -312,7 +312,7 @@ export function LoginScreen() {
                   <>
                     <View style={styles.dividerContainer}>
                       <View style={styles.dividerLine} />
-                      <Text style={styles.dividerText}>or</Text>
+                      <Text maxFontSizeMultiplier={1.5} style={styles.dividerText}>or</Text>
                       <View style={styles.dividerLine} />
                     </View>
 
@@ -335,7 +335,7 @@ export function LoginScreen() {
                             size={24}
                             color={colors.primary}
                           />
-                          <Text style={styles.biometricButtonText}>
+                          <Text maxFontSizeMultiplier={1.3} style={styles.biometricButtonText}>
                             Sign in with {biometricCapabilities.biometricName}
                           </Text>
                         </>
@@ -343,7 +343,7 @@ export function LoginScreen() {
                     </TouchableOpacity>
 
                     {storedEmail && (
-                      <Text style={styles.storedEmailText}>
+                      <Text maxFontSizeMultiplier={1.5} style={styles.storedEmailText}>
                         Signed in as {storedEmail}
                       </Text>
                     )}
@@ -354,9 +354,9 @@ export function LoginScreen() {
 
             {/* Footer */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.footerText}>Don't have an account? </Text>
               <TouchableOpacity onPress={handleCreateAccount}>
-                <Text style={styles.footerLink}>Create One</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.footerLink}>Create One</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

@@ -278,7 +278,7 @@ export function PreorderDetailScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Order Details</Text>
+          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Order Details</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
@@ -298,7 +298,7 @@ export function PreorderDetailScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order #{preorder.dailyNumber || '—'}</Text>
+        <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Order #{preorder.dailyNumber || '—'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -308,20 +308,20 @@ export function PreorderDetailScreen() {
           <View style={styles.statusHeader}>
             <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
               <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-              <Text style={[styles.statusText, { color: statusColor }]}>
+              <Text style={[styles.statusText, { color: statusColor }]} maxFontSizeMultiplier={1.5}>
                 {getStatusLabel(preorder.status)}
               </Text>
             </View>
             {preorder.paymentType === 'pay_now' && (
               <View style={styles.paidBadge}>
                 <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                <Text style={styles.paidText}>Paid Online</Text>
+                <Text style={styles.paidText} maxFontSizeMultiplier={1.5}>Paid Online</Text>
               </View>
             )}
             {preorder.paymentType === 'pay_at_pickup' && preorder.status !== 'picked_up' && (
               <View style={styles.unpaidBadge}>
                 <Ionicons name="card-outline" size={16} color={colors.warning} />
-                <Text style={styles.unpaidText}>Pay at Pickup</Text>
+                <Text style={styles.unpaidText} maxFontSizeMultiplier={1.5}>Pay at Pickup</Text>
               </View>
             )}
           </View>
@@ -342,7 +342,7 @@ export function PreorderDetailScreen() {
                   {index < STATUS_FLOW.length - 2 && (
                     <View style={[styles.timelineLine, isCompleted && { backgroundColor: colors.primary }]} />
                   )}
-                  <Text style={[styles.timelineLabel, (isCompleted || isCurrent) && { color: colors.text }]}>
+                  <Text style={[styles.timelineLabel, (isCompleted || isCurrent) && { color: colors.text }]} maxFontSizeMultiplier={1.5}>
                     {getStatusLabel(status)}
                   </Text>
                 </View>
@@ -350,48 +350,48 @@ export function PreorderDetailScreen() {
             })}
           </View>
 
-          <Text style={styles.orderDate}>Ordered {preorder.createdAt ? formatDate(preorder.createdAt) : '—'}</Text>
+          <Text style={styles.orderDate} maxFontSizeMultiplier={1.5}>Ordered {preorder.createdAt ? formatDate(preorder.createdAt) : '—'}</Text>
         </View>
 
         {/* Customer Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Customer</Text>
+          <Text style={styles.cardTitle} maxFontSizeMultiplier={1.5}>Customer</Text>
           <View style={styles.customerInfo}>
-            <Text style={styles.customerName}>{preorder.customerName || 'Unknown Customer'}</Text>
-            <Text style={styles.customerEmail}>{preorder.customerEmail || 'No email'}</Text>
+            <Text style={styles.customerName} maxFontSizeMultiplier={1.3}>{preorder.customerName || 'Unknown Customer'}</Text>
+            <Text style={styles.customerEmail} maxFontSizeMultiplier={1.5}>{preorder.customerEmail || 'No email'}</Text>
             {preorder.customerPhone && (
-              <Text style={styles.customerPhone}>{preorder.customerPhone}</Text>
+              <Text style={styles.customerPhone} maxFontSizeMultiplier={1.5}>{preorder.customerPhone}</Text>
             )}
           </View>
           <View style={styles.customerActions}>
             {preorder.customerPhone && (
               <TouchableOpacity style={styles.customerAction} onPress={handleCallCustomer}>
                 <Ionicons name="call-outline" size={20} color={colors.primary} />
-                <Text style={styles.customerActionText}>Call</Text>
+                <Text style={styles.customerActionText} maxFontSizeMultiplier={1.3}>Call</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.customerAction} onPress={handleEmailCustomer}>
               <Ionicons name="mail-outline" size={20} color={colors.primary} />
-              <Text style={styles.customerActionText}>Email</Text>
+              <Text style={styles.customerActionText} maxFontSizeMultiplier={1.3}>Email</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Items Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Items</Text>
+          <Text style={styles.cardTitle} maxFontSizeMultiplier={1.5}>Items</Text>
           {(preorder.items || []).map((item, index) => (
             <View key={item.id} style={[styles.itemRow, index > 0 && styles.itemRowBorder]}>
               <View style={styles.itemInfo}>
                 <View style={styles.itemHeader}>
-                  <Text style={styles.itemQuantity}>{item.quantity}x</Text>
-                  <Text style={styles.itemName}>{item.name}</Text>
+                  <Text style={styles.itemQuantity} maxFontSizeMultiplier={1.5}>{item.quantity}x</Text>
+                  <Text style={styles.itemName} maxFontSizeMultiplier={1.5}>{item.name}</Text>
                 </View>
                 {item.notes && (
-                  <Text style={styles.itemNotes}>{item.notes}</Text>
+                  <Text style={styles.itemNotes} maxFontSizeMultiplier={1.5}>{item.notes}</Text>
                 )}
               </View>
-              <Text style={styles.itemPrice}>
+              <Text style={styles.itemPrice} maxFontSizeMultiplier={1.5}>
                 ${((item.unitPrice || 0) * (item.quantity || 0)).toFixed(2)}
               </Text>
             </View>
@@ -401,7 +401,7 @@ export function PreorderDetailScreen() {
           {preorder.orderNotes && (
             <View style={styles.orderNotesSection}>
               <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
-              <Text style={styles.orderNotesText}>{preorder.orderNotes}</Text>
+              <Text style={styles.orderNotesText} maxFontSizeMultiplier={1.5}>{preorder.orderNotes}</Text>
             </View>
           )}
         </View>
@@ -409,24 +409,24 @@ export function PreorderDetailScreen() {
         {/* Totals Card */}
         <View style={styles.card}>
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Subtotal</Text>
-            <Text style={styles.totalValue}>${(preorder.subtotal || 0).toFixed(2)}</Text>
+            <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Subtotal</Text>
+            <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>${(preorder.subtotal || 0).toFixed(2)}</Text>
           </View>
           {(preorder.taxAmount || 0) > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Tax</Text>
-              <Text style={styles.totalValue}>${(preorder.taxAmount || 0).toFixed(2)}</Text>
+              <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Tax</Text>
+              <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>${(preorder.taxAmount || 0).toFixed(2)}</Text>
             </View>
           )}
           {(preorder.tipAmount || 0) > 0 && (
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Tip</Text>
-              <Text style={styles.totalValue}>${(preorder.tipAmount || 0).toFixed(2)}</Text>
+              <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Tip</Text>
+              <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>${(preorder.tipAmount || 0).toFixed(2)}</Text>
             </View>
           )}
           <View style={[styles.totalRow, styles.totalRowFinal]}>
-            <Text style={styles.totalLabelFinal}>Total</Text>
-            <Text style={styles.totalValueFinal}>${(preorder.totalAmount || 0).toFixed(2)}</Text>
+            <Text style={styles.totalLabelFinal} maxFontSizeMultiplier={1.3}>Total</Text>
+            <Text style={styles.totalValueFinal} maxFontSizeMultiplier={1.3}>${(preorder.totalAmount || 0).toFixed(2)}</Text>
           </View>
         </View>
 
@@ -442,7 +442,7 @@ export function PreorderDetailScreen() {
             ) : (
               <>
                 <Ionicons name="close-circle-outline" size={20} color={colors.error} />
-                <Text style={styles.cancelButtonText}>Cancel Order</Text>
+                <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.3}>Cancel Order</Text>
               </>
             )}
           </TouchableOpacity>
@@ -467,9 +467,9 @@ export function PreorderDetailScreen() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Text style={styles.actionButtonText}>{nextAction.label}</Text>
+                <Text style={styles.actionButtonText} maxFontSizeMultiplier={1.3}>{nextAction.label}</Text>
                 {preorder.status === 'ready' && preorder.paymentType === 'pay_at_pickup' && (
-                  <Text style={styles.actionButtonSubtext}>
+                  <Text style={styles.actionButtonSubtext} maxFontSizeMultiplier={1.3}>
                     Collect ${(preorder.totalAmount || 0).toFixed(2)} via Tap to Pay
                   </Text>
                 )}

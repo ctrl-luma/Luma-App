@@ -232,9 +232,9 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText} maxFontSizeMultiplier={1.3}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Edit Profile</Text>
+          <Text style={styles.title} maxFontSizeMultiplier={1.3}>Edit Profile</Text>
           <TouchableOpacity
             onPress={handleSave}
             style={styles.headerButton}
@@ -243,7 +243,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             {isSaving ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={[styles.saveText, !hasChanges() && styles.saveTextDisabled]}>
+              <Text style={[styles.saveText, !hasChanges() && styles.saveTextDisabled]} maxFontSizeMultiplier={1.3}>
                 Save
               </Text>
             )}
@@ -262,7 +262,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 <Image source={{ uri: displayAvatarUrl }} style={styles.avatar} />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarInitials}>{getInitials()}</Text>
+                  <Text style={styles.avatarInitials} maxFontSizeMultiplier={1.2}>{getInitials()}</Text>
                 </View>
               )}
               {isUploadingAvatar ? (
@@ -276,7 +276,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={showImageOptions} disabled={isUploadingAvatar}>
-              <Text style={styles.changePhotoText}>
+              <Text style={styles.changePhotoText} maxFontSizeMultiplier={1.3}>
                 {isUploadingAvatar ? 'Uploading...' : 'Change Photo'}
               </Text>
             </TouchableOpacity>
@@ -285,7 +285,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
           {/* Form Fields */}
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>First Name</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>First Name</Text>
               <TextInput
                 style={styles.input}
                 value={firstName}
@@ -298,7 +298,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Last Name</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Last Name</Text>
               <TextInput
                 style={styles.input}
                 value={lastName}
@@ -311,7 +311,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Phone Number</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Phone Number</Text>
               <PhoneInput
                 ref={phoneInputRef}
                 defaultValue={phone}
@@ -342,12 +342,12 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label} maxFontSizeMultiplier={1.5}>Email</Text>
               <View style={styles.emailContainer}>
-                <Text style={styles.emailText}>{user?.email}</Text>
+                <Text style={styles.emailText} maxFontSizeMultiplier={1.5}>{user?.email}</Text>
                 <Ionicons name="lock-closed" size={16} color={colors.textMuted} />
               </View>
-              <Text style={styles.emailHint}>Email cannot be changed</Text>
+              <Text style={styles.emailHint} maxFontSizeMultiplier={1.5}>Email cannot be changed</Text>
             </View>
           </View>
         </ScrollView>

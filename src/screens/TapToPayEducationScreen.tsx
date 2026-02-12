@@ -358,7 +358,7 @@ export function TapToPayEducationScreen() {
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Setting Up Tap to Pay</Text>
+          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Setting Up Tap to Pay</Text>
           <View style={styles.skipButton} />
         </View>
         <View style={styles.androidCenterContent}>
@@ -369,8 +369,8 @@ export function TapToPayEducationScreen() {
                   <ActivityIndicator size="large" color={colors.primary} />
                 </View>
               </View>
-              <Text style={styles.slideTitle}>Enabling Tap to Pay</Text>
-              <Text style={styles.slideDescription}>
+              <Text style={styles.slideTitle} maxFontSizeMultiplier={1.3}>Enabling Tap to Pay</Text>
+              <Text style={styles.slideDescription} maxFontSizeMultiplier={1.5}>
                 Please wait while we set up contactless payments...
               </Text>
             </>
@@ -382,14 +382,14 @@ export function TapToPayEducationScreen() {
                   <View style={[styles.errorIconCircle, { backgroundColor: colors.warning + '15' }]}>
                     <Ionicons name="code-slash-outline" size={40} color={colors.warning} />
                   </View>
-                  <Text style={styles.slideTitle}>Development Build Required</Text>
-                  <Text style={[styles.slideDescription, { marginBottom: 24 }]}>
+                  <Text style={styles.slideTitle} maxFontSizeMultiplier={1.3}>Development Build Required</Text>
+                  <Text style={[styles.slideDescription, { marginBottom: 24 }]} maxFontSizeMultiplier={1.5}>
                     Tap to Pay requires native device features that aren't available in Expo Go.
                   </Text>
                   <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <Text style={[styles.infoCardTitle, { color: colors.text }]}>To test payments:</Text>
-                    <Text style={[styles.infoCardText, { color: colors.textSecondary }]}>
-                      Run{' '}<Text style={{ fontFamily: 'monospace', color: colors.primary }}>eas build --profile development</Text>{' '}to create a development build with full native support.
+                    <Text style={[styles.infoCardTitle, { color: colors.text }]} maxFontSizeMultiplier={1.5}>To test payments:</Text>
+                    <Text style={[styles.infoCardText, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
+                      Run{' '}<Text style={{ fontFamily: 'monospace', color: colors.primary }} maxFontSizeMultiplier={1.5}>eas build --profile development</Text>{' '}to create a development build with full native support.
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -403,7 +403,7 @@ export function TapToPayEducationScreen() {
                       end={{ x: 1, y: 1 }}
                       style={styles.nextButton}
                     >
-                      <Text style={styles.nextButtonText}>Got It</Text>
+                      <Text style={styles.nextButtonText} maxFontSizeMultiplier={1.3}>Got It</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </>
@@ -412,8 +412,8 @@ export function TapToPayEducationScreen() {
                   <View style={[styles.errorIconCircle, { backgroundColor: colors.error + '15' }]}>
                     <Ionicons name="alert-circle-outline" size={40} color={colors.error} />
                   </View>
-                  <Text style={styles.slideTitle}>Setup Failed</Text>
-                  <Text style={[styles.slideDescription, { marginBottom: 8 }]}>{enableError}</Text>
+                  <Text style={styles.slideTitle} maxFontSizeMultiplier={1.3}>Setup Failed</Text>
+                  <Text style={[styles.slideDescription, { marginBottom: 8 }]} maxFontSizeMultiplier={1.5}>{enableError}</Text>
                   <TouchableOpacity
                     onPress={handleAndroidAutoEnable}
                     activeOpacity={0.9}
@@ -425,7 +425,7 @@ export function TapToPayEducationScreen() {
                       end={{ x: 1, y: 1 }}
                       style={styles.nextButton}
                     >
-                      <Text style={styles.nextButtonText}>Try Again</Text>
+                      <Text style={styles.nextButtonText} maxFontSizeMultiplier={1.3}>Try Again</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 </>
@@ -436,8 +436,8 @@ export function TapToPayEducationScreen() {
               <View style={styles.successIconContainer}>
                 <Ionicons name="checkmark-circle" size={80} color={colors.success} />
               </View>
-              <Text style={styles.slideTitle}>Ready to Go!</Text>
-              <Text style={styles.slideDescription}>
+              <Text style={styles.slideTitle} maxFontSizeMultiplier={1.3}>Ready to Go!</Text>
+              <Text style={styles.slideDescription} maxFontSizeMultiplier={1.5}>
                 Tap to Pay is now enabled on your device.
               </Text>
             </>
@@ -488,7 +488,7 @@ export function TapToPayEducationScreen() {
         <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Set Up Tap to Pay</Text>
+        <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Set Up Tap to Pay</Text>
         <View style={styles.skipButton} />
       </View>
 
@@ -506,7 +506,7 @@ export function TapToPayEducationScreen() {
                 <ActivityIndicator size="large" color={colors.primary} />
               </View>
             </View>
-            <Text style={styles.progressPercent}>{Math.round(configurationProgress)}%</Text>
+            <Text style={styles.progressPercent} maxFontSizeMultiplier={1.2}>{Math.round(configurationProgress)}%</Text>
             <View style={styles.progressBarContainer}>
               <View style={[styles.progressBarFill, { width: `${configurationProgress}%` }]}>
                 <LinearGradient
@@ -517,12 +517,12 @@ export function TapToPayEducationScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.slideTitle}>Setting Up</Text>
-            <Text style={styles.stageText}>
+            <Text style={styles.slideTitle} maxFontSizeMultiplier={1.3}>Setting Up</Text>
+            <Text style={styles.stageText} maxFontSizeMultiplier={1.5}>
               {STAGE_MESSAGES[configurationStage] || 'Please wait...'}
             </Text>
             {configurationStage === 'connecting_reader' && (
-              <Text style={styles.hintText}>
+              <Text style={styles.hintText} maxFontSizeMultiplier={1.5}>
                 You may be prompted to accept Terms & Conditions
               </Text>
             )}
@@ -538,8 +538,8 @@ export function TapToPayEducationScreen() {
                 <Ionicons name="wifi" size={64} color="#fff" style={styles.nfcIcon} />
               </LinearGradient>
             </View>
-            <Text style={styles.slideTitle}>Enable {TAP_TO_PAY_NAME}</Text>
-            <Text style={styles.slideDescription}>
+            <Text style={styles.slideTitle} maxFontSizeMultiplier={1.3}>Enable {TAP_TO_PAY_NAME}</Text>
+            <Text style={styles.slideDescription} maxFontSizeMultiplier={1.5}>
               Turn your device into a payment terminal. Accept contactless cards and digital wallets instantly.
             </Text>
 
@@ -554,7 +554,7 @@ export function TapToPayEducationScreen() {
                   <View style={styles.featureIconBg}>
                     <Ionicons name={feature.icon as any} size={16} color={colors.primary} />
                   </View>
-                  <Text style={styles.tipText}>{feature.text}</Text>
+                  <Text style={styles.tipText} maxFontSizeMultiplier={1.5}>{feature.text}</Text>
                 </View>
               ))}
             </View>
@@ -564,7 +564,7 @@ export function TapToPayEducationScreen() {
               <View style={styles.errorContainer}>
                 <View style={styles.errorRow}>
                   <Ionicons name="alert-circle" size={18} color={colors.error} />
-                  <Text style={styles.errorText}>{enableError || terminalError}</Text>
+                  <Text style={styles.errorText} maxFontSizeMultiplier={1.5}>{enableError || terminalError}</Text>
                 </View>
                 {isConnectSetupError && (
                   <TouchableOpacity
@@ -572,7 +572,7 @@ export function TapToPayEducationScreen() {
                     onPress={handleGoToPaymentSetup}
                   >
                     <Ionicons name="card-outline" size={18} color="#fff" />
-                    <Text style={styles.setupPaymentsButtonText}>Set Up Payments</Text>
+                    <Text style={styles.setupPaymentsButtonText} maxFontSizeMultiplier={1.3}>Set Up Payments</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -598,7 +598,7 @@ export function TapToPayEducationScreen() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Text style={styles.nextButtonText}>{getButtonText()}</Text>
+                <Text style={styles.nextButtonText} maxFontSizeMultiplier={1.3}>{getButtonText()}</Text>
                 {!isConnected && (
                   <Ionicons name="flash" size={20} color="#fff" />
                 )}

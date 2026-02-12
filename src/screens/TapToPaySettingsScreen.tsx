@@ -199,13 +199,13 @@ export function TapToPaySettingsScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Payment Settings</Text>
+          <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Payment Settings</Text>
           <View style={styles.headerRight} />
         </View>
         <View style={styles.emptyContainer}>
           <Ionicons name="folder-open-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyText}>No catalog selected</Text>
-          <Text style={styles.emptySubtext}>Please select a catalog first</Text>
+          <Text style={styles.emptyText} maxFontSizeMultiplier={1.3}>No catalog selected</Text>
+          <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.5}>Please select a catalog first</Text>
         </View>
       </SafeAreaView>
     );
@@ -217,7 +217,7 @@ export function TapToPaySettingsScreen() {
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment Settings</Text>
+        <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Payment Settings</Text>
         <TouchableOpacity
           style={styles.saveButtonContainer}
           onPress={saveSettings}
@@ -226,7 +226,7 @@ export function TapToPaySettingsScreen() {
           {isSaving ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={[styles.saveText, !hasChanges && styles.saveTextDisabled]}>
+            <Text style={[styles.saveText, !hasChanges && styles.saveTextDisabled]} maxFontSizeMultiplier={1.3}>
               Save
             </Text>
           )}
@@ -237,7 +237,7 @@ export function TapToPaySettingsScreen() {
         {/* Catalog Info */}
         <View style={styles.catalogInfo}>
           <Ionicons name="folder-outline" size={20} color={colors.primary} />
-          <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
+          <Text style={styles.catalogName} maxFontSizeMultiplier={1.5}>{selectedCatalog.name}</Text>
         </View>
 
         {/* Tip Settings Card */}
@@ -246,13 +246,13 @@ export function TapToPaySettingsScreen() {
             <View style={styles.cardHeaderIcon}>
               <Ionicons name="cash-outline" size={20} color={colors.primary} />
             </View>
-            <Text style={styles.cardTitle}>Tips</Text>
+            <Text style={styles.cardTitle} maxFontSizeMultiplier={1.3}>Tips</Text>
           </View>
 
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Show Tip Screen</Text>
-              <Text style={styles.settingDescription}>Display tip options during checkout</Text>
+              <Text style={styles.settingLabel} maxFontSizeMultiplier={1.5}>Show Tip Screen</Text>
+              <Text style={styles.settingDescription} maxFontSizeMultiplier={1.5}>Display tip options during checkout</Text>
             </View>
             <Toggle
               value={settings.showTipScreen}
@@ -264,8 +264,8 @@ export function TapToPaySettingsScreen() {
             <>
               {/* Tip Percentages */}
               <View style={styles.tipPercentagesSection}>
-                <Text style={styles.tipPercentagesLabel}>Tip Percentages</Text>
-                <Text style={styles.tipPercentagesDescription}>
+                <Text style={styles.tipPercentagesLabel} maxFontSizeMultiplier={1.5}>Tip Percentages</Text>
+                <Text style={styles.tipPercentagesDescription} maxFontSizeMultiplier={1.5}>
                   Tap to edit, long press to remove
                 </Text>
                 <View style={styles.tipPercentagesRow}>
@@ -292,7 +292,7 @@ export function TapToPaySettingsScreen() {
                           maxLength={3}
                         />
                       ) : (
-                        <Text style={styles.tipChipText}>{pct}%</Text>
+                        <Text style={styles.tipChipText} maxFontSizeMultiplier={1.3}>{pct}%</Text>
                       )}
                     </TouchableOpacity>
                   ))}
@@ -310,8 +310,8 @@ export function TapToPaySettingsScreen() {
               {/* Allow Custom Tip */}
               <View style={[styles.settingRow, styles.settingRowBorder]}>
                 <View style={styles.settingInfo}>
-                  <Text style={styles.settingLabel}>Allow Custom Tip</Text>
-                  <Text style={styles.settingDescription}>Let customers enter their own amount</Text>
+                  <Text style={styles.settingLabel} maxFontSizeMultiplier={1.5}>Allow Custom Tip</Text>
+                  <Text style={styles.settingDescription} maxFontSizeMultiplier={1.5}>Let customers enter their own amount</Text>
                 </View>
                 <Toggle
                   value={settings.allowCustomTip}
@@ -328,13 +328,13 @@ export function TapToPaySettingsScreen() {
             <View style={styles.cardHeaderIcon}>
               <Ionicons name="receipt-outline" size={20} color={colors.primary} />
             </View>
-            <Text style={styles.cardTitle}>Receipts</Text>
+            <Text style={styles.cardTitle} maxFontSizeMultiplier={1.3}>Receipts</Text>
           </View>
 
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Prompt for Email</Text>
-              <Text style={styles.settingDescription}>Ask customer for email to send receipt</Text>
+              <Text style={styles.settingLabel} maxFontSizeMultiplier={1.5}>Prompt for Email</Text>
+              <Text style={styles.settingDescription} maxFontSizeMultiplier={1.5}>Ask customer for email to send receipt</Text>
             </View>
             <Toggle
               value={settings.promptForEmail}
@@ -346,7 +346,7 @@ export function TapToPaySettingsScreen() {
         {/* Info Note */}
         <View style={styles.infoNote}>
           <Ionicons name="information-circle-outline" size={18} color={colors.textMuted} />
-          <Text style={styles.infoNoteText}>
+          <Text style={styles.infoNoteText} maxFontSizeMultiplier={1.5}>
             These settings only apply to the "{selectedCatalog.name}" catalog. Each catalog can have different checkout settings.
           </Text>
         </View>
@@ -385,7 +385,7 @@ export function TapToPaySettingsScreen() {
             <View style={styles.toastIcon}>
               <Ionicons name="checkmark" size={18} color="#4ade80" />
             </View>
-            <Text style={styles.toastText}>Settings saved</Text>
+            <Text style={styles.toastText} maxFontSizeMultiplier={1.5}>Settings saved</Text>
           </LinearGradient>
         </Animated.View>
       )}

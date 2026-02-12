@@ -55,8 +55,8 @@ function PaymentSetupRequired({ colors, isManager }: { colors: any; isManager: b
       <View style={styles.iconContainer}>
         <Ionicons name="card-outline" size={64} color={colors.textMuted} />
       </View>
-      <Text style={styles.title}>Payment Setup Required</Text>
-      <Text style={styles.message}>
+      <Text style={styles.title} maxFontSizeMultiplier={1.2}>Payment Setup Required</Text>
+      <Text style={styles.message} maxFontSizeMultiplier={1.5}>
         {isManager
           ? 'Set up your payment account in the Vendor Portal to accept payments.'
           : 'Ask your manager to set up the payment account to accept payments.'}
@@ -71,7 +71,7 @@ function PaymentSetupRequired({ colors, isManager }: { colors: any; isManager: b
           accessibilityHint="Opens the Vendor Portal to set up your payment account"
         >
           <Ionicons name="card" size={18} color="#fff" />
-          <Text style={styles.buttonText}>Set Up Payments</Text>
+          <Text style={styles.buttonText} maxFontSizeMultiplier={1.3}>Set Up Payments</Text>
           <Ionicons name="open-outline" size={16} color="#fff" />
         </TouchableOpacity>
       )}
@@ -393,10 +393,10 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
             }]}>
               <Ionicons name="storefront" size={44} color={isDark ? 'rgba(255,255,255,0.95)' : colors.primary} />
             </View>
-            <Text style={[styles.headerTitle, { color: isDark ? '#fff' : colors.text }]}>
+            <Text style={[styles.headerTitle, { color: isDark ? '#fff' : colors.text }]} maxFontSizeMultiplier={1.2}>
               {organization?.name ? `Welcome, ${organization.name}!` : 'Welcome to Luma!'}
             </Text>
-            <Text style={[styles.headerSubtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
+            <Text style={[styles.headerSubtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
               Let's get your menu set up so you can start selling
             </Text>
           </View>
@@ -424,33 +424,33 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   <Ionicons name="grid" size={28} color={colors.primary} />
                 </View>
                 <View style={[styles.cardBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={styles.cardBadgeText}>GET STARTED</Text>
+                  <Text style={styles.cardBadgeText} maxFontSizeMultiplier={1.3}>GET STARTED</Text>
                 </View>
               </View>
 
-              <Text style={[styles.primaryCardTitle, { color: colors.text }]}>Create Your Menu</Text>
-              <Text style={[styles.primaryCardDescription, { color: colors.textSecondary }]}>
+              <Text style={[styles.primaryCardTitle, { color: colors.text }]} maxFontSizeMultiplier={1.2}>Create Your Menu</Text>
+              <Text style={[styles.primaryCardDescription, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
                 Create a menu to start adding products. You can add photos, set prices, and organize into categories.
               </Text>
 
               <View style={styles.featureList}>
                 <View style={styles.featureItem}>
                   <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                  <Text style={[styles.featureText, { color: colors.textSecondary }]}>Add products with photos & prices</Text>
+                  <Text style={[styles.featureText, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>Add products with photos & prices</Text>
                 </View>
                 <View style={styles.featureItem}>
                   <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                  <Text style={[styles.featureText, { color: colors.textSecondary }]}>Organize into categories</Text>
+                  <Text style={[styles.featureText, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>Organize into categories</Text>
                 </View>
                 <View style={styles.featureItem}>
                   <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
-                  <Text style={[styles.featureText, { color: colors.textSecondary }]}>Configure tips & tax settings</Text>
+                  <Text style={[styles.featureText, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>Configure tips & tax settings</Text>
                 </View>
               </View>
 
               <View style={[styles.primaryCardButton, { backgroundColor: isDark ? '#fff' : '#09090b' }]}>
                 <Ionicons name="add" size={20} color={isDark ? '#09090b' : '#fff'} />
-                <Text style={[styles.primaryCardButtonText, { color: isDark ? '#09090b' : '#fff' }]}>Create Menu</Text>
+                <Text style={[styles.primaryCardButtonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>Create Menu</Text>
               </View>
             </TouchableOpacity>
           </Animated.View>
@@ -468,8 +468,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   <Ionicons name="flash" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.quickChargeText}>
-                  <Text style={[styles.quickChargeTitle, { color: colors.text }]}>Need to charge now?</Text>
-                  <Text style={[styles.quickChargeSubtitle, { color: colors.textMuted }]}>
+                  <Text style={[styles.quickChargeTitle, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Need to charge now?</Text>
+                  <Text style={[styles.quickChargeSubtitle, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
                     Use Quick Charge for custom amounts — no menu needed
                   </Text>
                 </View>
@@ -481,7 +481,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                 accessibilityRole="button"
                 accessibilityLabel="Go to Quick Charge"
               >
-                <Text style={[styles.quickChargeButtonText, { color: colors.primary }]}>Quick Charge</Text>
+                <Text style={[styles.quickChargeButtonText, { color: colors.primary }]} maxFontSizeMultiplier={1.3}>Quick Charge</Text>
                 <Ionicons name="arrow-forward" size={16} color={colors.primary} />
               </TouchableOpacity>
             </View>
@@ -491,11 +491,12 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
           {isManager && (
             <Animated.View style={[styles.vendorHint, { opacity: fadeAnim }]}>
               <Ionicons name="desktop-outline" size={16} color={colors.textMuted} />
-              <Text style={[styles.vendorHintText, { color: colors.textMuted }]}>
+              <Text style={[styles.vendorHintText, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
                 Need advanced management? Open the{' '}
                 <Text
                   style={{ color: colors.primary, fontFamily: fonts.semiBold }}
                   onPress={() => openVendorDashboard('/products')}
+                  maxFontSizeMultiplier={1.5}
                 >
                   Vendor Portal
                 </Text>
@@ -524,7 +525,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
               >
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Create Menu</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]} maxFontSizeMultiplier={1.3}>Create Menu</Text>
               <TouchableOpacity
                 onPress={handleCreateCatalog}
                 disabled={createCatalogMutation.isPending || !catalogName.trim()}
@@ -537,7 +538,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                 {createCatalogMutation.isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.modalSaveButtonText}>Create</Text>
+                  <Text style={styles.modalSaveButtonText} maxFontSizeMultiplier={1.3}>Create</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -550,7 +551,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
               showsVerticalScrollIndicator={false}
             >
               <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text }]}>Menu Name *</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Menu Name *</Text>
                 <TextInput
                   style={[styles.textInput, {
                     backgroundColor: glassColors.backgroundElevated,
@@ -567,7 +568,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
               </View>
 
               <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text }]}>Description</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Description</Text>
                 <TextInput
                   style={[styles.textInput, styles.textArea, {
                     backgroundColor: glassColors.backgroundElevated,
@@ -585,7 +586,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
               </View>
 
               <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text }]}>Location</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Location</Text>
                 <View style={[styles.inputWithIcon, {
                   backgroundColor: glassColors.backgroundElevated,
                   borderColor: glassColors.border,
@@ -604,7 +605,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
 
               {/* Date */}
               <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text }]}>Date</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Date</Text>
                 <TouchableOpacity
                   style={[styles.dateSelector, {
                     backgroundColor: glassColors.backgroundElevated,
@@ -616,7 +617,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   <Text style={[
                     styles.dateSelectorText,
                     { color: catalogDate ? colors.text : colors.textMuted }
-                  ]}>
+                  ]} maxFontSizeMultiplier={1.5}>
                     {catalogDate ? formatDate(catalogDate) : 'Select a date (optional)'}
                   </Text>
                   {catalogDate && (
@@ -636,10 +637,10 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                     }]}>
                       <View style={[styles.datePickerHeader, { borderBottomColor: glassColors.border }]}>
                         <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                          <Text style={[styles.datePickerCancel, { color: colors.textSecondary }]}>Cancel</Text>
+                          <Text style={[styles.datePickerCancel, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                          <Text style={[styles.datePickerDone, { color: colors.primary }]}>Done</Text>
+                          <Text style={[styles.datePickerDone, { color: colors.primary }]} maxFontSizeMultiplier={1.5}>Done</Text>
                         </TouchableOpacity>
                       </View>
                       <DateTimePicker
@@ -664,7 +665,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
 
               {/* Layout Type */}
               <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text }]}>Product Layout</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Product Layout</Text>
                 <View style={styles.layoutOptions}>
                   {LAYOUT_OPTIONS.map(option => (
                     <TouchableOpacity
@@ -684,7 +685,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                       <Text style={[
                         styles.layoutOptionText,
                         { color: layoutType === option.value ? colors.primary : colors.textSecondary }
-                      ]}>
+                      ]} maxFontSizeMultiplier={1.3}>
                         {option.label}
                       </Text>
                     </TouchableOpacity>
@@ -693,7 +694,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
               </View>
 
               <View style={styles.inputSection}>
-                <Text style={[styles.inputLabel, { color: colors.text }]}>Tax Rate</Text>
+                <Text style={[styles.inputLabel, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Tax Rate</Text>
                 <View style={[styles.taxInputContainer, {
                   backgroundColor: glassColors.backgroundElevated,
                   borderColor: glassColors.border,
@@ -706,7 +707,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                     placeholderTextColor={colors.textMuted}
                     keyboardType="decimal-pad"
                   />
-                  <Text style={[styles.taxSymbol, { color: colors.textSecondary }]}>%</Text>
+                  <Text style={[styles.taxSymbol, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>%</Text>
                 </View>
               </View>
 
@@ -717,8 +718,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
               <View style={styles.inputSection}>
                 <View style={styles.toggleRow}>
                   <View style={styles.toggleInfo}>
-                    <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]}>Show Tip Screen</Text>
-                    <Text style={[styles.toggleDescription, { color: colors.textMuted }]}>
+                    <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]} maxFontSizeMultiplier={1.5}>Show Tip Screen</Text>
+                    <Text style={[styles.toggleDescription, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
                       Show tip options during checkout
                     </Text>
                   </View>
@@ -731,7 +732,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                 <>
                   <View style={styles.inputSection}>
                     <View style={styles.tipHeader}>
-                      <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]}>Tip Options</Text>
+                      <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]} maxFontSizeMultiplier={1.5}>Tip Options</Text>
                       {tipPercentages.length < 6 && (
                         <TouchableOpacity onPress={handleAddTipPercentage}>
                           <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
@@ -768,7 +769,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                                 onPress={() => handleStartEditTip(index)}
                                 style={styles.tipValueButton}
                               >
-                                <Text style={[styles.tipText, { color: colors.text }]}>{percentage}%</Text>
+                                <Text style={[styles.tipText, { color: colors.text }]} maxFontSizeMultiplier={1.5}>{percentage}%</Text>
                               </TouchableOpacity>
                               {tipPercentages.length > 1 && (
                                 <TouchableOpacity
@@ -788,8 +789,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   <View style={styles.inputSection}>
                     <View style={styles.toggleRow}>
                       <View style={styles.toggleInfo}>
-                        <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]}>Allow Custom Tip</Text>
-                        <Text style={[styles.toggleDescription, { color: colors.textMuted }]}>
+                        <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]} maxFontSizeMultiplier={1.5}>Allow Custom Tip</Text>
+                        <Text style={[styles.toggleDescription, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
                           Let customers enter a custom tip amount
                         </Text>
                       </View>
@@ -803,8 +804,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
               <View style={styles.inputSection}>
                 <View style={styles.toggleRow}>
                   <View style={styles.toggleInfo}>
-                    <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]}>Prompt for Email</Text>
-                    <Text style={[styles.toggleDescription, { color: colors.textMuted }]}>
+                    <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]} maxFontSizeMultiplier={1.5}>Prompt for Email</Text>
+                    <Text style={[styles.toggleDescription, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
                       Ask for customer email for receipts
                     </Text>
                   </View>
@@ -814,7 +815,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
 
               <View style={[styles.infoBox, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '20' }]}>
                 <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-                <Text style={[styles.infoBoxText, { color: colors.textSecondary }]}>
+                <Text style={[styles.infoBoxText, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
                   After creating your menu, tap the edit button to add products and categories.
                 </Text>
               </View>
@@ -898,6 +899,7 @@ const createWelcomeStyles = (colors: any, glassColors: typeof glass.dark, isDark
     },
     scrollContent: {
       flexGrow: 1,
+      paddingBottom: 50,
     },
     headerContainer: {
       marginBottom: 0,

@@ -108,6 +108,7 @@ function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: Ke
               fontFamily: isAction ? fonts.medium : fonts.semiBold,
               color: isAction ? colors.textSecondary : colors.text,
             }}
+            maxFontSizeMultiplier={1.3}
           >
             {keyValue}
           </Text>
@@ -221,7 +222,7 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
 
             {/* Header */}
             <View style={styles.header}>
-              <Text style={[styles.title, { color: colors.text }]}>Quick Charge</Text>
+              <Text style={[styles.title, { color: colors.text }]} maxFontSizeMultiplier={1.3}>Quick Charge</Text>
               <Pressable onPress={handleClose} hitSlop={12}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </Pressable>
@@ -229,8 +230,8 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
 
             {/* Amount Display */}
             <View style={styles.amountContainer}>
-              <Text style={[styles.currencySymbol, { color: colors.textMuted }]}>$</Text>
-              <Text style={[styles.amount, { color: colors.text }]}>{displayAmount}</Text>
+              <Text style={[styles.currencySymbol, { color: colors.textMuted }]} maxFontSizeMultiplier={1.2}>$</Text>
+              <Text style={[styles.amount, { color: colors.text }]} maxFontSizeMultiplier={1.2}>{displayAmount}</Text>
             </View>
 
             {/* Keypad */}
@@ -281,12 +282,13 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
                     styles.chargeButtonText,
                     { color: chargeDisabled ? colors.textMuted : isDark ? '#09090b' : '#fff' },
                   ]}
+                  maxFontSizeMultiplier={1.3}
                 >
                   {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
                 </Text>
               </Pressable>
 
-              <Text style={[styles.minimumHint, { color: colors.textMuted, opacity: cents > 0 && cents < 50 ? 1 : 0 }]}>
+              <Text style={[styles.minimumHint, { color: colors.textMuted, opacity: cents > 0 && cents < 50 ? 1 : 0 }]} maxFontSizeMultiplier={1.5}>
                 Minimum charge is $0.50
               </Text>
             </View>

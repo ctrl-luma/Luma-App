@@ -116,22 +116,22 @@ export function CashPaymentScreen() {
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cash Payment</Text>
+        <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Cash Payment</Text>
         <View style={{ width: 48 }} />
       </View>
 
       {/* Total Amount Display */}
       <View style={styles.totalSection}>
-        <Text style={styles.totalLabel}>Total Due</Text>
-        <Text style={styles.totalAmount}>${(totalAmount / 100).toFixed(2)}</Text>
+        <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Total Due</Text>
+        <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(totalAmount / 100).toFixed(2)}</Text>
       </View>
 
       {/* Cash Tendered Display */}
       <View style={styles.tenderedSection}>
-        <Text style={styles.tenderedLabel}>Cash Tendered</Text>
+        <Text style={styles.tenderedLabel} maxFontSizeMultiplier={1.5}>Cash Tendered</Text>
         <View style={styles.tenderedDisplay}>
-          <Text style={styles.dollarSign}>$</Text>
-          <Text style={[styles.tenderedAmount, !cashTendered && styles.tenderedPlaceholder]}>
+          <Text style={styles.dollarSign} maxFontSizeMultiplier={1.2}>$</Text>
+          <Text style={[styles.tenderedAmount, !cashTendered && styles.tenderedPlaceholder]} maxFontSizeMultiplier={1.2}>
             {cashTendered || '0.00'}
           </Text>
         </View>
@@ -140,15 +140,15 @@ export function CashPaymentScreen() {
       {/* Change Display */}
       {isEnoughCash && changeAmount > 0 && (
         <View style={styles.changeSection}>
-          <Text style={styles.changeLabel}>Change Due</Text>
-          <Text style={styles.changeAmount}>${(changeAmount / 100).toFixed(2)}</Text>
+          <Text style={styles.changeLabel} maxFontSizeMultiplier={1.5}>Change Due</Text>
+          <Text style={styles.changeAmount} maxFontSizeMultiplier={1.2}>${(changeAmount / 100).toFixed(2)}</Text>
         </View>
       )}
 
       {/* Exact Amount Button */}
       <View style={styles.exactRow}>
         <TouchableOpacity style={styles.exactButton} onPress={handleExactAmount}>
-          <Text style={styles.exactButtonText}>Exact Amount</Text>
+          <Text style={styles.exactButtonText} maxFontSizeMultiplier={1.3}>Exact Amount</Text>
         </TouchableOpacity>
       </View>
 
@@ -163,7 +163,7 @@ export function CashPaymentScreen() {
             {key === 'backspace' ? (
               <Ionicons name="backspace-outline" size={28} color={colors.text} />
             ) : (
-              <Text style={styles.keypadButtonText}>{key}</Text>
+              <Text style={styles.keypadButtonText} maxFontSizeMultiplier={1.2}>{key}</Text>
             )}
           </TouchableOpacity>
         ))}
@@ -184,7 +184,7 @@ export function CashPaymentScreen() {
           ) : (
             <>
               <Ionicons name="checkmark-circle" size={24} color="#fff" />
-              <Text style={styles.completeButtonText}>
+              <Text style={styles.completeButtonText} maxFontSizeMultiplier={1.3}>
                 {isEnoughCash ? 'Complete Payment' : 'Enter Cash Amount'}
               </Text>
             </>

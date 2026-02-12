@@ -42,8 +42,8 @@ export function ConfirmModal({
     >
       <Pressable style={styles.overlay} onPress={onCancel}>
         <Pressable style={[styles.container, { backgroundColor: colors.card }]}>
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-          <Text style={[styles.message, { color: colors.textSecondary }]}>
+          <Text style={[styles.title, { color: colors.text }]} maxFontSizeMultiplier={1.3}>{title}</Text>
+          <Text style={[styles.message, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
             {message}
           </Text>
           <View style={styles.buttons}>
@@ -54,7 +54,7 @@ export function ConfirmModal({
               accessibilityLabel={cancelText}
               accessibilityHint="Dismisses the dialog without taking action"
             >
-              <Text style={[styles.buttonText, { color: colors.text }]}>
+              <Text style={[styles.buttonText, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
                 {cancelText}
               </Text>
             </TouchableOpacity>
@@ -76,7 +76,7 @@ export function ConfirmModal({
                   : 'Confirms the action'
               }
             >
-              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+              <Text style={[styles.buttonText, { color: '#FFFFFF' }]} maxFontSizeMultiplier={1.3}>
                 {confirmText}
               </Text>
             </TouchableOpacity>

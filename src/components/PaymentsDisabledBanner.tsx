@@ -24,7 +24,7 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
     return (
       <View style={styles.compactContainer} accessibilityRole="alert">
         <Ionicons name="alert-circle" size={18} color={colors.warning} />
-        <Text style={styles.compactText}>Payments not set up</Text>
+        <Text style={styles.compactText} maxFontSizeMultiplier={1.5}>Payments not set up</Text>
         {isManager && (
           <TouchableOpacity
             onPress={() => openVendorDashboard('/connect')}
@@ -33,7 +33,7 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
             accessibilityLabel="Set up payments"
             accessibilityHint="Opens the Vendor Portal to set up your payment account"
           >
-            <Text style={styles.compactButtonText}>Set up</Text>
+            <Text style={styles.compactButtonText} maxFontSizeMultiplier={1.3}>Set up</Text>
             <Ionicons name="open-outline" size={14} color={colors.primary} />
           </TouchableOpacity>
         )}
@@ -48,8 +48,8 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
           <Ionicons name="alert-circle" size={24} color={colors.warning} />
         </View>
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Payment account not set up</Text>
-          <Text style={styles.message}>
+          <Text style={styles.title} maxFontSizeMultiplier={1.5}>Payment account not set up</Text>
+          <Text style={styles.message} maxFontSizeMultiplier={1.5}>
             {isManager
               ? 'Set up your account in the Vendor Portal to accept payments.'
               : 'Ask your manager to set up the payment account.'}
@@ -65,7 +65,7 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
           accessibilityLabel="Set Up Payments"
           accessibilityHint="Opens the Vendor Portal to configure your payment account"
         >
-          <Text style={styles.buttonText}>Set Up Payments</Text>
+          <Text style={styles.buttonText} maxFontSizeMultiplier={1.3}>Set Up Payments</Text>
           <Ionicons name="open-outline" size={16} color="#fff" />
         </TouchableOpacity>
       )}

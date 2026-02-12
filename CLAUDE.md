@@ -55,6 +55,26 @@ This app implements Tap to Pay on iPhone and must comply with Apple's TTPOi requ
 - Retry option for transient failures
 - Guidance for persistent issues
 
+**Dynamic Type / Accessibility (Section 4.4 - MANDATORY):**
+
+Every `<Text>` element MUST have a `maxFontSizeMultiplier` prop to support Dynamic Type while preventing layout breakage at extreme accessibility sizes. React Native enables font scaling by default (`allowFontScaling={true}`), so the multiplier caps are what prevent overflow.
+
+Rules for choosing the value:
+- **`fontSize >= 24`** (amounts, large numbers): `maxFontSizeMultiplier={1.2}`
+- **`fontSize 17-23`** (titles, headings): `maxFontSizeMultiplier={1.3}`
+- **`fontSize <= 16` inside buttons/touchables**: `maxFontSizeMultiplier={1.3}`
+- **`fontSize <= 16` body text/labels**: `maxFontSizeMultiplier={1.5}`
+
+```tsx
+// Examples
+<Text style={styles.amount} maxFontSizeMultiplier={1.2}>$4.50</Text>
+<Text style={styles.title} maxFontSizeMultiplier={1.3}>Payment Settings</Text>
+<Text style={styles.buttonText} maxFontSizeMultiplier={1.3}>Submit</Text>
+<Text style={styles.description} maxFontSizeMultiplier={1.5}>Enter your details</Text>
+```
+
+Also use `minHeight` instead of fixed `height` on containers that hold text, so they can expand when text scales up.
+
 ### Marketing Requirements (Section 5.1-5.3)
 - Use official Apple Tap to Pay branding assets
 - Follow trademark guidelines

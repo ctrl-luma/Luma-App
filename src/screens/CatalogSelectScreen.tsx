@@ -316,10 +316,10 @@ function EmptyCatalogs({ colors, isDark, isManager }: { colors: any; isDark: boo
         }]}>
           <Ionicons name="grid-outline" size={44} color={isDark ? 'rgba(255,255,255,0.95)' : colors.primary} />
         </View>
-        <Text style={[starStyles.title, { color: isDark ? '#fff' : colors.text }]}>
+        <Text style={[starStyles.title, { color: isDark ? '#fff' : colors.text }]} maxFontSizeMultiplier={1.2}>
           No Menus Available
         </Text>
-        <Text style={[starStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
+        <Text style={[starStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
           {isManager
             ? 'Create your product menu in the Vendor Portal to start selling with preset items and prices.'
             : 'Ask your manager to create a menu for you to get started.'}
@@ -330,7 +330,7 @@ function EmptyCatalogs({ colors, isDark, isManager }: { colors: any; isDark: boo
             onPress={() => openVendorDashboard('/products')}
             activeOpacity={0.8}
           >
-            <Text style={[starStyles.buttonText, { color: isDark ? '#09090b' : '#fff' }]}>
+            <Text style={[starStyles.buttonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>
               Open Vendor Portal
             </Text>
             <Ionicons name="arrow-forward" size={18} color={isDark ? '#09090b' : '#fff'} />
@@ -442,22 +442,22 @@ export function CatalogSelectScreen() {
           />
         </View>
         <View style={styles.catalogInfo}>
-          <Text style={styles.catalogName}>{item.name}</Text>
+          <Text style={styles.catalogName} maxFontSizeMultiplier={1.3}>{item.name}</Text>
           {item.location && (
             <View style={styles.catalogMeta}>
               <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.catalogMetaText}>{item.location}</Text>
+              <Text style={styles.catalogMetaText} maxFontSizeMultiplier={1.5}>{item.location}</Text>
             </View>
           )}
           {item.date && (
             <View style={styles.catalogMeta}>
               <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.catalogMetaText}>
+              <Text style={styles.catalogMetaText} maxFontSizeMultiplier={1.5}>
                 {new Date(item.date).toLocaleDateString()}
               </Text>
             </View>
           )}
-          <Text style={styles.productCount}>
+          <Text style={styles.productCount} maxFontSizeMultiplier={1.5}>
             {item.productCount} {item.productCount === 1 ? 'product' : 'products'}
           </Text>
         </View>
@@ -486,8 +486,8 @@ export function CatalogSelectScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>{isModal ? 'Switch Menu' : 'Select a Menu'}</Text>
-          <Text style={styles.subtitle}>
+          <Text style={styles.title} maxFontSizeMultiplier={1.2}>{isModal ? 'Switch Menu' : 'Select a Menu'}</Text>
+          <Text style={styles.subtitle} maxFontSizeMultiplier={1.5}>
             {isModal
               ? 'Choose a different menu for this device'
               : 'Choose which menu to use for this session'}

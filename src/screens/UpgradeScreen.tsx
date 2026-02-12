@@ -145,7 +145,7 @@ export function UpgradeScreen() {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Upgrade to Pro</Text>
+        <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Upgrade to Pro</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -159,8 +159,8 @@ export function UpgradeScreen() {
           <View style={styles.proBadge}>
             <Ionicons name="diamond" size={24} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>Luma Pro</Text>
-          <Text style={styles.heroSubtitle}>
+          <Text style={styles.heroTitle} maxFontSizeMultiplier={1.2}>Luma Pro</Text>
+          <Text style={styles.heroSubtitle} maxFontSizeMultiplier={1.5}>
             Unlock the full potential of your business
           </Text>
         </View>
@@ -171,21 +171,21 @@ export function UpgradeScreen() {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <>
-              <Text style={styles.price}>{price}</Text>
-              <Text style={styles.pricePeriod}>/month</Text>
+              <Text style={styles.price} maxFontSizeMultiplier={1.2}>{price}</Text>
+              <Text style={styles.pricePeriod} maxFontSizeMultiplier={1.3}>/month</Text>
             </>
           )}
         </View>
 
         {/* Features */}
         <View style={styles.featuresCard}>
-          <Text style={styles.featuresTitle}>Everything in Pro</Text>
+          <Text style={styles.featuresTitle} maxFontSizeMultiplier={1.5}>Everything in Pro</Text>
           {PRO_FEATURES.map((feature, index) => (
             <View key={index} style={styles.featureRow}>
               <View style={styles.featureIconContainer}>
                 <Ionicons name={feature.icon as any} size={18} color={colors.primary} />
               </View>
-              <Text style={styles.featureText}>{feature.text}</Text>
+              <Text style={styles.featureText} maxFontSizeMultiplier={1.5}>{feature.text}</Text>
             </View>
           ))}
         </View>
@@ -194,8 +194,8 @@ export function UpgradeScreen() {
         <View style={styles.feeCard}>
           <Ionicons name="card-outline" size={20} color={colors.success} />
           <View style={styles.feeTextContainer}>
-            <Text style={styles.feeTitle}>Lower Transaction Fees</Text>
-            <Text style={styles.feeSubtitle}>2.8% + $0.16 per tap (vs 2.9% + $0.18)</Text>
+            <Text style={styles.feeTitle} maxFontSizeMultiplier={1.5}>Lower Transaction Fees</Text>
+            <Text style={styles.feeSubtitle} maxFontSizeMultiplier={1.5}>2.8% + $0.16 per tap (vs 2.9% + $0.18)</Text>
           </View>
         </View>
 
@@ -220,7 +220,7 @@ export function UpgradeScreen() {
             ) : (
               <>
                 <Ionicons name="diamond" size={20} color="#fff" />
-                <Text style={styles.subscribeButtonText}>
+                <Text style={styles.subscribeButtonText} maxFontSizeMultiplier={1.3}>
                   Subscribe for {price}/month
                 </Text>
               </>
@@ -237,12 +237,12 @@ export function UpgradeScreen() {
           {restoring ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+            <Text style={styles.restoreButtonText} maxFontSizeMultiplier={1.3}>Restore Purchases</Text>
           )}
         </TouchableOpacity>
 
         {/* Legal Text */}
-        <Text style={styles.legalText}>
+        <Text style={styles.legalText} maxFontSizeMultiplier={1.5}>
           Payment will be charged to your {platformName} account at confirmation of purchase.
           Subscription automatically renews unless auto-renew is turned off at least 24 hours
           before the end of the current period. Your account will be charged for renewal within

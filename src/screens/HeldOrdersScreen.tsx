@@ -287,7 +287,7 @@ export function HeldOrdersScreen() {
         onPress={() => handleCancelOrder(order)}
       >
         <Ionicons name="trash-outline" size={24} color="#fff" />
-        <Text style={styles.deleteActionText}>Cancel</Text>
+        <Text style={styles.deleteActionText} maxFontSizeMultiplier={1.3}>Cancel</Text>
       </TouchableOpacity>
     );
   };
@@ -309,36 +309,36 @@ export function HeldOrdersScreen() {
           <View style={styles.orderHeader}>
             <View style={styles.orderTitleRow}>
               <Ionicons name="time-outline" size={20} color={colors.primary} />
-              <Text style={styles.orderName} numberOfLines={1}>
+              <Text style={styles.orderName} numberOfLines={1} maxFontSizeMultiplier={1.3}>
                 {item.holdName || `Order #${item.orderNumber}`}
               </Text>
             </View>
-            <Text style={styles.orderTime}>
+            <Text style={styles.orderTime} maxFontSizeMultiplier={1.5}>
               {item.heldAt ? formatTimeAgo(item.heldAt) : ''}
             </Text>
           </View>
 
           <View style={styles.orderDetails}>
             <View style={styles.orderInfo}>
-              <Text style={styles.itemCount}>
+              <Text style={styles.itemCount} maxFontSizeMultiplier={1.5}>
                 {itemCount} {itemCount === 1 ? 'item' : 'items'}
               </Text>
               {item.notes && (
                 <View style={styles.notesIndicator}>
                   <Ionicons name="document-text-outline" size={14} color={colors.textSecondary} />
-                  <Text style={styles.notesText} numberOfLines={1}>
+                  <Text style={styles.notesText} numberOfLines={1} maxFontSizeMultiplier={1.5}>
                     {item.notes}
                   </Text>
                 </View>
               )}
             </View>
-            <Text style={styles.orderTotal}>
+            <Text style={styles.orderTotal} maxFontSizeMultiplier={1.3}>
               ${(item.totalAmount / 100).toFixed(2)}
             </Text>
           </View>
 
           <View style={styles.resumeHint}>
-            <Text style={styles.resumeHintText}>Tap to resume</Text>
+            <Text style={styles.resumeHintText} maxFontSizeMultiplier={1.3}>Tap to resume</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </View>
         </TouchableOpacity>
@@ -349,8 +349,8 @@ export function HeldOrdersScreen() {
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons name="pause-circle-outline" size={64} color={colors.textMuted} />
-      <Text style={styles.emptyTitle}>No Held Orders</Text>
-      <Text style={styles.emptySubtitle}>
+      <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.3}>No Held Orders</Text>
+      <Text style={styles.emptySubtitle} maxFontSizeMultiplier={1.5}>
         Orders you put on hold will appear here.{'\n'}
         Tap "Hold Order" at checkout to save an order for later.
       </Text>

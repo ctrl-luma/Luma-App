@@ -89,11 +89,11 @@ export function ResetPasswordScreen() {
             <View style={styles.contentWrapper}>
               <View style={styles.card}>
                 <View style={styles.successIcon}>
-                  <Text style={styles.successIconText}>✓</Text>
+                  <Text maxFontSizeMultiplier={1.2} style={styles.successIconText}>✓</Text>
                 </View>
 
-                <Text style={styles.successTitle}>Password Reset Successful!</Text>
-                <Text style={styles.successSubtitle}>
+                <Text maxFontSizeMultiplier={1.2} style={styles.successTitle}>Password Reset Successful!</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.successSubtitle}>
                   Your password has been successfully reset. You can now log in with your new password.
                 </Text>
 
@@ -102,7 +102,7 @@ export function ResetPasswordScreen() {
                   onPress={() => navigation.navigate('Login')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.buttonText}>Back to login</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Back to login</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -133,21 +133,21 @@ export function ResetPasswordScreen() {
             <View style={styles.contentWrapper}>
               {/* Header */}
               <View style={styles.header}>
-                <Text style={styles.title}>Reset Your Password</Text>
-                <Text style={styles.subtitle}>Enter your new password below</Text>
+                <Text maxFontSizeMultiplier={1.2} style={styles.title}>Reset Your Password</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>Enter your new password below</Text>
               </View>
 
               {/* Card */}
               <View style={styles.card}>
                 {error && (
                   <View style={styles.errorContainer}>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{error}</Text>
                   </View>
                 )}
 
                 <View style={styles.form}>
                   <View style={styles.inputGroup}>
-                    <Text style={styles.label}>New Password</Text>
+                    <Text maxFontSizeMultiplier={1.5} style={styles.label}>New Password</Text>
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={[styles.input, styles.passwordInput]}
@@ -172,7 +172,7 @@ export function ResetPasswordScreen() {
                   </View>
 
                   <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Confirm New Password</Text>
+                    <Text maxFontSizeMultiplier={1.5} style={styles.label}>Confirm New Password</Text>
                     <View style={styles.inputContainer}>
                       <TextInput
                         style={styles.input}
@@ -195,10 +195,10 @@ export function ResetPasswordScreen() {
                     {loading ? (
                       <View style={styles.buttonContent}>
                         <ActivityIndicator color={colors.text} size="small" />
-                        <Text style={styles.buttonText}>Resetting...</Text>
+                        <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Resetting...</Text>
                       </View>
                     ) : (
-                      <Text style={styles.buttonText}>Reset password</Text>
+                      <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Reset password</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -206,9 +206,9 @@ export function ResetPasswordScreen() {
 
               {/* Footer */}
               <View style={styles.footer}>
-                <Text style={styles.footerText}>Remember your password? </Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.footerText}>Remember your password? </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                  <Text style={styles.footerLink}>Back to login</Text>
+                  <Text maxFontSizeMultiplier={1.3} style={styles.footerLink}>Back to login</Text>
                 </TouchableOpacity>
               </View>
             </View>

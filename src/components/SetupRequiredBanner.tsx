@@ -33,7 +33,7 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
         accessibilityHint="Navigates to the Stripe onboarding screen to complete payment setup"
       >
         <Ionicons name="warning" size={16} color={colors.warning} />
-        <Text style={[styles.compactText, { color: colors.warning }]}>
+        <Text style={[styles.compactText, { color: colors.warning }]} maxFontSizeMultiplier={1.3}>
           Complete payment setup to accept payments
         </Text>
         <Ionicons name="chevron-forward" size={16} color={colors.warning} />
@@ -51,8 +51,8 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
           <Ionicons name="card-outline" size={24} color={colors.warning} />
         </View>
         <View style={styles.textContainer}>
-          <Text style={[styles.title, { color: colors.text }]}>Payment Setup Required</Text>
-          <Text style={[styles.description, { color: colors.textSecondary }]}>
+          <Text style={[styles.title, { color: colors.text }]} maxFontSizeMultiplier={1.5}>Payment Setup Required</Text>
+          <Text style={[styles.description, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
             Complete your payment setup to start accepting payments
           </Text>
         </View>
@@ -65,7 +65,7 @@ export function SetupRequiredBanner({ compact = false }: SetupRequiredBannerProp
         accessibilityLabel="Complete Setup"
         accessibilityHint="Navigates to the Stripe onboarding screen to complete payment setup"
       >
-        <Text style={styles.buttonText}>Complete Setup</Text>
+        <Text style={styles.buttonText} maxFontSizeMultiplier={1.3}>Complete Setup</Text>
         <Ionicons name="arrow-forward" size={16} color="#fff" />
       </TouchableOpacity>
     </View>

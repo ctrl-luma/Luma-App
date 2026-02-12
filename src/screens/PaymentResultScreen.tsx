@@ -398,24 +398,24 @@ export function PaymentResultScreen() {
               >
                 <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
-              <Text style={styles.cardPageTitle}>Card Payment</Text>
+              <Text style={styles.cardPageTitle} maxFontSizeMultiplier={1.3}>Card Payment</Text>
               <View style={{ width: 40 }} />
             </View>
 
             <View style={styles.cardPageContent}>
               {/* Amount Display */}
               <View style={styles.cardPageAmountContainer}>
-                <Text style={styles.cardPageAmountLabel}>Amount to Pay</Text>
-                <Text style={styles.cardPageAmount}>${(amount / 100).toFixed(2)}</Text>
+                <Text style={styles.cardPageAmountLabel} maxFontSizeMultiplier={1.5}>Amount to Pay</Text>
+                <Text style={styles.cardPageAmount} maxFontSizeMultiplier={1.2}>${(amount / 100).toFixed(2)}</Text>
                 {orderNumber && (
-                  <Text style={styles.cardPageOrderNumber}>Order #{orderNumber}</Text>
+                  <Text style={styles.cardPageOrderNumber} maxFontSizeMultiplier={1.5}>Order #{orderNumber}</Text>
                 )}
               </View>
 
               {/* Fee Warning */}
               <View style={styles.feeWarningContainer}>
                 <Ionicons name="information-circle" size={16} color={colors.warning} />
-                <Text style={styles.feeWarningText}>
+                <Text style={styles.feeWarningText} maxFontSizeMultiplier={1.5}>
                   Manual card entry costs 0.2% + 15¢ more per transaction than Tap to Pay, plus standard tiered processing fees apply.
                 </Text>
               </View>
@@ -446,7 +446,7 @@ export function PaymentResultScreen() {
 
                 <View style={styles.cardSecurityNote}>
                   <Ionicons name="shield-checkmark" size={14} color={colors.success} />
-                  <Text style={styles.cardSecurityText}>
+                  <Text style={styles.cardSecurityText} maxFontSizeMultiplier={1.5}>
                     Card info is encrypted and sent directly to Stripe
                   </Text>
                 </View>
@@ -468,7 +468,7 @@ export function PaymentResultScreen() {
                 ) : (
                   <>
                     <Ionicons name="lock-closed" size={20} color={isDark ? '#09090b' : '#fff'} />
-                    <Text style={[styles.cardPagePayButtonText, { color: isDark ? '#09090b' : '#fff' }]}>
+                    <Text style={[styles.cardPagePayButtonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>
                       Pay ${(amount / 100).toFixed(2)}
                     </Text>
                   </>
@@ -542,24 +542,24 @@ export function PaymentResultScreen() {
           </Animated.View>
 
           <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', width: '100%' }}>
-            <Text style={[styles.title, { fontSize: titleFontSize }]}>
+            <Text style={[styles.title, { fontSize: titleFontSize }]} maxFontSizeMultiplier={1.3}>
               {success ? 'Payment Successful!' : 'Payment Failed'}
             </Text>
 
             {success ? (
               <>
                 <View style={styles.amountContainer}>
-                  <Text style={styles.amountLabel}>Amount Charged</Text>
-                  <Text style={[styles.amount, { fontSize: amountFontSize }]}>
+                  <Text style={styles.amountLabel} maxFontSizeMultiplier={1.5}>Amount Charged</Text>
+                  <Text style={[styles.amount, { fontSize: amountFontSize }]} maxFontSizeMultiplier={1.2}>
                     {amountText}
                   </Text>
                 </View>
                 {orderNumber && (
-                  <Text style={styles.orderNumber}>Order #{orderNumber}</Text>
+                  <Text style={styles.orderNumber} maxFontSizeMultiplier={1.5}>Order #{orderNumber}</Text>
                 )}
                 <View style={styles.successBadge}>
                   <Ionicons name="shield-checkmark" size={18} color={colors.success} />
-                  <Text style={styles.successBadgeText}>
+                  <Text style={styles.successBadgeText} maxFontSizeMultiplier={1.5}>
                     {receiptSent ? 'Receipt sent' : 'Transaction completed'}
                   </Text>
                 </View>
@@ -571,7 +571,7 @@ export function PaymentResultScreen() {
                     onPress={() => setShowEmailInput(true)}
                   >
                     <Ionicons name="mail-outline" size={20} color={colors.primary} />
-                    <Text style={styles.receiptButtonText}>Send Receipt</Text>
+                    <Text style={styles.receiptButtonText} maxFontSizeMultiplier={1.3}>Send Receipt</Text>
                   </TouchableOpacity>
                 )}
 
@@ -607,6 +607,7 @@ export function PaymentResultScreen() {
                       style={styles.receiptSentText}
                       numberOfLines={1}
                       ellipsizeMode="middle"
+                      maxFontSizeMultiplier={1.5}
                     >
                       Sent to {customerEmail}
                     </Text>
@@ -616,7 +617,7 @@ export function PaymentResultScreen() {
             ) : (
               <>
                 <View style={styles.errorContainer}>
-                  <Text style={styles.errorText}>
+                  <Text style={styles.errorText} maxFontSizeMultiplier={1.5}>
                     {errorMessage || 'The payment could not be processed. Please try again.'}
                   </Text>
                 </View>
@@ -625,9 +626,9 @@ export function PaymentResultScreen() {
                 <View style={styles.fallbackContainer}>
                   <View style={styles.fallbackHeader}>
                     <Ionicons name="card-outline" size={20} color={colors.primary} />
-                    <Text style={styles.fallbackTitle}>Alternative Payment</Text>
+                    <Text style={styles.fallbackTitle} maxFontSizeMultiplier={1.3}>Alternative Payment</Text>
                   </View>
-                  <Text style={styles.fallbackDescription}>
+                  <Text style={styles.fallbackDescription} maxFontSizeMultiplier={1.5}>
                     Enter the card details manually instead.
                   </Text>
                   <TouchableOpacity
@@ -635,7 +636,7 @@ export function PaymentResultScreen() {
                     onPress={() => setShowCardEntry(true)}
                   >
                     <Ionicons name="keypad-outline" size={18} color={colors.primary} />
-                    <Text style={styles.fallbackButtonText}>Enter Card Manually</Text>
+                    <Text style={styles.fallbackButtonText} maxFontSizeMultiplier={1.3}>Enter Card Manually</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -654,7 +655,7 @@ export function PaymentResultScreen() {
                 style={styles.primaryButton}
               >
                 <Ionicons name="add-circle" size={24} color="#fff" />
-                <Text style={styles.primaryButtonText}>New Sale</Text>
+                <Text style={styles.primaryButtonText} maxFontSizeMultiplier={1.3}>New Sale</Text>
               </LinearGradient>
             </TouchableOpacity>
           ) : (
@@ -665,10 +666,10 @@ export function PaymentResultScreen() {
                 style={[styles.primaryButton, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
               >
                 <Ionicons name="refresh" size={24} color={isDark ? '#09090b' : '#fff'} />
-                <Text style={[styles.primaryButtonText, { color: isDark ? '#09090b' : '#fff' }]}>Try Again</Text>
+                <Text style={[styles.primaryButtonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>Try Again</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.secondaryButton} onPress={handleNewSale}>
-                <Text style={styles.secondaryButtonText}>Cancel Order</Text>
+                <Text style={styles.secondaryButtonText} maxFontSizeMultiplier={1.3}>Cancel Order</Text>
               </TouchableOpacity>
             </>
           )}

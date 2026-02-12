@@ -232,17 +232,17 @@ function EmptyMenuState({
             }]}>
               <Ionicons name="search-outline" size={44} color={isDark ? 'rgba(255,255,255,0.95)' : colors.primary} />
             </View>
-            <Text style={[emptyMenuStyles.title, { color: isDark ? '#fff' : colors.text }]}>
+            <Text maxFontSizeMultiplier={1.2} style={[emptyMenuStyles.title, { color: isDark ? '#fff' : colors.text }]}>
               No products found
             </Text>
-            <Text style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
+            <Text maxFontSizeMultiplier={1.5} style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
               Try a different search term
             </Text>
             <TouchableOpacity
               style={[emptyMenuStyles.actionButton, { borderColor: colors.primary }]}
               onPress={onClearSearch}
             >
-              <Text style={[emptyMenuStyles.actionButtonText, { color: colors.primary }]}>
+              <Text maxFontSizeMultiplier={1.3} style={[emptyMenuStyles.actionButtonText, { color: colors.primary }]}>
                 Clear Search
               </Text>
             </TouchableOpacity>
@@ -256,10 +256,10 @@ function EmptyMenuState({
             }]}>
               <Ionicons name="cube-outline" size={44} color={isDark ? 'rgba(255,255,255,0.95)' : colors.primary} />
             </View>
-            <Text style={[emptyMenuStyles.title, { color: isDark ? '#fff' : colors.text }]}>
+            <Text maxFontSizeMultiplier={1.2} style={[emptyMenuStyles.title, { color: isDark ? '#fff' : colors.text }]}>
               No products yet
             </Text>
-            <Text style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
+            <Text maxFontSizeMultiplier={1.5} style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
               Add your first product to this catalog
             </Text>
             <TouchableOpacity
@@ -267,7 +267,7 @@ function EmptyMenuState({
               onPress={onAddProduct}
             >
               <Ionicons name="add" size={20} color="#fff" />
-              <Text style={emptyMenuStyles.primaryButtonText}>Add Product</Text>
+              <Text maxFontSizeMultiplier={1.3} style={emptyMenuStyles.primaryButtonText}>Add Product</Text>
             </TouchableOpacity>
           </>
         ) : (
@@ -279,10 +279,10 @@ function EmptyMenuState({
             }]}>
               <Ionicons name="cube-outline" size={44} color={isDark ? 'rgba(255,255,255,0.95)' : colors.primary} />
             </View>
-            <Text style={[emptyMenuStyles.title, { color: isDark ? '#fff' : colors.text }]}>
+            <Text maxFontSizeMultiplier={1.2} style={[emptyMenuStyles.title, { color: isDark ? '#fff' : colors.text }]}>
               No products available
             </Text>
-            <Text style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
+            <Text maxFontSizeMultiplier={1.5} style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
               {canManage
                 ? 'Tap the edit button to add products to this catalog'
                 : 'Ask your manager to add products to this catalog'}
@@ -293,7 +293,7 @@ function EmptyMenuState({
                 onPress={onStartEditing}
               >
                 <Ionicons name="pencil" size={18} color="#fff" />
-                <Text style={emptyMenuStyles.primaryButtonText}>Start Editing</Text>
+                <Text maxFontSizeMultiplier={1.3} style={emptyMenuStyles.primaryButtonText}>Start Editing</Text>
               </TouchableOpacity>
             )}
           </>
@@ -426,7 +426,7 @@ function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: 
         borderColor: isActive ? colors.primary : glassColors.border,
       }}
     >
-      <Text style={{
+      <Text maxFontSizeMultiplier={1.3} style={{
         fontSize: 14,
         fontWeight: isActive ? '600' : '500',
         color: isActive ? '#fff' : colors.textSecondary,
@@ -442,7 +442,7 @@ function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: 
           minWidth: 22,
           alignItems: 'center',
         }}>
-          <Text style={{
+          <Text maxFontSizeMultiplier={1.3} style={{
             fontSize: 12,
             fontWeight: '600',
             color: isActive ? '#fff' : colors.primary,
@@ -1223,7 +1223,7 @@ export function MenuScreen() {
     // Inactive badge
     const inactiveBadge = isInactive && isEditMode ? (
       <View style={styles.inactiveBadge}>
-        <Text style={styles.inactiveBadgeText}>Hidden</Text>
+        <Text maxFontSizeMultiplier={1.5} style={styles.inactiveBadgeText}>Hidden</Text>
       </View>
     ) : null;
 
@@ -1254,7 +1254,7 @@ export function MenuScreen() {
           </View>
           <View style={styles.listInfo}>
             <View style={styles.listTitleRow}>
-              <Text style={styles.listName} numberOfLines={2}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.listName} numberOfLines={2}>
                 {item.name}
               </Text>
               {isSelectionMode ? null : isEditMode ? null : (
@@ -1268,7 +1268,7 @@ export function MenuScreen() {
                         <Ionicons name="remove" size={14} color="#fff" />
                       </TouchableOpacity>
                       <View style={styles.listQuantityBadge}>
-                        <Text style={styles.quantityText}>{quantity}</Text>
+                        <Text maxFontSizeMultiplier={1.5} style={styles.quantityText}>{quantity}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.listQuantityIncrementButton}
@@ -1289,11 +1289,11 @@ export function MenuScreen() {
               )}
             </View>
             {item.description ? (
-              <Text style={styles.listDescription} numberOfLines={2}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.listDescription} numberOfLines={2}>
                 {item.description}
               </Text>
             ) : null}
-            <Text style={styles.listPrice}>
+            <Text maxFontSizeMultiplier={1.3} style={styles.listPrice}>
               ${(item.price / 100).toFixed(2)}
             </Text>
           </View>
@@ -1333,17 +1333,17 @@ export function MenuScreen() {
           </View>
           <View style={styles.largeInfo}>
             <View style={styles.largeTextContainer}>
-              <Text style={styles.largeName} numberOfLines={2}>
+              <Text maxFontSizeMultiplier={1.3} style={styles.largeName} numberOfLines={2}>
                 {item.name}
               </Text>
               {item.description ? (
-                <Text style={styles.largeDescription} numberOfLines={2}>
+                <Text maxFontSizeMultiplier={1.5} style={styles.largeDescription} numberOfLines={2}>
                   {item.description}
                 </Text>
               ) : null}
             </View>
             <View style={styles.largePriceRow}>
-              <Text style={styles.largePrice}>
+              <Text maxFontSizeMultiplier={1.2} style={styles.largePrice}>
                 ${(item.price / 100).toFixed(2)}
               </Text>
               {!isEditMode && !isSelectionMode && (
@@ -1357,7 +1357,7 @@ export function MenuScreen() {
                         <Ionicons name="remove" size={18} color="#fff" />
                       </TouchableOpacity>
                       <View style={styles.largeQuantityBadge}>
-                        <Text style={styles.largeQuantityText}>{quantity}</Text>
+                        <Text maxFontSizeMultiplier={1.3} style={styles.largeQuantityText}>{quantity}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.largeQuantityIncrementButton}
@@ -1414,16 +1414,16 @@ export function MenuScreen() {
             </View>
           )}
           <View style={styles.compactInfo}>
-            <Text style={styles.compactName} numberOfLines={1}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.compactName} numberOfLines={1}>
               {item.name}
             </Text>
             {isInactive && isEditMode && !isSelectionMode && (
               <View style={styles.compactHiddenBadge}>
-                <Text style={styles.compactHiddenText}>Hidden</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.compactHiddenText}>Hidden</Text>
               </View>
             )}
           </View>
-          <Text style={styles.compactPrice}>
+          <Text maxFontSizeMultiplier={1.3} style={styles.compactPrice}>
             ${(item.price / 100).toFixed(2)}
           </Text>
           {isSelectionMode ? null : isEditMode ? (
@@ -1452,7 +1452,7 @@ export function MenuScreen() {
                     <Ionicons name="remove" size={12} color="#fff" />
                   </TouchableOpacity>
                   <View style={styles.compactQuantityBadge}>
-                    <Text style={styles.compactQuantityText}>{quantity}</Text>
+                    <Text maxFontSizeMultiplier={1.5} style={styles.compactQuantityText}>{quantity}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.compactQuantityIncrementButton}
@@ -1502,11 +1502,11 @@ export function MenuScreen() {
           {!isSelectionMode && editOverlay}
         </View>
         <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.productName} numberOfLines={2}>
             {item.name}
           </Text>
           <View style={styles.productPriceRow}>
-            <Text style={styles.productPrice}>
+            <Text maxFontSizeMultiplier={1.3} style={styles.productPrice}>
               ${(item.price / 100).toFixed(2)}
             </Text>
             {!isEditMode && !isSelectionMode && (
@@ -1520,7 +1520,7 @@ export function MenuScreen() {
                       <Ionicons name="remove" size={14} color="#fff" />
                     </TouchableOpacity>
                     <View style={styles.quantityBadge}>
-                      <Text style={styles.quantityText}>{quantity}</Text>
+                      <Text maxFontSizeMultiplier={1.5} style={styles.quantityText}>{quantity}</Text>
                     </View>
                     <TouchableOpacity
                       style={styles.quantityIncrementButton}
@@ -1582,6 +1582,22 @@ export function MenuScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <SetupRequired type="no-catalogs" />
+
+        {/* Quick Charge FAB - always available even without menus */}
+        <View style={[styles.bottomActions, styles.bottomActionsEmpty]}>
+          <TouchableOpacity
+            style={[styles.quickChargeFab, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
+            onPress={() => setQuickChargeVisible(true)}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="flash" size={24} color={isDark ? '#09090b' : '#fff'} />
+          </TouchableOpacity>
+        </View>
+
+        <QuickChargeBottomSheet
+          visible={quickChargeVisible}
+          onClose={() => setQuickChargeVisible(false)}
+        />
       </View>
     );
   }
@@ -1590,7 +1606,7 @@ export function MenuScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>No catalog selected</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>No catalog selected</Text>
         </View>
       </View>
     );
@@ -1602,9 +1618,9 @@ export function MenuScreen() {
         {/* Header with catalog name */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.catalogName}>{selectedCatalog.name}</Text>
             {selectedCatalog.location ? (
-              <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.catalogLocation}>{selectedCatalog.location}</Text>
             ) : null}
           </View>
           <View style={[styles.skeletonBox, { width: 48, height: 48, borderRadius: 16 }]} />
@@ -1634,9 +1650,9 @@ export function MenuScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
+            <Text maxFontSizeMultiplier={1.3} style={styles.catalogName}>{selectedCatalog.name}</Text>
             {selectedCatalog.location ? (
-              <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.catalogLocation}>{selectedCatalog.location}</Text>
             ) : null}
           </View>
         </View>
@@ -1644,15 +1660,15 @@ export function MenuScreen() {
           <View style={{ backgroundColor: colors.error + '15', borderRadius: 40, padding: 16, marginBottom: 16 }}>
             <Ionicons name="alert-circle-outline" size={32} color={colors.error} />
           </View>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>Unable to Load Menu</Text>
-          <Text style={[styles.errorText, { marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }]}>
+          <Text maxFontSizeMultiplier={1.3} style={[styles.emptyTitle, { color: colors.text }]}>Unable to Load Menu</Text>
+          <Text maxFontSizeMultiplier={1.5} style={[styles.errorText, { marginTop: 8, textAlign: 'center', paddingHorizontal: 32 }]}>
             Please check your connection and try again
           </Text>
           <TouchableOpacity
             onPress={() => refetch()}
             style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}
           >
-            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Retry</Text>
+            <Text maxFontSizeMultiplier={1.3} style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Retry</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1691,7 +1707,7 @@ export function MenuScreen() {
                 setSearchQuery('');
               }}
             >
-              <Text style={styles.cancelSearchText}>Cancel</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.cancelSearchText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -1699,7 +1715,7 @@ export function MenuScreen() {
           <>
             <View style={styles.headerLeft}>
               <View style={styles.catalogNameRow}>
-                <Text style={styles.catalogName}>{selectedCatalog.name}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.catalogName}>{selectedCatalog.name}</Text>
                 {canManage && (
                   <TouchableOpacity
                     style={[styles.editModeButtonSmall, isEditMode && styles.editModeButtonSmallActive]}
@@ -1716,7 +1732,7 @@ export function MenuScreen() {
                 )}
               </View>
               {selectedCatalog.location ? (
-                <Text style={styles.catalogLocation}>{selectedCatalog.location}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.catalogLocation}>{selectedCatalog.location}</Text>
               ) : null}
             </View>
             <View style={styles.headerButtons}>
@@ -1790,12 +1806,12 @@ export function MenuScreen() {
       {/* Search Results Count */}
       {searchQuery.trim() ? (
         <View style={styles.searchResultsBar}>
-          <Text style={styles.searchResultsText}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.searchResultsText}>
             {filteredProducts.length === 0
               ? 'No results'
               : `${filteredProducts.length} result${filteredProducts.length === 1 ? '' : 's'}`}
             {' for "'}
-            <Text style={styles.searchQueryText}>{searchQuery}</Text>
+            <Text maxFontSizeMultiplier={1.5} style={styles.searchQueryText}>{searchQuery}</Text>
             {'"'}
           </Text>
         </View>
@@ -1805,7 +1821,7 @@ export function MenuScreen() {
       {isSelectionMode && (
         <View style={styles.bulkActionsBar}>
           <View style={styles.bulkActionsLeft}>
-            <Text style={styles.selectedCountText}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.selectedCountText}>
               {selectedProducts.size} selected
             </Text>
           </View>
@@ -1915,9 +1931,9 @@ export function MenuScreen() {
               activeOpacity={0.9}
             >
               <View style={styles.goToCartBadge}>
-                <Text style={styles.goToCartBadgeText}>{itemCount}</Text>
+                <Text maxFontSizeMultiplier={1.3} style={styles.goToCartBadgeText}>{itemCount}</Text>
               </View>
-              <Text style={styles.goToCartText}>Go to Cart</Text>
+              <Text maxFontSizeMultiplier={1.3} style={styles.goToCartText}>Go to Cart</Text>
               <Ionicons name="chevron-forward" size={18} color="#fff" />
             </TouchableOpacity>
           )}

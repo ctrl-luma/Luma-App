@@ -66,10 +66,10 @@ export function TapToPayFirstUseModal({
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>Welcome to {TAP_TO_PAY_NAME}</Text>
+            <Text style={styles.title} maxFontSizeMultiplier={1.3}>Welcome to {TAP_TO_PAY_NAME}</Text>
 
             {/* Description */}
-            <Text style={styles.description}>
+            <Text style={styles.description} maxFontSizeMultiplier={1.5}>
               Accept contactless payments directly on your device. No additional hardware needed.
             </Text>
 
@@ -77,22 +77,22 @@ export function TapToPayFirstUseModal({
             <View style={styles.featuresList}>
               <View style={styles.featureRow}>
                 <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.featureText}>Quick and secure payments</Text>
+                <Text style={styles.featureText} maxFontSizeMultiplier={1.5}>Quick and secure payments</Text>
               </View>
               <View style={styles.featureRow}>
                 <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.featureText}>Works with cards and digital wallets</Text>
+                <Text style={styles.featureText} maxFontSizeMultiplier={1.5}>Works with cards and digital wallets</Text>
               </View>
               <View style={styles.featureRow}>
                 <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.featureText}>No card reader required</Text>
+                <Text style={styles.featureText} maxFontSizeMultiplier={1.5}>No card reader required</Text>
               </View>
             </View>
 
             {/* Learn More Link */}
             <TouchableOpacity style={styles.learnMoreButton} onPress={onLearnMore}>
               <Ionicons name="school-outline" size={18} color={colors.primary} />
-              <Text style={styles.learnMoreText}>Learn how it works</Text>
+              <Text style={styles.learnMoreText} maxFontSizeMultiplier={1.5}>Learn how it works</Text>
             </TouchableOpacity>
 
             {/* Apple Terms Link - Apple TTPOi 3.3 */}
@@ -102,7 +102,7 @@ export function TapToPayFirstUseModal({
                 onPress={() => Linking.openURL('https://www.apple.com/legal/privacy/en-ww/tap-to-pay/')}
               >
                 <Ionicons name="shield-checkmark-outline" size={14} color={colors.textMuted} />
-                <Text style={styles.termsLinkText}>
+                <Text style={styles.termsLinkText} maxFontSizeMultiplier={1.5}>
                   Apple Tap to Pay Privacy Policy
                 </Text>
               </TouchableOpacity>
@@ -111,7 +111,7 @@ export function TapToPayFirstUseModal({
             {/* Action Buttons */}
             <View style={styles.buttonContainer}>
               <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-                <Text style={styles.skipButtonText}>Maybe later</Text>
+                <Text style={styles.skipButtonText} maxFontSizeMultiplier={1.3}>Maybe later</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={onProceed} activeOpacity={0.9}>
@@ -121,7 +121,7 @@ export function TapToPayFirstUseModal({
                   end={{ x: 1, y: 1 }}
                   style={styles.proceedButton}
                 >
-                  <Text style={styles.proceedButtonText}>Got it, let's go!</Text>
+                  <Text style={styles.proceedButtonText} maxFontSizeMultiplier={1.3}>Got it, let's go!</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

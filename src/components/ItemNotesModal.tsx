@@ -89,10 +89,10 @@ export function ItemNotesModal({
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.headerLeft}>
-                <Text style={[styles.title, { color: colors.text }]}>
+                <Text style={[styles.title, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
                   Add Notes
                 </Text>
-                <Text style={[styles.productName, { color: colors.textSecondary }]}>
+                <Text style={[styles.productName, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
                   {product.name}
                 </Text>
               </View>
@@ -120,7 +120,7 @@ export function ItemNotesModal({
             </View>
 
             {/* Quick Notes */}
-            <Text style={[styles.quickNotesLabel, { color: colors.textSecondary }]}>
+            <Text style={[styles.quickNotesLabel, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>
               Quick add:
             </Text>
             <View style={styles.quickNotes}>
@@ -130,7 +130,7 @@ export function ItemNotesModal({
                   style={[styles.quickNoteButton, { backgroundColor: glassColors.backgroundElevated, borderColor: glassColors.border }]}
                   onPress={() => handleQuickNote(note)}
                 >
-                  <Text style={[styles.quickNoteText, { color: colors.text }]}>
+                  <Text style={[styles.quickNoteText, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
                     {note}
                   </Text>
                 </TouchableOpacity>
@@ -143,7 +143,7 @@ export function ItemNotesModal({
                 style={[styles.button, styles.skipButton, { borderColor: colors.border }]}
                 onPress={() => onConfirm('')}
               >
-                <Text style={[styles.buttonText, { color: colors.text }]}>
+                <Text style={[styles.buttonText, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
                   Skip Notes
                 </Text>
               </TouchableOpacity>
@@ -151,7 +151,7 @@ export function ItemNotesModal({
                 style={[styles.button, styles.addButton, { backgroundColor: colors.primary }]}
                 onPress={handleConfirm}
               >
-                <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                <Text style={[styles.buttonText, { color: '#FFFFFF' }]} maxFontSizeMultiplier={1.3}>
                   Add to Cart
                 </Text>
               </TouchableOpacity>
