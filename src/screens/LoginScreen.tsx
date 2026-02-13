@@ -224,8 +224,9 @@ export function LoginScreen() {
             {/* Header */}
             <View style={styles.header}>
               <Image
-                source={require('../../assets/splash-icon.png')}
-                style={styles.logo}
+                source={require('../../assets/luma-wordmark.png')}
+                style={styles.wordmark}
+                resizeMode="contain"
               />
               <Text maxFontSizeMultiplier={1.2} style={styles.title}>Sign In</Text>
               <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>Access your account to start taking payments</Text>
@@ -391,6 +392,11 @@ const createStyles = (glassColors: typeof glass.dark) => StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 28,
+    marginBottom: 8,
+  },
+  wordmark: {
+    width: 200,
+    height: 80,
     marginBottom: 8,
   },
   title: {

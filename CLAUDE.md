@@ -108,6 +108,7 @@ Luma-App/
 │   │   ├── TapToPaySettingsScreen.tsx   # Terminal reader management
 │   │   ├── TapToPayEducationScreen.tsx  # TTPOi education flow
 │   │   ├── UpgradeScreen.tsx            # Subscription upgrade
+│   │   ├── EventsScannerScreen.tsx      # QR code scanner for event check-in
 │   │   └── StripeOnboardingScreen.tsx   # Stripe Connect onboarding
 │   ├── context/                         # State management (7 contexts)
 │   │   ├── AuthContext.tsx              # Auth, user, org, subscription, biometric

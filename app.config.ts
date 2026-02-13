@@ -14,7 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     newArchEnabled: true,
     scheme: 'luma',
     splash: {
-      image: './assets/splash-icon.png',
+      image: './assets/luma-wordmark.png',
       resizeMode: 'contain',
       backgroundColor: '#000000',
     },

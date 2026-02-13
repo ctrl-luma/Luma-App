@@ -64,7 +64,7 @@ function PaymentSetupRequired({ colors, isManager }: { colors: any; isManager: b
       {isManager && (
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.primary }]}
-          onPress={() => openVendorDashboard('/connect')}
+          onPress={() => openVendorDashboard('/banking')}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Set Up Payments"

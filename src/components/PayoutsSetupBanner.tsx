@@ -31,7 +31,7 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
         <Text style={styles.compactText} maxFontSizeMultiplier={1.5}>Link bank to receive payouts</Text>
         {isManager && (
           <TouchableOpacity
-            onPress={() => openVendorDashboard('/connect')}
+            onPress={() => openVendorDashboard('/banking')}
             style={styles.compactButton}
             accessibilityRole="button"
             accessibilityLabel="Set up payouts"
@@ -63,7 +63,7 @@ export function PayoutsSetupBanner({ compact = false }: PayoutsSetupBannerProps)
       {isManager && (
         <TouchableOpacity
           style={styles.button}
-          onPress={() => openVendorDashboard('/connect')}
+          onPress={() => openVendorDashboard('/banking')}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Complete Setup"

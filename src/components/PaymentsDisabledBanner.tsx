@@ -27,7 +27,7 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
         <Text style={styles.compactText} maxFontSizeMultiplier={1.5}>Payments not set up</Text>
         {isManager && (
           <TouchableOpacity
-            onPress={() => openVendorDashboard('/connect')}
+            onPress={() => openVendorDashboard('/banking')}
             style={styles.compactButton}
             accessibilityRole="button"
             accessibilityLabel="Set up payments"
@@ -59,7 +59,7 @@ export function PaymentsDisabledBanner({ compact = false }: PaymentsDisabledBann
       {isManager && (
         <TouchableOpacity
           style={styles.button}
-          onPress={() => openVendorDashboard('/connect')}
+          onPress={() => openVendorDashboard('/banking')}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Set Up Payments"

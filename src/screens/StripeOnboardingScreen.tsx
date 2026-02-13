@@ -334,7 +334,7 @@ export function StripeOnboardingScreen() {
     if (!url || url === 'about:blank') return true;
 
     // Block only our callback URL — Stripe redirects here when onboarding completes.
-    // The callback is configured as {dashboardUrl}/connect (e.g. portal.lumapos.co/connect)
+    // The callback is configured as {dashboardUrl}/banking (e.g. portal.lumapos.co/banking)
     // Covers: portal.lumapos.co, dev.lumapos.co, lumapos.co, localhost:*
     const isCallbackRedirect =
       url.includes('lumapos.co') || url.includes('localhost');
