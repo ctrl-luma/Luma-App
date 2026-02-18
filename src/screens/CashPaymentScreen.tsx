@@ -147,6 +147,16 @@ export function CashPaymentScreen() {
         </View>
       )}
 
+      {/* Insufficient Warning */}
+      {cashTenderedCents > 0 && !isEnoughCash && (
+        <View style={styles.insufficientSection} accessibilityRole="alert">
+          <Ionicons name="warning-outline" size={18} color={colors.error} />
+          <Text style={styles.insufficientText} maxFontSizeMultiplier={1.5}>
+            Insufficient — ${((totalAmount - cashTenderedCents) / 100).toFixed(2)} more needed
+          </Text>
+        </View>
+      )}
+
       {/* Exact Amount Button */}
       <View style={styles.exactRow}>
         <TouchableOpacity style={styles.exactButton} onPress={handleExactAmount} accessibilityRole="button" accessibilityLabel={`Exact amount $${(totalAmount / 100).toFixed(2)}`}>
@@ -298,6 +308,23 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontSize: 28,
       fontFamily: fonts.bold,
       color: colors.success,
+    },
+    insufficientSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      marginHorizontal: 20,
+      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(239, 68, 68, 0.3)',
+      gap: 8,
+    },
+    insufficientText: {
+      fontSize: 15,
+      fontFamily: fonts.semiBold,
+      color: colors.error,
     },
     exactRow: {
       alignItems: 'center',

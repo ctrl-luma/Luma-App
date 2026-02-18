@@ -130,6 +130,38 @@ Dynamic labels: When content is dynamic, build the label from the data:
 <TouchableOpacity accessibilityLabel={`Refund $${amount} transaction`}>
 ```
 
+### Mobile-Friendly UI (MANDATORY)
+
+This is a mobile-only app. Every UI element, screen, and component MUST be designed and verified for mobile usage. All new code and modifications must follow these rules:
+
+**Layout:**
+- Use `flexDirection: 'row'` with `flexWrap: 'wrap'` or `flex: 1` to prevent horizontal overflow
+- Use `marginHorizontal` / `paddingHorizontal` (minimum 16px) to keep content away from screen edges
+- Never use fixed widths that could overflow on small screens (iPhone SE = 320pt wide)
+- Use percentage-based widths or `flex` for responsive sizing
+
+**Touch Targets:**
+- All interactive elements must be at minimum 44x44pt (Apple HIG) or 48x48dp (Material Design)
+- Use `hitSlop` to expand tap areas on small icons without increasing visual size
+- Provide adequate spacing (`gap: 8-12`) between adjacent tappable elements to prevent mis-taps
+
+**Text & Inputs:**
+- All `<Text>` must have `maxFontSizeMultiplier` (see Dynamic Type section above)
+- Use `minHeight` instead of fixed `height` on containers that hold text
+- All `<TextInput>` should be wrapped in `KeyboardAvoidingView` (behavior `'padding'` on iOS, `'height'` on Android)
+- Add `keyboardShouldPersistTaps="handled"` on `ScrollView`s containing inputs
+
+**Feedback & States:**
+- Disabled buttons must be visually distinct (reduced opacity, muted colors)
+- Loading states must show `ActivityIndicator` with `accessibilityLabel`
+- Error/warning/success states must have visible banners or indicators — never rely solely on alerts or disabled states
+- Form validation errors must appear inline near the relevant input
+
+**Safe Areas:**
+- All screens must use `SafeAreaView` from `react-native-safe-area-context` (not React Native's built-in)
+- Specify edges explicitly: `edges={['top', 'bottom', 'left', 'right']}` or as needed
+- Bottom-padded footers should account for home indicator on modern iPhones
+
 ### Marketing Requirements (Section 5.1-5.3)
 - Use official Apple Tap to Pay branding assets
 - Follow trademark guidelines
