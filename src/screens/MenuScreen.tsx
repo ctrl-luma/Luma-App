@@ -412,7 +412,7 @@ interface CategoryPillProps {
   glassColors: typeof glass.dark;
 }
 
-function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: CategoryPillProps) {
+const CategoryPill = memo(function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: CategoryPillProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -460,7 +460,7 @@ function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: 
       )}
     </TouchableOpacity>
   );
-}
+});
 
 // Animated pressable wrapper for product cards
 const AnimatedPressable = memo(function AnimatedPressable({

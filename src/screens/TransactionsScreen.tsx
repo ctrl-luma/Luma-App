@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -224,7 +224,7 @@ function LoadingTransactionsContent({ colors, isDark }: { colors: any; isDark: b
 type FilterType = 'all' | 'succeeded' | 'refunded' | 'failed';
 
 // Animated transaction item component
-function AnimatedTransactionItem({
+const AnimatedTransactionItem = memo(function AnimatedTransactionItem({
   item,
   onPress,
   colors,
@@ -341,7 +341,7 @@ function AnimatedTransactionItem({
       </Animated.View>
     </Pressable>
   );
-}
+});
 
 export function TransactionsScreen() {
   const { colors, isDark } = useTheme();
@@ -492,7 +492,7 @@ export function TransactionsScreen() {
 
   const styles = createStyles(colors, glassColors, isDark);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case 'succeeded':
         return colors.success;
@@ -505,9 +505,9 @@ export function TransactionsScreen() {
       default:
         return colors.textMuted;
     }
-  };
+  }, [colors.success, colors.warning, colors.error, colors.textMuted]);
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = useCallback((status: string) => {
     switch (status) {
       case 'succeeded':
         return 'Succeeded';
@@ -524,9 +524,9 @@ export function TransactionsScreen() {
       default:
         return status;
     }
-  };
+  }, []);
 
-  const formatDate = (timestamp: number) => {
+  const formatDate = useCallback((timestamp: number) => {
     const date = new Date(timestamp * 1000);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
@@ -535,7 +535,7 @@ export function TransactionsScreen() {
       return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     }
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
+  }, []);
 
   const handleTransactionPress = useCallback((item: Transaction) => {
     if (item.sourceType === 'preorder') {
@@ -545,7 +545,7 @@ export function TransactionsScreen() {
     }
   }, [navigation]);
 
-  const renderTransaction = ({ item }: { item: Transaction }) => (
+  const renderTransaction = useCallback(({ item }: { item: Transaction }) => (
     <AnimatedTransactionItem
       item={item}
       onPress={() => handleTransactionPress(item)}
@@ -555,7 +555,7 @@ export function TransactionsScreen() {
       getStatusLabel={getStatusLabel}
       formatDate={formatDate}
     />
-  );
+  ), [handleTransactionPress, colors, styles, getStatusColor, getStatusLabel, formatDate]);
 
   const renderFooter = () => {
     if (!isFetchingNextPage) return null;

@@ -169,6 +169,94 @@ This is a mobile-only app. Every UI element, screen, and component MUST be desig
 
 ---
 
+## React Performance Patterns (MANDATORY)
+
+These patterns prevent render loops, excessive re-renders, and crashes. All new code MUST follow these rules.
+
+### 1. Socket Event Handlers — NEVER inline `useCallback` inside `useSocketEvent()`
+
+The `useSocketEvent(event, callback)` hook subscribes/unsubscribes via `useEffect` whenever the callback reference changes. Passing an inline `useCallback` directly creates a new function reference when its dependencies change, triggering rapid subscribe/unsubscribe cycles that cause render loops or crashes.
+
+```tsx
+// BAD — inline useCallback recreates on dependency change → subscribe/unsubscribe loop
+useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
+  if (data.status === 'held') fetchHeldOrders();
+}, [fetchHeldOrders]));
+
+// GOOD — define the handler OUTSIDE, then pass the stable reference
+const handleOrderUpdated = useCallback((data: any) => {
+  if (data.status === 'held') fetchHeldOrders();
+}, [fetchHeldOrders]);
+
+useSocketEvent(SocketEvents.ORDER_UPDATED, handleOrderUpdated);
+```
+
+Also NEVER include derived/changing values (e.g., `orders.length`, `items.length`) in socket handler `useCallback` dependencies — this causes the handler to recreate on every data change, which triggers re-subscription loops.
+
+### 2. Context Provider Values — ALWAYS memoize with `useMemo`
+
+Every `<Context.Provider value={...}>` MUST wrap the value object in `useMemo`. Without this, a new object reference is created on every render, forcing ALL consumers of that context to re-render unnecessarily.
+
+```tsx
+// BAD — new object reference every render, all consumers re-render
+return (
+  <MyContext.Provider value={{ data, loading, refresh }}>
+    {children}
+  </MyContext.Provider>
+);
+
+// GOOD — stable reference, consumers only re-render when values actually change
+const value = useMemo(() => ({ data, loading, refresh }), [data, loading, refresh]);
+
+return (
+  <MyContext.Provider value={value}>
+    {children}
+  </MyContext.Provider>
+);
+```
+
+All 8 context providers (Auth, Cart, Catalog, Socket, StripeTerminal, Theme, Preorders, Device) follow this pattern.
+
+### 3. List Item Components — ALWAYS wrap with `memo()`
+
+Components rendered inside `FlatList`, `SectionList`, or `.map()` loops MUST be wrapped with `React.memo()` to prevent re-rendering every item when parent state changes.
+
+```tsx
+// BAD — re-renders every item on any parent state change
+function TransactionItem({ item, onPress }) { ... }
+
+// GOOD — only re-renders when its own props change
+const TransactionItem = memo(function TransactionItem({ item, onPress }) { ... });
+```
+
+Currently memoized list item components: `AnimatedTransactionItem`, `CategoryPill`, `KeypadButton` (in both ChargeScreen and QuickChargeBottomSheet).
+
+### 4. Avoid Redundant Data Fetching in Socket Handlers
+
+When multiple places subscribe to the same socket event, ensure only ONE place triggers the data refetch. For example, `CatalogContext` handles `refreshCatalogs()` on `CATALOG_UPDATED` — individual screens should NOT also call `refreshCatalogs()`. Screens should only refetch their own screen-specific data (products, categories, etc.).
+
+### 5. Use setState Callback Pattern to Avoid Stale Closures
+
+When a `useCallback` needs to read and update state, use the functional setState form to avoid including the state variable in dependencies:
+
+```tsx
+// BAD — depends on `state.user`, recreates callback on every user change
+const completeOnboarding = useCallback(async () => {
+  const updatedUser = { ...state.user, onboardingCompleted: true };
+  setState({ ...state, user: updatedUser });
+}, [state.user]);
+
+// GOOD — no dependency on state, stable callback reference
+const completeOnboarding = useCallback(async () => {
+  setState(prev => ({
+    ...prev,
+    user: prev.user ? { ...prev.user, onboardingCompleted: true } : null,
+  }));
+}, []);
+```
+
+---
+
 ## Directory Structure
 
 ```
@@ -583,6 +671,7 @@ const SocketEvents = {
   CATEGORY_UPDATED: 'category:updated',
   CATEGORY_CREATED: 'category:created',
   CATEGORY_DELETED: 'category:deleted',
+  CATEGORIES_REORDERED: 'categories:reordered',
 
   // Order events
   ORDER_CREATED: 'order:created',

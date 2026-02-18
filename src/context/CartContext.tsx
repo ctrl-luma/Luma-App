@@ -235,35 +235,35 @@ export function CartProvider({ children }: CartProviderProps) {
     [items]
   );
 
+  const value = useMemo(() => ({
+    items,
+    itemCount,
+    subtotal,
+    orderNotes,
+    setOrderNotes,
+    customerEmail,
+    setCustomerEmail,
+    paymentMethod,
+    setPaymentMethod,
+    selectedTipIndex,
+    setSelectedTipIndex,
+    customTipAmount,
+    setCustomTipAmount,
+    showCustomTipInput,
+    setShowCustomTipInput,
+    addItem,
+    removeItem,
+    updateQuantity,
+    updateItemNotes,
+    incrementItem,
+    decrementItem,
+    clearCart,
+    getItemQuantity,
+    getItemByCartKey,
+  }), [items, itemCount, subtotal, orderNotes, setOrderNotes, customerEmail, setCustomerEmail, paymentMethod, setPaymentMethod, selectedTipIndex, setSelectedTipIndex, customTipAmount, setCustomTipAmount, showCustomTipInput, setShowCustomTipInput, addItem, removeItem, updateQuantity, updateItemNotes, incrementItem, decrementItem, clearCart, getItemQuantity, getItemByCartKey]);
+
   return (
-    <CartContext.Provider
-      value={{
-        items,
-        itemCount,
-        subtotal,
-        orderNotes,
-        setOrderNotes,
-        customerEmail,
-        setCustomerEmail,
-        paymentMethod,
-        setPaymentMethod,
-        selectedTipIndex,
-        setSelectedTipIndex,
-        customTipAmount,
-        setCustomTipAmount,
-        showCustomTipInput,
-        setShowCustomTipInput,
-        addItem,
-        removeItem,
-        updateQuantity,
-        updateItemNotes,
-        incrementItem,
-        decrementItem,
-        clearCart,
-        getItemQuantity,
-        getItemByCartKey,
-      }}
-    >
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

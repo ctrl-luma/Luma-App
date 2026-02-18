@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Alert, Image } from 'react-native';
 import { authService, User, Organization, Subscription, stripeConnectApi, ConnectStatus } from '../lib/api';
 import { setOnSessionKicked, apiClient } from '../lib/api/client';
@@ -277,20 +277,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const completeOnboarding = useCallback(async () => {
     try {
       await authService.completeOnboarding();
-      // Update local user state
-      setState(prev => ({
-        ...prev,
-        user: prev.user ? { ...prev.user, onboardingCompleted: true } : null,
-      }));
-      // Update cached user data
-      if (state.user) {
-        await authService.saveUser({ ...state.user, onboardingCompleted: true });
-      }
+      // Update local user state and cache in one setState call to avoid stale closure
+      setState(prev => {
+        const updatedUser = prev.user ? { ...prev.user, onboardingCompleted: true } : null;
+        if (updatedUser) {
+          authService.saveUser(updatedUser).catch(err => logger.error('Failed to save user:', err));
+        }
+        return { ...prev, user: updatedUser };
+      });
     } catch (error) {
       logger.error('Failed to complete onboarding:', error);
       // Don't throw - onboarding completion is not critical
     }
-  }, [state.user]);
+  }, []);
 
   // Fetch Connect status when authenticated
   useEffect(() => {
@@ -330,8 +329,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.user?.avatarUrl]);
 
+  const value = useMemo(() => ({
+    ...state,
+    signIn,
+    signOut,
+    refreshAuth,
+    refreshConnectStatus,
+    completeOnboarding,
+    setBiometricEnabled,
+    refreshBiometricStatus,
+  }), [state, signIn, signOut, refreshAuth, refreshConnectStatus, completeOnboarding, setBiometricEnabled, refreshBiometricStatus]);
+
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut, refreshAuth, refreshConnectStatus, completeOnboarding, setBiometricEnabled, refreshBiometricStatus }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

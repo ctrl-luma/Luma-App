@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Catalog, catalogsApi } from '../lib/api';
 import { useAuth } from './AuthContext';
@@ -229,17 +229,17 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
     wasConnectedRef.current = isConnected;
   }, [isConnected, isAuthenticated, refreshCatalogs]);
 
+  const value = useMemo(() => ({
+    selectedCatalog,
+    catalogs,
+    isLoading,
+    setSelectedCatalog,
+    clearCatalog,
+    refreshCatalogs,
+  }), [selectedCatalog, catalogs, isLoading, setSelectedCatalog, clearCatalog, refreshCatalogs]);
+
   return (
-    <CatalogContext.Provider
-      value={{
-        selectedCatalog,
-        catalogs,
-        isLoading,
-        setSelectedCatalog,
-        clearCatalog,
-        refreshCatalogs,
-      }}
-    >
+    <CatalogContext.Provider value={value}>
       {children}
     </CatalogContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -46,7 +46,7 @@ interface KeypadButtonProps {
   glassColors: typeof glass.dark;
 }
 
-function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: KeypadButtonProps) {
+const KeypadButton = memo(function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: KeypadButtonProps) {
   const scale = React.useRef(new Animated.Value(1)).current;
 
   // Scale font sizes based on button size
@@ -130,7 +130,7 @@ function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: Ke
       </Pressable>
     </Animated.View>
   );
-}
+});
 
 export function ChargeScreen() {
   const { colors, isDark } = useTheme();

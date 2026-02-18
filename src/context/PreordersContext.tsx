@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, ReactNode } from 'react';
 import { preordersApi } from '../lib/api/preorders';
 import { useSocketEvent, useSocket, SocketEvents } from './SocketContext';
 import { useAuth } from './AuthContext';
@@ -86,8 +86,10 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
   useSocketEvent(SocketEvents.PREORDER_COMPLETED, handlePreorderEvent);
   useSocketEvent(SocketEvents.PREORDER_CANCELLED, handlePreorderEvent);
 
+  const value = useMemo(() => ({ counts, isLoading, refreshCounts }), [counts, isLoading, refreshCounts]);
+
   return (
-    <PreordersContext.Provider value={{ counts, isLoading, refreshCounts }}>
+    <PreordersContext.Provider value={value}>
       {children}
     </PreordersContext.Provider>
   );

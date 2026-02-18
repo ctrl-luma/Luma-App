@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { getDeviceId } from '../lib/device';
 
 interface DeviceContextType {
@@ -31,8 +31,10 @@ export function DeviceProvider({ children }: DeviceProviderProps) {
     loadDeviceId();
   }, []);
 
+  const value = useMemo(() => ({ deviceId, isLoading }), [deviceId, isLoading]);
+
   return (
-    <DeviceContext.Provider value={{ deviceId, isLoading }}>
+    <DeviceContext.Provider value={value}>
       {children}
     </DeviceContext.Provider>
   );

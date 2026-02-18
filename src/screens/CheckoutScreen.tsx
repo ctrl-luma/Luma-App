@@ -62,7 +62,7 @@ export function CheckoutScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'Checkout'>>();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { items, clearCart, incrementItem, decrementItem, removeItem, subtotal: cartSubtotal, orderNotes, setOrderNotes, customerEmail, setCustomerEmail, paymentMethod, setPaymentMethod, selectedTipIndex, setSelectedTipIndex, customTipAmount, setCustomTipAmount, showCustomTipInput, setShowCustomTipInput } = useCart();
+  const { items, itemCount, clearCart, incrementItem, decrementItem, removeItem, subtotal: cartSubtotal, orderNotes, setOrderNotes, customerEmail, setCustomerEmail, paymentMethod, setPaymentMethod, selectedTipIndex, setSelectedTipIndex, customTipAmount, setCustomTipAmount, showCustomTipInput, setShowCustomTipInput } = useCart();
   const { selectedCatalog } = useCatalog();
   const { isPaymentReady, connectLoading, connectStatus } = useAuth();
   const { deviceCompatibility, isInitialized: isTerminalInitialized, isWarming } = useTerminal();
@@ -1085,7 +1085,7 @@ export function CheckoutScreen() {
               {/* Totals */}
               <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
-                  <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)</Text>
+                  <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Subtotal ({itemCount} items)</Text>
                   <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(subtotal / 100).toFixed(2)}</Text>
                 </View>
                 {taxAmount > 0 && (

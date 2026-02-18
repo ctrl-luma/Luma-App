@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useCallback, useMemo, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { AppState, AppStateStatus } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
@@ -411,8 +411,10 @@ export function SocketProvider({ children }: SocketProviderProps) {
     }
   }, []);
 
+  const value = useMemo(() => ({ isConnected, subscribe, emit }), [isConnected, subscribe, emit]);
+
   return (
-    <SocketContext.Provider value={{ isConnected, subscribe, emit }}>
+    <SocketContext.Provider value={value}>
       {children}
     </SocketContext.Provider>
   );

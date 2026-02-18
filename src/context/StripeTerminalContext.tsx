@@ -10,7 +10,7 @@
  * - 3.9.1: Configuration progress indicator support
  */
 
-import React, { createContext, useContext, useCallback, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { Platform, Alert, AppState, AppStateStatus } from 'react-native';
 import Constants from 'expo-constants';
 
@@ -784,7 +784,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
   }, [cancelCollectPaymentMethod]);
 
-  const value: StripeTerminalContextValue = {
+  const value = useMemo<StripeTerminalContextValue>(() => ({
     isInitialized,
     isConnected,
     isProcessing,
@@ -801,7 +801,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     cancelPayment,
     warmTerminal,
     checkDeviceCompatibility,
-  };
+  }), [isInitialized, isConnected, isProcessing, isWarming, error, deviceCompatibility, configurationStage, configurationProgress, readerUpdateProgress, termsAcceptance, initializeTerminal, connectReader, processPayment, cancelPayment, warmTerminal, checkDeviceCompatibility]);
 
   return (
     <StripeTerminalContext.Provider value={value}>

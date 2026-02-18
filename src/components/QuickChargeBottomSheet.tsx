@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -36,7 +36,7 @@ interface KeypadButtonProps {
   glassColors: typeof glass.dark;
 }
 
-function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: KeypadButtonProps) {
+const KeypadButton = memo(function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: KeypadButtonProps) {
   const scale = React.useRef(new Animated.Value(1)).current;
 
   const numberFontSize = Math.round(buttonSize * 0.36);
@@ -116,7 +116,7 @@ function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: Ke
       </Pressable>
     </Animated.View>
   );
-}
+});
 
 interface QuickChargeBottomSheetProps {
   visible: boolean;
