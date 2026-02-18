@@ -96,28 +96,11 @@ export function CheckoutScreen() {
   const { total: routeTotal, isQuickCharge, quickChargeDescription, resumedOrderId, resumedOrder } = route.params;
   const styles = createStyles(colors, glassColors, isDark);
 
-  // Log route params for debugging
-  console.log('CheckoutScreen: Route params', {
-    isQuickCharge,
-    resumedOrderId,
-    hasResumedOrder: !!resumedOrder,
-    resumedOrderStatus: resumedOrder?.status,
-    resumedOrderItems: resumedOrder?.items?.length,
-    cartItemCount: items.length,
-  });
-
   // NOTE: Do NOT clear cart on unmount — only clear after explicit hold/delete/complete actions
 
   // Initialize state from resumed order
   useEffect(() => {
     if (resumedOrder) {
-      console.log('CheckoutScreen: Initializing from resumed order', {
-        customerEmail: resumedOrder.customerEmail,
-        notes: resumedOrder.notes,
-        paymentMethod: resumedOrder.paymentMethod,
-        tipAmount: resumedOrder.tipAmount,
-      });
-
       // Set customer email
       if (resumedOrder.customerEmail) {
         setCustomerEmail(resumedOrder.customerEmail);
@@ -155,9 +138,7 @@ export function CheckoutScreen() {
 
   // Navigate back if cart becomes empty (not for quick charge or resumed orders)
   useEffect(() => {
-    console.log('CheckoutScreen: Empty cart check', { isQuickCharge, hasResumedOrder: !!resumedOrder, itemCount: items.length });
     if (!isQuickCharge && !resumedOrder && items.length === 0) {
-      console.log('CheckoutScreen: Cart empty, going back');
       navigation.goBack();
     }
   }, [items.length, isQuickCharge, resumedOrder, navigation]);
@@ -535,7 +516,6 @@ export function CheckoutScreen() {
       let order;
       if (resumedOrder) {
         // Use existing resumed order
-        console.log('CheckoutScreen: Using resumed order', { orderId: resumedOrder.id });
         order = resumedOrder;
       } else {
         // Create new order
@@ -553,7 +533,6 @@ export function CheckoutScreen() {
         // Get device ID for order tracking
         const deviceId = await getDeviceId();
 
-        console.log('CheckoutScreen: Creating new order');
         order = await ordersApi.create({
           catalogId: selectedCatalog?.id,
           items: orderItems,
@@ -568,7 +547,6 @@ export function CheckoutScreen() {
           deviceId,
           notes: orderNotes || undefined, // Include order-level notes
         });
-        console.log('CheckoutScreen: Order created', { orderId: order.id });
       }
 
       // Handle cash payment - navigate to cash screen
@@ -627,15 +605,6 @@ export function CheckoutScreen() {
         receiptEmail,
       });
 
-      // Debug: Log PI details to diagnose account mismatch
-      console.log('CheckoutScreen: PaymentIntent created', {
-        id: paymentIntent.id,
-        stripeAccountId: paymentIntent.stripeAccountId,
-        clientSecretPrefix: paymentIntent.clientSecret?.substring(0, 30),
-        hasClientSecret: !!paymentIntent.clientSecret,
-        amount: paymentIntent.amount,
-      });
-
       // 3. Link PaymentIntent to order
       await ordersApi.linkPaymentIntent(order.id, paymentIntent.id);
 
@@ -673,6 +642,8 @@ export function CheckoutScreen() {
           <TouchableOpacity
             style={styles.closeButton}
             onPress={handleClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close checkout"
           >
             <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -692,6 +663,9 @@ export function CheckoutScreen() {
                   setShowHoldModal(true);
                 }}
                 disabled={isProcessing}
+                accessibilityRole="button"
+                accessibilityLabel="Hold order"
+                accessibilityHint="Save this order to complete later"
               >
                 <Ionicons name="pause-circle-outline" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -704,6 +678,9 @@ export function CheckoutScreen() {
                   clearCart();
                   navigation.goBack();
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear cart"
+                accessibilityHint="Remove all items and go back"
               >
                 <Text style={styles.clearButtonText} maxFontSizeMultiplier={1.3}>Clear</Text>
               </TouchableOpacity>
@@ -741,6 +718,9 @@ export function CheckoutScreen() {
                         isSelected && styles.tipButtonInnerSelected,
                       ]}
                       onPress={() => handleTipSelect(index)}
+                      accessibilityRole="button"
+                      accessibilityLabel={option.isCustom ? 'Custom tip' : option.value === 0 ? 'No tip' : `${option.label} tip${calculatedTip > 0 ? `, $${(calculatedTip / 100).toFixed(2)}` : ''}`}
+                      accessibilityState={{ selected: isSelected }}
                     >
                       <Text
                         style={[
@@ -782,6 +762,7 @@ export function CheckoutScreen() {
                     onChangeText={setCustomTipAmount}
                     keyboardType="number-pad"
                     autoFocus
+                    accessibilityLabel="Custom tip amount in dollars"
                   />
                 </View>
               </View>
@@ -794,6 +775,9 @@ export function CheckoutScreen() {
             <TouchableOpacity
               style={styles.customerInfoHeader}
               onPress={() => setShowCustomerInfo(!showCustomerInfo)}
+              accessibilityRole="button"
+              accessibilityLabel={showCustomerInfo ? 'Collapse customer info' : 'Expand customer info'}
+              accessibilityState={{ expanded: showCustomerInfo }}
             >
               <View style={styles.customerInfoHeaderLeft}>
                 <Ionicons name="person-outline" size={18} color={colors.textSecondary} />
@@ -825,8 +809,9 @@ export function CheckoutScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      accessibilityLabel="Customer email for receipt"
                     />
-                    {emailError && <Text style={styles.inputErrorText} maxFontSizeMultiplier={1.5}>{emailError}</Text>}
+                    {emailError && <Text style={styles.inputErrorText} maxFontSizeMultiplier={1.5} accessibilityRole="alert">{emailError}</Text>}
                   </View>
                 )}
                 <TextInput
@@ -838,6 +823,7 @@ export function CheckoutScreen() {
                   multiline
                   numberOfLines={2}
                   maxLength={500}
+                  accessibilityLabel="Order notes"
                 />
               </View>
             )}
@@ -853,6 +839,9 @@ export function CheckoutScreen() {
                   paymentMethod === 'tap_to_pay' && styles.paymentMethodButtonSelected,
                 ]}
                 onPress={() => setPaymentMethod('tap_to_pay')}
+                accessibilityRole="button"
+                accessibilityLabel={Platform.OS === 'ios' ? 'Tap to Pay' : 'Card payment'}
+                accessibilityState={{ selected: paymentMethod === 'tap_to_pay' }}
               >
                 <Ionicons
                   name="phone-portrait-outline"
@@ -875,6 +864,9 @@ export function CheckoutScreen() {
                   paymentMethod === 'cash' && styles.paymentMethodButtonSelected,
                 ]}
                 onPress={() => setPaymentMethod('cash')}
+                accessibilityRole="button"
+                accessibilityLabel="Cash payment"
+                accessibilityState={{ selected: paymentMethod === 'cash' }}
               >
                 <Ionicons
                   name="cash-outline"
@@ -897,6 +889,9 @@ export function CheckoutScreen() {
                   paymentMethod === 'split' && styles.paymentMethodButtonSelected,
                 ]}
                 onPress={() => setPaymentMethod('split')}
+                accessibilityRole="button"
+                accessibilityLabel="Split payment"
+                accessibilityState={{ selected: paymentMethod === 'split' }}
               >
                 <Ionicons
                   name="git-branch-outline"
@@ -939,7 +934,7 @@ export function CheckoutScreen() {
                 )}
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
-                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total $${(grandTotal / 100).toFixed(2)}`}>${(grandTotal / 100).toFixed(2)}</Text>
                 </View>
               </View>
             </>
@@ -993,7 +988,7 @@ export function CheckoutScreen() {
                 )}
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
-                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total $${(grandTotal / 100).toFixed(2)}`}>${(grandTotal / 100).toFixed(2)}</Text>
                 </View>
               </View>
             </>
@@ -1020,6 +1015,8 @@ export function CheckoutScreen() {
                       style={styles.deleteAction}
                       onPress={() => removeItem(item.cartKey)}
                       activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${item.product.name} from cart`}
                     >
                       <Animated.View
                         style={[styles.deleteActionContent, { transform: [{ scale }], opacity }]}
@@ -1056,15 +1053,25 @@ export function CheckoutScreen() {
                         )}
                       </View>
                       <View style={styles.quantityControls}>
-                        <TouchableOpacity style={styles.quantityButton} onPress={() => decrementItem(item.cartKey)}>
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => decrementItem(item.cartKey)}
+                          accessibilityRole="button"
+                          accessibilityLabel={item.quantity === 1 ? `Remove ${item.product.name}` : `Decrease ${item.product.name} quantity`}
+                        >
                           <Ionicons
                             name={item.quantity === 1 ? 'trash-outline' : 'remove'}
                             size={16}
                             color={item.quantity === 1 ? colors.error : colors.text}
                           />
                         </TouchableOpacity>
-                        <Text style={styles.quantityText} maxFontSizeMultiplier={1.5}>{item.quantity}</Text>
-                        <TouchableOpacity style={styles.quantityButton} onPress={() => incrementItem(item.cartKey)}>
+                        <Text style={styles.quantityText} maxFontSizeMultiplier={1.5} accessibilityRole="text" accessibilityLabel={`Quantity ${item.quantity}`}>{item.quantity}</Text>
+                        <TouchableOpacity
+                          style={styles.quantityButton}
+                          onPress={() => incrementItem(item.cartKey)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Increase ${item.product.name} quantity`}
+                        >
                           <Ionicons name="add" size={16} color={colors.text} />
                         </TouchableOpacity>
                       </View>
@@ -1095,7 +1102,7 @@ export function CheckoutScreen() {
                 )}
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
-                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total $${(grandTotal / 100).toFixed(2)}`}>${(grandTotal / 100).toFixed(2)}</Text>
                 </View>
               </View>
             </>
@@ -1116,9 +1123,12 @@ export function CheckoutScreen() {
             paymentMethod === 'tap_to_pay' && { backgroundColor: isDark ? '#fff' : '#09090b' },
             isProcessing && styles.payButtonDisabled,
           ]}
+          accessibilityRole="button"
+          accessibilityLabel={isProcessing ? 'Processing payment' : paymentMethod === 'tap_to_pay' ? `${TAP_TO_PAY_LABEL}, $${(grandTotal / 100).toFixed(2)}` : paymentMethod === 'cash' ? `Pay with cash, $${(grandTotal / 100).toFixed(2)}` : `Split payment, $${(grandTotal / 100).toFixed(2)}`}
+          accessibilityState={{ disabled: isProcessing }}
         >
           {isProcessing ? (
-            <ActivityIndicator color={paymentMethod === 'tap_to_pay' ? (isDark ? '#09090b' : '#fff') : '#fff'} />
+            <ActivityIndicator color={paymentMethod === 'tap_to_pay' ? (isDark ? '#09090b' : '#fff') : '#fff'} accessibilityLabel="Processing payment" />
           ) : (
             <>
               {paymentMethod === 'tap_to_pay' ? (
@@ -1159,10 +1169,13 @@ export function CheckoutScreen() {
         <Pressable
           style={styles.modalOverlay}
           onPress={() => setShowHoldModal(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close hold order dialog"
         >
           <Pressable
             style={[styles.modalContent, { backgroundColor: colors.card }]}
             onPress={(e) => e.stopPropagation()}
+            accessibilityRole="none"
           >
             <Text style={styles.modalTitle} maxFontSizeMultiplier={1.3}>Hold Order</Text>
             <Text style={styles.modalSubtitle} maxFontSizeMultiplier={1.5}>
@@ -1176,6 +1189,8 @@ export function CheckoutScreen() {
               value={holdName}
               onChangeText={setHoldName}
               maxLength={50}
+              accessibilityLabel="Order name"
+              accessibilityHint="Give this order a name so you can find it later"
             />
             <View style={styles.modalButtons}>
               <TouchableOpacity
@@ -1184,6 +1199,8 @@ export function CheckoutScreen() {
                   setShowHoldModal(false);
                   setHoldName('');
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel hold order"
               >
                 <Text style={styles.modalCancelButtonText} maxFontSizeMultiplier={1.3}>Cancel</Text>
               </TouchableOpacity>
@@ -1191,9 +1208,12 @@ export function CheckoutScreen() {
                 style={[styles.modalConfirmButton, isHolding && styles.modalConfirmButtonDisabled]}
                 onPress={handleHoldOrder}
                 disabled={isHolding}
+                accessibilityRole="button"
+                accessibilityLabel={isHolding ? 'Holding order' : 'Hold order'}
+                accessibilityState={{ disabled: isHolding }}
               >
                 {isHolding ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color="#fff" size="small" accessibilityLabel="Holding order" />
                 ) : (
                   <>
                     <Ionicons name="pause-circle" size={18} color="#fff" />

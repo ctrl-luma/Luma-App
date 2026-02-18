@@ -31,7 +31,6 @@ export async function getDeviceId(): Promise<string> {
 
     return deviceId;
   } catch (error) {
-    console.error('Error getting device ID:', error);
     // Fallback to a session-based ID if storage fails
     return generateUUID();
   }

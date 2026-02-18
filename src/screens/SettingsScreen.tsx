@@ -289,6 +289,9 @@ export function SettingsScreen() {
               style={styles.vendorPortalCard}
               onPress={handleOpenVendorPortal}
               activeOpacity={0.8}
+              accessibilityRole="link"
+              accessibilityLabel="Vendor Portal"
+              accessibilityHint="Opens the vendor dashboard to manage products, menus, and reports"
             >
               <LinearGradient
                 colors={[colors.primary, colors.primary700 || '#4338ca']}
@@ -331,7 +334,7 @@ export function SettingsScreen() {
                 )}
               </View>
               {catalogs.length > 1 && (
-                <TouchableOpacity style={styles.switchButton} onPress={handleSwitchCatalog}>
+                <TouchableOpacity style={styles.switchButton} onPress={handleSwitchCatalog} accessibilityRole="button" accessibilityLabel="Switch catalog">
                   <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
                   <Text style={styles.switchButtonText} maxFontSizeMultiplier={1.3}>Switch</Text>
                 </TouchableOpacity>
@@ -349,6 +352,9 @@ export function SettingsScreen() {
             {!isPro ? (
               <TouchableOpacity
                 style={styles.row}
+                accessibilityRole="button"
+                accessibilityLabel={`${subscriptionInfo?.current_plan?.name || 'Starter Plan'}, upgrade`}
+                accessibilityHint="Navigate to upgrade your subscription plan"
                 onPress={() => {
                   if (Platform.OS === 'web' || isStripePlatformUser) {
                     createVendorDashboardUrl('/billing').then(url => {
@@ -396,7 +402,7 @@ export function SettingsScreen() {
                   </View>
                 </View>
                 {subscriptionLoading ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Loading subscription status" />
                 ) : (
                   <View style={[
                     styles.statusBadgeSuccess,
@@ -432,7 +438,7 @@ export function SettingsScreen() {
             {isPro && subscriptionInfo && subscriptionInfo.status !== 'none' && (
               <>
                 <View style={styles.divider} />
-                <TouchableOpacity style={styles.row} onPress={handleManageSubscription}>
+                <TouchableOpacity style={styles.row} onPress={handleManageSubscription} accessibilityRole="link" accessibilityLabel={`Manage subscription via ${getSubscriptionPlatformName()}`}>
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
                       <Ionicons name={getSubscriptionPlatformIcon() as any} size={18} color={colors.textSecondary} />
@@ -451,6 +457,8 @@ export function SettingsScreen() {
                 <TouchableOpacity
                   style={[styles.row, needsBankingSetup && styles.rowHighlighted]}
                   onPress={() => navigation.navigate('StripeOnboarding', { returnTo: 'settings' })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Banking${connectStatus?.chargesEnabled ? ', active' : needsBankingSetup ? ', setup required' : ''}`}
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: needsBankingSetup ? colors.warning + '15' : colors.primary + '15' }]}>
@@ -468,7 +476,7 @@ export function SettingsScreen() {
                     </View>
                   </View>
                   {connectLoading ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Loading banking status" />
                   ) : connectStatus?.chargesEnabled ? (
                     <View style={styles.statusBadgeSuccess}>
                       <Ionicons name="checkmark-circle" size={14} color={colors.success} />
@@ -491,6 +499,8 @@ export function SettingsScreen() {
                 <TouchableOpacity
                   style={styles.row}
                   onPress={() => navigation.navigate('StripeOnboarding', { returnTo: 'settings' })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Payment setup, required to accept payments"
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.warning + '15' }]}>
@@ -518,6 +528,9 @@ export function SettingsScreen() {
               style={styles.profileCard}
               onPress={() => setShowProfileEdit(true)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Profile, ${user?.firstName} ${user?.lastName}, ${user?.email}`}
+              accessibilityHint="Tap to edit your profile"
             >
               {user?.avatarUrl ? (
                 <Image source={{ uri: user.avatarUrl }} style={styles.profileAvatarImage} fadeDuration={0} />
@@ -565,11 +578,12 @@ export function SettingsScreen() {
                     <Text style={styles.label} maxFontSizeMultiplier={1.5}>{biometricCapabilities.biometricName}</Text>
                   </View>
                   {biometricLoading ? (
-                    <ActivityIndicator size="small" color={colors.primary} />
+                    <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Loading biometric setting" />
                   ) : (
                     <Toggle
                       value={biometricEnabled}
                       onValueChange={handleBiometricToggle}
+                      accessibilityLabel={biometricCapabilities.biometricName}
                     />
                   )}
                 </View>
@@ -587,7 +601,13 @@ export function SettingsScreen() {
               const bankingReady = !!connectStatus?.chargesEnabled;
               const needsSetup = bankingReady && Platform.OS !== 'web' && deviceCompatibility.isCompatible && !isInitialized && !isWarming;
               const RowComponent = needsSetup ? TouchableOpacity : View;
-              const rowProps = needsSetup ? { onPress: () => navigation.navigate('TapToPayEducation') } : {};
+              const rowProps = needsSetup ? {
+                onPress: () => navigation.navigate('TapToPayEducation'),
+                accessibilityRole: 'button' as const,
+                accessibilityLabel: `${TAP_TO_PAY_NAME}, tap to configure`,
+              } : {
+                accessibilityLabel: `${TAP_TO_PAY_NAME}, ${!bankingReady ? 'complete banking setup first' : Platform.OS === 'web' ? 'not available on web' : !deviceCompatibility.isCompatible ? 'device not supported' : isInitialized ? 'ready' : isWarming ? 'initializing' : 'needs configuration'}`,
+              };
 
               return (
                 <RowComponent style={[styles.row, !bankingReady && styles.rowDisabled]} {...rowProps}>
@@ -632,7 +652,7 @@ export function SettingsScreen() {
                     </View>
                   ) : isWarming ? (
                     <View style={styles.statusBadgeWarning}>
-                      <ActivityIndicator size="small" color={colors.warning} />
+                      <ActivityIndicator size="small" color={colors.warning} accessibilityLabel="Initializing Tap to Pay" />
                     </View>
                   ) : (
                     <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -657,7 +677,7 @@ export function SettingsScreen() {
                 </View>
                 <Text style={styles.label} maxFontSizeMultiplier={1.5}>Dark Mode</Text>
               </View>
-              <Toggle value={isDark} onValueChange={toggleTheme} />
+              <Toggle value={isDark} onValueChange={toggleTheme} accessibilityLabel="Dark mode" />
             </View>
           </View>
         </View>
@@ -672,6 +692,8 @@ export function SettingsScreen() {
                 <TouchableOpacity
                   style={styles.row}
                   onPress={() => navigation.navigate('TapToPayEducation')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Learn ${TAP_TO_PAY_NAME}`}
                 >
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -689,6 +711,9 @@ export function SettingsScreen() {
             <TouchableOpacity
               style={styles.row}
               onPress={() => Linking.openURL('mailto:support@lumapos.com?subject=Luma Support')}
+              accessibilityRole="link"
+              accessibilityLabel="Contact support"
+              accessibilityHint="Opens email to support@lumapos.com"
             >
               <View style={styles.rowLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -703,7 +728,7 @@ export function SettingsScreen() {
 
         {/* Sign Out */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} accessibilityRole="button" accessibilityLabel="Sign out">
             <Ionicons name="log-out-outline" size={20} color={colors.error} />
             <Text style={styles.signOutText} maxFontSizeMultiplier={1.3}>Sign Out</Text>
           </TouchableOpacity>

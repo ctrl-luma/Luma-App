@@ -76,7 +76,7 @@ export function ForgotPasswordScreen() {
                   <Text maxFontSizeMultiplier={1.2} style={styles.successIconText}>✓</Text>
                 </View>
 
-                <Text maxFontSizeMultiplier={1.2} style={styles.successTitle}>Check your email</Text>
+                <Text maxFontSizeMultiplier={1.2} style={styles.successTitle} accessibilityRole="header">Check your email</Text>
                 <Text maxFontSizeMultiplier={1.5} style={styles.successSubtitle}>
                   We've sent a password reset link to
                 </Text>
@@ -89,6 +89,8 @@ export function ForgotPasswordScreen() {
                   style={styles.button}
                   onPress={() => navigation.goBack()}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to login"
                 >
                   <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Back to login</Text>
                 </TouchableOpacity>
@@ -99,6 +101,8 @@ export function ForgotPasswordScreen() {
                     setEmail('');
                   }}
                   style={styles.tryAgainButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Try a different email"
                 >
                   <Text maxFontSizeMultiplier={1.3} style={styles.tryAgainText}>Try a different email</Text>
                 </TouchableOpacity>
@@ -133,6 +137,8 @@ export function ForgotPasswordScreen() {
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
                 style={styles.backButton}
+                accessibilityRole="link"
+                accessibilityLabel="Back to login"
               >
                 <Text maxFontSizeMultiplier={1.3} style={styles.backButtonText}>← Back to login</Text>
               </TouchableOpacity>
@@ -156,7 +162,7 @@ export function ForgotPasswordScreen() {
                 style={styles.card}
               >
               {error && (
-                <View style={styles.errorContainer}>
+                <View style={styles.errorContainer} accessibilityRole="alert" accessibilityLiveRegion="assertive">
                   <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{error}</Text>
                 </View>
               )}
@@ -173,6 +179,8 @@ export function ForgotPasswordScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="email"
+                    accessibilityLabel="Email address"
+                    accessibilityHint="Enter the email address associated with your account"
                   />
                   <Text maxFontSizeMultiplier={1.5} style={styles.inputHint}>
                     Enter the email address associated with your account
@@ -184,10 +192,13 @@ export function ForgotPasswordScreen() {
                   onPress={handleSubmit}
                   disabled={loading}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={loading ? 'Sending reset email' : 'Reset password'}
+                  accessibilityState={{ disabled: loading, busy: loading }}
                 >
                   {loading ? (
                     <View style={styles.buttonContent}>
-                      <ActivityIndicator color={colors.text} size="small" />
+                      <ActivityIndicator color={colors.text} size="small" accessibilityLabel="Sending reset email" />
                       <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Sending...</Text>
                     </View>
                   ) : (

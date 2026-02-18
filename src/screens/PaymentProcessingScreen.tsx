@@ -149,15 +149,15 @@ export function PaymentProcessingScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           {/* Amount Display */}
-          <Text style={styles.amount} maxFontSizeMultiplier={1.2}>${(amount / 100).toFixed(2)}</Text>
+          <Text style={styles.amount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount $${(amount / 100).toFixed(2)}`}>${(amount / 100).toFixed(2)}</Text>
 
           {/* Loading indicator */}
           <View style={styles.loaderContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Processing payment" />
           </View>
 
           {/* Status */}
-          <Text style={styles.statusText} maxFontSizeMultiplier={1.5}>{statusText}</Text>
+          <Text style={styles.statusText} maxFontSizeMultiplier={1.5} accessibilityRole="text" accessibilityLiveRegion="polite">{statusText}</Text>
 
         </View>
 
@@ -168,6 +168,9 @@ export function PaymentProcessingScreen() {
             onPress={handleCancel}
             disabled={isCancelling}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={isCancelling ? 'Cancelling payment' : 'Cancel payment'}
+            accessibilityState={{ disabled: isCancelling }}
           >
             <Text style={styles.cancelButtonText} maxFontSizeMultiplier={1.3}>
               {isCancelling ? 'Cancelling...' : 'Cancel'}

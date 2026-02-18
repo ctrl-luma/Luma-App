@@ -402,7 +402,7 @@ export function TransactionDetailScreen() {
       <StarBackground colors={colors} isDark={isDark}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text maxFontSizeMultiplier={1.3} style={styles.headerTitle}>Preorder</Text>
@@ -506,9 +506,12 @@ export function TransactionDetailScreen() {
                 style={[styles.actionButton, styles.refundButton]}
                 onPress={handleRefund}
                 disabled={refundMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel={`Issue refund for $${preorder.totalAmount.toFixed(2)}`}
+                accessibilityState={{ disabled: refundMutation.isPending }}
               >
                 {refundMutation.isPending ? (
-                  <ActivityIndicator size="small" color={colors.error} />
+                  <ActivityIndicator size="small" color={colors.error} accessibilityLabel="Processing refund" />
                 ) : (
                   <>
                     <Ionicons name="arrow-undo-outline" size={20} color={colors.error} />
@@ -543,6 +546,8 @@ export function TransactionDetailScreen() {
                   style={[styles.modalButton, styles.modalButtonCancel]}
                   onPress={() => setShowRefundModal(false)}
                   disabled={refundMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel refund"
                 >
                   <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonCancelText}>Cancel</Text>
                 </TouchableOpacity>
@@ -550,9 +555,12 @@ export function TransactionDetailScreen() {
                   style={[styles.modalButton, styles.modalButtonDestructive]}
                   onPress={confirmRefund}
                   disabled={refundMutation.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="Confirm refund"
+                  accessibilityState={{ disabled: refundMutation.isPending }}
                 >
                   {refundMutation.isPending ? (
-                    <ActivityIndicator size="small" color="#fff" />
+                    <ActivityIndicator size="small" color="#fff" accessibilityLabel="Processing refund" />
                   ) : (
                     <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonDestructiveText}>Refund</Text>
                   )}
@@ -582,6 +590,8 @@ export function TransactionDetailScreen() {
               <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 20, flex: 0, width: '100%' }]}
                 onPress={() => { setShowResultModal(false); navigation.goBack(); }}
+                accessibilityRole="button"
+                accessibilityLabel="OK"
               >
                 <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonPrimaryText}>OK</Text>
               </TouchableOpacity>
@@ -615,6 +625,8 @@ export function TransactionDetailScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -787,7 +799,7 @@ export function TransactionDetailScreen() {
         {/* Actions */}
         <View style={styles.actions}>
           {transaction.receiptUrl && (
-            <TouchableOpacity style={styles.actionButton} onPress={handleViewReceipt}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleViewReceipt} accessibilityRole="link" accessibilityLabel="View receipt" accessibilityHint="Opens receipt in browser">
               <Ionicons name="receipt-outline" size={20} color={colors.text} />
               <Text maxFontSizeMultiplier={1.3} style={styles.actionButtonText}>View Receipt</Text>
             </TouchableOpacity>
@@ -806,21 +818,25 @@ export function TransactionDetailScreen() {
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    accessibilityLabel="Email address for receipt"
                   />
                   <TouchableOpacity
                     style={styles.sendReceiptConfirmButton}
                     onPress={handleSendReceipt}
                     disabled={sendingReceipt || !receiptEmail.trim()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Send receipt"
+                    accessibilityState={{ disabled: sendingReceipt || !receiptEmail.trim() }}
                   >
                     {sendingReceipt ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color="#fff" accessibilityLabel="Sending receipt" />
                     ) : (
                       <Ionicons name="send" size={18} color="#fff" />
                     )}
                   </TouchableOpacity>
                 </View>
               ) : (
-                <TouchableOpacity style={styles.actionButton} onPress={handleSendReceipt}>
+                <TouchableOpacity style={styles.actionButton} onPress={handleSendReceipt} accessibilityRole="button" accessibilityLabel="Send receipt">
                   <Ionicons name="mail-outline" size={20} color={colors.text} />
                   <Text maxFontSizeMultiplier={1.3} style={styles.actionButtonText}>Send Receipt</Text>
                 </TouchableOpacity>
@@ -833,9 +849,12 @@ export function TransactionDetailScreen() {
               style={[styles.actionButton, styles.refundButton]}
               onPress={handleRefund}
               disabled={refundMutation.isPending}
+              accessibilityRole="button"
+              accessibilityLabel={`Issue refund for $${(transaction.amount / 100).toFixed(2)}`}
+              accessibilityState={{ disabled: refundMutation.isPending }}
             >
               {refundMutation.isPending ? (
-                <ActivityIndicator size="small" color={colors.error} />
+                <ActivityIndicator size="small" color={colors.error} accessibilityLabel="Processing refund" />
               ) : (
                 <>
                   <Ionicons name="arrow-undo-outline" size={20} color={colors.error} />
@@ -870,6 +889,8 @@ export function TransactionDetailScreen() {
                 style={[styles.modalButton, styles.modalButtonCancel]}
                 onPress={() => setShowRefundModal(false)}
                 disabled={refundMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel refund"
               >
                 <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonCancelText}>Cancel</Text>
               </TouchableOpacity>
@@ -877,9 +898,12 @@ export function TransactionDetailScreen() {
                 style={[styles.modalButton, styles.modalButtonDestructive]}
                 onPress={confirmRefund}
                 disabled={refundMutation.isPending}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm refund"
+                accessibilityState={{ disabled: refundMutation.isPending }}
               >
                 {refundMutation.isPending ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#fff" accessibilityLabel="Processing refund" />
                 ) : (
                   <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonDestructiveText}>Refund</Text>
                 )}
@@ -910,6 +934,8 @@ export function TransactionDetailScreen() {
             <TouchableOpacity
               style={[styles.modalButton, styles.modalButtonPrimary, { marginTop: 20, flex: 0, width: '100%' }]}
               onPress={() => setShowResultModal(false)}
+              accessibilityRole="button"
+              accessibilityLabel="OK"
             >
               <Text maxFontSizeMultiplier={1.3} style={styles.modalButtonPrimaryText}>OK</Text>
             </TouchableOpacity>

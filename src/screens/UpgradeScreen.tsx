@@ -142,7 +142,7 @@ export function UpgradeScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Upgrade to Pro</Text>
@@ -168,7 +168,7 @@ export function UpgradeScreen() {
         {/* Price */}
         <View style={styles.priceContainer}>
           {loading ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Loading price" />
           ) : (
             <>
               <Text style={styles.price} maxFontSizeMultiplier={1.2}>{price}</Text>
@@ -205,6 +205,9 @@ export function UpgradeScreen() {
           disabled={loading || purchasing || !product}
           activeOpacity={0.9}
           style={styles.subscribeButtonContainer}
+          accessibilityRole="button"
+          accessibilityLabel={`Subscribe for ${price} per month`}
+          accessibilityState={{ disabled: loading || purchasing || !product }}
         >
           <LinearGradient
             colors={[colors.primary, colors.primary700]}
@@ -216,7 +219,7 @@ export function UpgradeScreen() {
             ]}
           >
             {purchasing ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#fff" accessibilityLabel="Processing purchase" />
             ) : (
               <>
                 <Ionicons name="diamond" size={20} color="#fff" />
@@ -233,9 +236,12 @@ export function UpgradeScreen() {
           style={styles.restoreButton}
           onPress={handleRestorePurchases}
           disabled={restoring}
+          accessibilityRole="button"
+          accessibilityLabel="Restore Purchases"
+          accessibilityState={{ disabled: restoring }}
         >
           {restoring ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Restoring purchases" />
           ) : (
             <Text style={styles.restoreButtonText} maxFontSizeMultiplier={1.3}>Restore Purchases</Text>
           )}

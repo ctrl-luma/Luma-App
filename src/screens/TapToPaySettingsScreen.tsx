@@ -9,6 +9,8 @@ import {
   Alert,
   TextInput,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -196,7 +198,7 @@ export function TapToPaySettingsScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Payment Settings</Text>
@@ -214,7 +216,7 @@ export function TapToPaySettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Payment Settings</Text>
@@ -222,9 +224,12 @@ export function TapToPaySettingsScreen() {
           style={styles.saveButtonContainer}
           onPress={saveSettings}
           disabled={!hasChanges || isSaving}
+          accessibilityRole="button"
+          accessibilityLabel="Save settings"
+          accessibilityState={{ disabled: !hasChanges || isSaving }}
         >
           {isSaving ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Saving" />
           ) : (
             <Text style={[styles.saveText, !hasChanges && styles.saveTextDisabled]} maxFontSizeMultiplier={1.3}>
               Save
@@ -233,7 +238,11 @@ export function TapToPaySettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Catalog Info */}
         <View style={styles.catalogInfo}>
           <Ionicons name="folder-outline" size={20} color={colors.primary} />
@@ -257,6 +266,7 @@ export function TapToPaySettingsScreen() {
             <Toggle
               value={settings.showTipScreen}
               onValueChange={(v) => setSettings({ ...settings, showTipScreen: v })}
+              accessibilityLabel="Show Tip Screen"
             />
           </View>
 
@@ -278,6 +288,9 @@ export function TapToPaySettingsScreen() {
                       ]}
                       onPress={() => handleStartEditTip(index)}
                       onLongPress={() => handleRemoveTipPercentage(index)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${pct} percent tip option`}
+                      accessibilityHint="Tap to edit, long press to remove"
                     >
                       {editingTipIndex === index ? (
                         <TextInput
@@ -290,6 +303,7 @@ export function TapToPaySettingsScreen() {
                           autoFocus
                           selectTextOnFocus
                           maxLength={3}
+                          accessibilityLabel="Edit tip percentage"
                         />
                       ) : (
                         <Text style={styles.tipChipText} maxFontSizeMultiplier={1.3}>{pct}%</Text>
@@ -300,6 +314,8 @@ export function TapToPaySettingsScreen() {
                     <TouchableOpacity
                       style={styles.tipChipAdd}
                       onPress={handleAddTipPercentage}
+                      accessibilityRole="button"
+                      accessibilityLabel="Add tip percentage"
                     >
                       <Ionicons name="add" size={20} color={colors.primary} />
                     </TouchableOpacity>
@@ -316,6 +332,7 @@ export function TapToPaySettingsScreen() {
                 <Toggle
                   value={settings.allowCustomTip}
                   onValueChange={(v) => setSettings({ ...settings, allowCustomTip: v })}
+                  accessibilityLabel="Allow Custom Tip"
                 />
               </View>
             </>
@@ -339,6 +356,7 @@ export function TapToPaySettingsScreen() {
             <Toggle
               value={settings.promptForEmail}
               onValueChange={(v) => setSettings({ ...settings, promptForEmail: v })}
+              accessibilityLabel="Prompt for Email"
             />
           </View>
         </View>
@@ -353,6 +371,7 @@ export function TapToPaySettingsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <ConfirmModal
         visible={showDiscardModal}
@@ -385,7 +404,7 @@ export function TapToPaySettingsScreen() {
             <View style={styles.toastIcon}>
               <Ionicons name="checkmark" size={18} color="#4ade80" />
             </View>
-            <Text style={styles.toastText} maxFontSizeMultiplier={1.5}>Settings saved</Text>
+            <Text style={styles.toastText} maxFontSizeMultiplier={1.5} accessibilityRole="alert">Settings saved</Text>
           </LinearGradient>
         </Animated.View>
       )}

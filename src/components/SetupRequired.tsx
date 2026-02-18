@@ -497,6 +497,9 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   style={{ color: colors.primary, fontFamily: fonts.semiBold }}
                   onPress={() => openVendorDashboard('/products')}
                   maxFontSizeMultiplier={1.5}
+                  accessibilityRole="link"
+                  accessibilityLabel="Open Vendor Portal"
+                  accessibilityHint="Opens the Vendor Portal for advanced management"
                 >
                   Vendor Portal
                 </Text>
@@ -515,13 +518,15 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
         onRequestClose={() => setShowCreateModal(false)}
       >
         <View style={styles.modalContainer}>
-          <Pressable style={styles.modalOverlay} onPress={() => setShowCreateModal(false)} />
+          <Pressable style={styles.modalOverlay} onPress={() => setShowCreateModal(false)} accessibilityLabel="Close" accessibilityRole="button" />
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             {/* Modal Header */}
             <View style={[styles.modalHeader, { borderBottomColor: glassColors.border }]}>
               <TouchableOpacity
                 onPress={() => setShowCreateModal(false)}
                 style={[styles.modalCloseButton, { backgroundColor: glassColors.backgroundElevated }]}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
               >
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -534,9 +539,11 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   { backgroundColor: colors.primary },
                   (!catalogName.trim() || createCatalogMutation.isPending) && styles.modalSaveButtonDisabled
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel={createCatalogMutation.isPending ? 'Creating menu' : 'Create menu'}
               >
                 {createCatalogMutation.isPending ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#fff" accessibilityLabel="Creating" />
                 ) : (
                   <Text style={styles.modalSaveButtonText} maxFontSizeMultiplier={1.3}>Create</Text>
                 )}
@@ -564,6 +571,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   placeholderTextColor={colors.textMuted}
                   maxLength={100}
                   autoFocus
+                  accessibilityLabel="Menu name"
                 />
               </View>
 
@@ -582,6 +590,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                   maxLength={500}
                   multiline
                   numberOfLines={2}
+                  accessibilityLabel="Menu description"
                 />
               </View>
 
@@ -599,6 +608,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                     placeholder="e.g., Main Stage, North Tent"
                     placeholderTextColor={colors.textMuted}
                     maxLength={100}
+                    accessibilityLabel="Menu location"
                   />
                 </View>
               </View>
@@ -612,6 +622,9 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                     borderColor: glassColors.border,
                   }]}
                   onPress={() => setShowDatePicker(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={catalogDate ? `Date: ${formatDate(catalogDate)}` : 'Select a date'}
+                  accessibilityHint="Opens date picker"
                 >
                   <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
                   <Text style={[
@@ -624,6 +637,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                     <TouchableOpacity
                       onPress={handleClearDate}
                       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Clear date"
                     >
                       <Ionicons name="close-circle" size={20} color={colors.textMuted} />
                     </TouchableOpacity>
@@ -636,10 +651,10 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                       borderColor: glassColors.border,
                     }]}>
                       <View style={[styles.datePickerHeader, { borderBottomColor: glassColors.border }]}>
-                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)} accessibilityRole="button" accessibilityLabel="Cancel date selection">
                           <Text style={[styles.datePickerCancel, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>Cancel</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <TouchableOpacity onPress={() => setShowDatePicker(false)} accessibilityRole="button" accessibilityLabel="Confirm date selection">
                           <Text style={[styles.datePickerDone, { color: colors.primary }]} maxFontSizeMultiplier={1.5}>Done</Text>
                         </TouchableOpacity>
                       </View>
@@ -676,6 +691,9 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                         layoutType === option.value && { borderColor: colors.primary, backgroundColor: colors.primary + '15' }
                       ]}
                       onPress={() => setLayoutType(option.value)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${option.label} layout`}
+                      accessibilityState={{ selected: layoutType === option.value }}
                     >
                       <Ionicons
                         name={option.icon}
@@ -706,6 +724,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                     placeholder="0"
                     placeholderTextColor={colors.textMuted}
                     keyboardType="decimal-pad"
+                    accessibilityLabel="Tax rate percentage"
                   />
                   <Text style={[styles.taxSymbol, { color: colors.textSecondary }]} maxFontSizeMultiplier={1.5}>%</Text>
                 </View>
@@ -723,7 +742,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                       Show tip options during checkout
                     </Text>
                   </View>
-                  <Toggle value={showTipScreen} onValueChange={setShowTipScreen} />
+                  <Toggle value={showTipScreen} onValueChange={setShowTipScreen} accessibilityLabel="Show tip screen" />
                 </View>
               </View>
 
@@ -734,7 +753,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                     <View style={styles.tipHeader}>
                       <Text style={[styles.inputLabel, { color: colors.text, marginBottom: 0 }]} maxFontSizeMultiplier={1.5}>Tip Options</Text>
                       {tipPercentages.length < 6 && (
-                        <TouchableOpacity onPress={handleAddTipPercentage}>
+                        <TouchableOpacity onPress={handleAddTipPercentage} accessibilityRole="button" accessibilityLabel="Add tip percentage">
                           <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                         </TouchableOpacity>
                       )}
@@ -755,11 +774,12 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                                 autoFocus
                                 maxLength={3}
                                 onSubmitEditing={handleSaveTipEdit}
+                                accessibilityLabel="Edit tip percentage"
                               />
-                              <TouchableOpacity onPress={handleSaveTipEdit}>
+                              <TouchableOpacity onPress={handleSaveTipEdit} accessibilityRole="button" accessibilityLabel="Save tip percentage">
                                 <Ionicons name="checkmark" size={18} color={colors.success} />
                               </TouchableOpacity>
-                              <TouchableOpacity onPress={handleCancelTipEdit}>
+                              <TouchableOpacity onPress={handleCancelTipEdit} accessibilityRole="button" accessibilityLabel="Cancel editing tip">
                                 <Ionicons name="close" size={18} color={colors.error} />
                               </TouchableOpacity>
                             </View>
@@ -768,6 +788,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                               <TouchableOpacity
                                 onPress={() => handleStartEditTip(index)}
                                 style={styles.tipValueButton}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Edit ${percentage}% tip option`}
                               >
                                 <Text style={[styles.tipText, { color: colors.text }]} maxFontSizeMultiplier={1.5}>{percentage}%</Text>
                               </TouchableOpacity>
@@ -775,6 +797,8 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                                 <TouchableOpacity
                                   onPress={() => handleRemoveTipPercentage(index)}
                                   style={styles.tipRemove}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`Remove ${percentage}% tip option`}
                                 >
                                   <Ionicons name="close-circle" size={18} color={colors.textMuted} />
                                 </TouchableOpacity>
@@ -794,7 +818,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                           Let customers enter a custom tip amount
                         </Text>
                       </View>
-                      <Toggle value={allowCustomTip} onValueChange={setAllowCustomTip} />
+                      <Toggle value={allowCustomTip} onValueChange={setAllowCustomTip} accessibilityLabel="Allow custom tip" />
                     </View>
                   </View>
                 </>
@@ -809,7 +833,7 @@ function NoCatalogsWelcome({ colors, glassColors, isDark, isManager }: { colors:
                       Ask for customer email for receipts
                     </Text>
                   </View>
-                  <Toggle value={promptForEmail} onValueChange={setPromptForEmail} />
+                  <Toggle value={promptForEmail} onValueChange={setPromptForEmail} accessibilityLabel="Prompt for email" />
                 </View>
               </View>
 

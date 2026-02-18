@@ -329,6 +329,9 @@ function EmptyCatalogs({ colors, isDark, isManager }: { colors: any; isDark: boo
             style={[starStyles.button, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
             onPress={() => openVendorDashboard('/products')}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Open Vendor Portal"
+            accessibilityHint="Opens the vendor dashboard to create menus"
           >
             <Text style={[starStyles.buttonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>
               Open Vendor Portal
@@ -433,6 +436,9 @@ export function CatalogSelectScreen() {
         style={[styles.catalogCard, isSelected && styles.catalogCardSelected]}
         onPress={() => handleSelectCatalog(item)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`${item.name}, ${item.productCount} ${item.productCount === 1 ? 'product' : 'products'}${isSelected ? ', selected' : ''}`}
+        accessibilityHint="Double tap to select this menu"
       >
         <View style={[styles.catalogIcon, isSelected && styles.catalogIconSelected]}>
           <Ionicons
@@ -494,7 +500,7 @@ export function CatalogSelectScreen() {
           </Text>
         </View>
         {isModal && (
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
         )}

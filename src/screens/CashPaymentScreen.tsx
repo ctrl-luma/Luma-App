@@ -113,6 +113,8 @@ export function CashPaymentScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
@@ -123,7 +125,7 @@ export function CashPaymentScreen() {
       {/* Total Amount Display */}
       <View style={styles.totalSection}>
         <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Total Due</Text>
-        <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2}>${(totalAmount / 100).toFixed(2)}</Text>
+        <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total due $${(totalAmount / 100).toFixed(2)}`}>${(totalAmount / 100).toFixed(2)}</Text>
       </View>
 
       {/* Cash Tendered Display */}
@@ -131,7 +133,7 @@ export function CashPaymentScreen() {
         <Text style={styles.tenderedLabel} maxFontSizeMultiplier={1.5}>Cash Tendered</Text>
         <View style={styles.tenderedDisplay}>
           <Text style={styles.dollarSign} maxFontSizeMultiplier={1.2}>$</Text>
-          <Text style={[styles.tenderedAmount, !cashTendered && styles.tenderedPlaceholder]} maxFontSizeMultiplier={1.2}>
+          <Text style={[styles.tenderedAmount, !cashTendered && styles.tenderedPlaceholder]} maxFontSizeMultiplier={1.2} accessibilityRole="text" accessibilityLabel={`Cash tendered $${cashTendered || '0.00'}`}>
             {cashTendered || '0.00'}
           </Text>
         </View>
@@ -139,7 +141,7 @@ export function CashPaymentScreen() {
 
       {/* Change Display */}
       {isEnoughCash && changeAmount > 0 && (
-        <View style={styles.changeSection}>
+        <View style={styles.changeSection} accessibilityRole="summary" accessibilityLabel={`Change due $${(changeAmount / 100).toFixed(2)}`}>
           <Text style={styles.changeLabel} maxFontSizeMultiplier={1.5}>Change Due</Text>
           <Text style={styles.changeAmount} maxFontSizeMultiplier={1.2}>${(changeAmount / 100).toFixed(2)}</Text>
         </View>
@@ -147,7 +149,7 @@ export function CashPaymentScreen() {
 
       {/* Exact Amount Button */}
       <View style={styles.exactRow}>
-        <TouchableOpacity style={styles.exactButton} onPress={handleExactAmount}>
+        <TouchableOpacity style={styles.exactButton} onPress={handleExactAmount} accessibilityRole="button" accessibilityLabel={`Exact amount $${(totalAmount / 100).toFixed(2)}`}>
           <Text style={styles.exactButtonText} maxFontSizeMultiplier={1.3}>Exact Amount</Text>
         </TouchableOpacity>
       </View>
@@ -159,6 +161,8 @@ export function CashPaymentScreen() {
             key={key}
             style={styles.keypadButton}
             onPress={() => handleKeyPress(key)}
+            accessibilityRole="button"
+            accessibilityLabel={key === 'backspace' ? 'Delete' : key === '.' ? 'Decimal point' : key}
           >
             {key === 'backspace' ? (
               <Ionicons name="backspace-outline" size={28} color={colors.text} />
@@ -178,9 +182,12 @@ export function CashPaymentScreen() {
           ]}
           onPress={handleComplete}
           disabled={!isEnoughCash || isProcessing}
+          accessibilityRole="button"
+          accessibilityLabel={isProcessing ? 'Processing payment' : isEnoughCash ? 'Complete payment' : 'Enter cash amount'}
+          accessibilityState={{ disabled: !isEnoughCash || isProcessing }}
         >
           {isProcessing ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#fff" accessibilityLabel="Processing payment" />
           ) : (
             <>
               <Ionicons name="checkmark-circle" size={24} color="#fff" />

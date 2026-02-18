@@ -292,6 +292,9 @@ function AnimatedTransactionItem({
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={`Transaction $${(item.amount / 100).toFixed(2)}, ${getStatusLabel(item.status)}, ${formatDate(item.created)}${item.sourceType === 'preorder' ? ', preorder' : ''}`}
+      accessibilityHint="View transaction details"
     >
       <Animated.View style={[styles.transactionItem, { transform: [{ scale: scaleAnim }] }]}>
         <View style={styles.transactionLeft}>
@@ -377,7 +380,6 @@ export function TransactionsScreen() {
             setHeldOrders(response.orders);
             setIsLoadingHeld(false);
           }).catch(error => {
-            console.error('Failed to fetch held orders:', error);
             setIsLoadingHeld(false);
           });
         }, 100);
@@ -389,17 +391,11 @@ export function TransactionsScreen() {
 
   // Fetch held orders
   const fetchHeldOrders = useCallback(async () => {
-    console.log('[TransactionsScreen DEBUG] fetchHeldOrders called');
     try {
       const response = await ordersApi.listHeld(deviceId || undefined);
-      console.log('[TransactionsScreen DEBUG] fetchHeldOrders response:', {
-        orderCount: response.orders.length,
-        orderIds: response.orders.map((o: Order) => o.id),
-      });
       hasFetchedHeldRef.current = true;
       setHeldOrders(response.orders);
     } catch (error: any) {
-      console.error('Failed to fetch held orders:', error);
     } finally {
       setIsLoadingHeld(false);
       setIsRefreshingHeld(false);
@@ -417,7 +413,6 @@ export function TransactionsScreen() {
   // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
     if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current) {
-      console.log('[TransactionsScreen] Socket reconnected, refetching data...');
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       fetchHeldOrders();
     }
@@ -427,7 +422,6 @@ export function TransactionsScreen() {
 
   // Auto-refresh transactions when payment events occur
   const handlePaymentEvent = useCallback((data: any) => {
-    console.log('[TransactionsScreen DEBUG] Payment event received, invalidating transactions query:', data);
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
   }, [queryClient]);
 
@@ -439,28 +433,22 @@ export function TransactionsScreen() {
 
   // Listen for held order updates via socket
   useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
-    console.log('[TransactionsScreen DEBUG] ORDER_UPDATED event received:', JSON.stringify(data, null, 2));
     // Refresh held orders when any order is held or resumed
     if (data.status === 'held' || data.status === 'pending') {
-      console.log('[TransactionsScreen DEBUG] Refreshing held orders due to status:', data.status);
       fetchHeldOrders();
     }
   }, [fetchHeldOrders]));
 
   useSocketEvent(SocketEvents.ORDER_CREATED, useCallback((data: any) => {
-    console.log('[TransactionsScreen DEBUG] ORDER_CREATED event received:', JSON.stringify(data, null, 2));
     // Refresh if a new held order is created
     if (data.status === 'held') {
-      console.log('[TransactionsScreen DEBUG] New held order created, refreshing...');
       fetchHeldOrders();
     }
   }, [fetchHeldOrders]));
 
   useSocketEvent(SocketEvents.ORDER_DELETED, useCallback((data: any) => {
-    console.log('[TransactionsScreen DEBUG] ORDER_DELETED event received:', JSON.stringify(data, null, 2));
     // Remove the deleted order from the list
     if (data.orderId) {
-      console.log('[TransactionsScreen DEBUG] Removing order from held list:', data.orderId);
       setHeldOrders(prev => prev.filter(o => o.id !== data.orderId));
     }
   }, []));
@@ -613,7 +601,6 @@ export function TransactionsScreen() {
         resumedOrder: resumedOrder,
       });
     } catch (error: any) {
-      console.error('Resume order error:', error);
       Alert.alert('Error', error.error || error.message || 'Failed to resume order');
     }
   };
@@ -661,6 +648,8 @@ export function TransactionsScreen() {
       <TouchableOpacity
         style={styles.heldDeleteAction}
         onPress={() => handleCancelOrder(item)}
+        accessibilityRole="button"
+        accessibilityLabel={`Cancel ${item.holdName || `Order ${item.orderNumber}`}`}
       >
         <Ionicons name="trash-outline" size={22} color="#fff" />
         <Text maxFontSizeMultiplier={1.3} style={styles.heldDeleteText}>Cancel</Text>
@@ -676,6 +665,9 @@ export function TransactionsScreen() {
           style={styles.heldOrderItem}
           onPress={() => handleResumeOrder(item)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.holdName || `Order ${item.orderNumber}`}, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}, $${(item.totalAmount / 100).toFixed(2)}`}
+          accessibilityHint="Tap to resume this order"
         >
           <View style={styles.heldOrderLeft}>
             <Ionicons name="time-outline" size={20} color={colors.primary} />
@@ -720,6 +712,9 @@ export function TransactionsScreen() {
             <TouchableOpacity
               style={[styles.tab, activeTab === 'transactions' && styles.tabActive]}
               onPress={() => setActiveTab('transactions')}
+              accessibilityRole="button"
+              accessibilityLabel="Transactions"
+              accessibilityState={{ selected: activeTab === 'transactions' }}
             >
               <Text maxFontSizeMultiplier={1.3} style={[styles.tabText, activeTab === 'transactions' && styles.tabTextActive]}>
                 Transactions
@@ -728,6 +723,9 @@ export function TransactionsScreen() {
             <TouchableOpacity
               style={[styles.tab, activeTab === 'held' && styles.tabActive]}
               onPress={() => setActiveTab('held')}
+              accessibilityRole="button"
+              accessibilityLabel={`Held Orders${heldOrders.length > 0 ? `, ${heldOrders.length} orders` : ''}`}
+              accessibilityState={{ selected: activeTab === 'held' }}
             >
               <Text maxFontSizeMultiplier={1.3} style={[styles.tabText, activeTab === 'held' && styles.tabTextActive]}>
                 Held Orders
@@ -792,6 +790,9 @@ export function TransactionsScreen() {
                       isActive && { backgroundColor: colorSet.bg, borderColor: colorSet.border },
                     ]}
                     onPress={() => setFilter(f)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filter by ${f === 'all' ? 'all statuses' : f}`}
+                    accessibilityState={{ selected: isActive }}
                   >
                     <Text
                       maxFontSizeMultiplier={1.3}

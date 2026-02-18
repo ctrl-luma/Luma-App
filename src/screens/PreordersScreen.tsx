@@ -242,7 +242,7 @@ export function PreordersScreen() {
       tabCacheRef.current[activeTab] = response.preorders;
       setPreorders(response.preorders);
     } catch (error) {
-      console.error('[PreordersScreen] Failed to fetch preorders:', error);
+      // Silently ignore
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -283,7 +283,6 @@ export function PreordersScreen() {
   // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
     if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current) {
-      console.log('[PreordersScreen] Socket reconnected, refetching data...');
       fetchPreorders();
       refreshCounts();
     }
@@ -292,8 +291,7 @@ export function PreordersScreen() {
   }, [isConnected, fetchPreorders, refreshCounts]);
 
   // Listen for preorder events via socket - clear all tab caches and refetch
-  useSocketEvent(SocketEvents.PREORDER_CREATED, useCallback((data: any) => {
-    console.log('[PreordersScreen] PREORDER_CREATED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_CREATED, useCallback((_data: any) => {
     // Play notification sound/vibration for new orders
     if (Platform.OS !== 'web') {
       Vibration.vibrate([0, 200, 100, 200]);
@@ -302,20 +300,17 @@ export function PreordersScreen() {
     fetchPreorders();
   }, [fetchPreorders]));
 
-  useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((data: any) => {
-    console.log('[PreordersScreen] PREORDER_UPDATED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((_data: any) => {
     tabCacheRef.current = {};
     fetchPreorders();
   }, [fetchPreorders]));
 
-  useSocketEvent(SocketEvents.PREORDER_COMPLETED, useCallback((data: any) => {
-    console.log('[PreordersScreen] PREORDER_COMPLETED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_COMPLETED, useCallback((_data: any) => {
     tabCacheRef.current = {};
     fetchPreorders();
   }, [fetchPreorders]));
 
-  useSocketEvent(SocketEvents.PREORDER_CANCELLED, useCallback((data: any) => {
-    console.log('[PreordersScreen] PREORDER_CANCELLED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_CANCELLED, useCallback((_data: any) => {
     tabCacheRef.current = {};
     fetchPreorders();
   }, [fetchPreorders]));
@@ -339,6 +334,9 @@ export function PreordersScreen() {
         style={styles.orderCard}
         onPress={() => handlePreorderPress(item)}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Order ${item.dailyNumber}, ${item.customerName || 'Customer'}, ${getStatusLabel(item.status)}, $${(item.totalAmount || 0).toFixed(2)}`}
+        accessibilityHint="Double tap to view order details"
       >
         <View style={styles.orderHeader}>
           <View style={styles.orderTitleRow}>
@@ -434,6 +432,9 @@ export function PreordersScreen() {
               key={tab.key}
               style={[styles.tab, isActive && styles.tabActive]}
               onPress={() => setActiveTab(tab.key)}
+              accessibilityRole="button"
+              accessibilityLabel={`${tab.label}${typeof count === 'number' && count > 0 ? `, ${count} orders` : ''}`}
+              accessibilityState={{ selected: isActive }}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]} maxFontSizeMultiplier={1.3}>
                 {tab.label}

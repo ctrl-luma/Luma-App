@@ -231,7 +231,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+          <TouchableOpacity onPress={onClose} style={styles.headerButton} accessibilityRole="button" accessibilityLabel="Cancel">
             <Text style={styles.cancelText} maxFontSizeMultiplier={1.3}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.title} maxFontSizeMultiplier={1.3}>Edit Profile</Text>
@@ -239,9 +239,11 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             onPress={handleSave}
             style={styles.headerButton}
             disabled={isSaving || !hasChanges()}
+            accessibilityRole="button"
+            accessibilityLabel={isSaving ? 'Saving profile' : 'Save profile'}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color={colors.primary} />
+              <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Saving" />
             ) : (
               <Text style={[styles.saveText, !hasChanges() && styles.saveTextDisabled]} maxFontSizeMultiplier={1.3}>
                 Save
@@ -257,6 +259,9 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
               style={styles.avatarContainer}
               onPress={showImageOptions}
               disabled={isUploadingAvatar}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile picture"
+              accessibilityHint="Opens options to take a photo or choose from library"
             >
               {displayAvatarUrl ? (
                 <Image source={{ uri: displayAvatarUrl }} style={styles.avatar} />
@@ -267,7 +272,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
               )}
               {isUploadingAvatar ? (
                 <View style={styles.avatarOverlay}>
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#fff" accessibilityLabel="Uploading profile picture" />
                 </View>
               ) : (
                 <View style={styles.cameraButton}>
@@ -275,7 +280,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 </View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={showImageOptions} disabled={isUploadingAvatar}>
+            <TouchableOpacity onPress={showImageOptions} disabled={isUploadingAvatar} accessibilityRole="button" accessibilityLabel={isUploadingAvatar ? 'Uploading photo' : 'Change photo'}>
               <Text style={styles.changePhotoText} maxFontSizeMultiplier={1.3}>
                 {isUploadingAvatar ? 'Uploading...' : 'Change Photo'}
               </Text>
@@ -294,6 +299,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="words"
                 autoCorrect={false}
+                accessibilityLabel="First name"
               />
             </View>
 
@@ -307,6 +313,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="words"
                 autoCorrect={false}
+                accessibilityLabel="Last name"
               />
             </View>
 
@@ -516,7 +523,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontSize: 16,
       fontFamily: fonts.regular,
       color: colors.text,
-      height: 48,
+      minHeight: 48,
     },
     phoneCode: {
       fontSize: 16,

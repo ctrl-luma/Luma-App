@@ -41,7 +41,6 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
   const refreshCounts = useCallback(async () => {
     if (!isAuthenticated || !selectedCatalog) return;
 
-    console.log('[PreordersContext] Fetching preorder stats for catalog:', selectedCatalog.id);
     try {
       const stats = await preordersApi.getStats(selectedCatalog.id);
       const newCounts = {
@@ -52,7 +51,7 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
       };
       setCounts(newCounts);
     } catch (error) {
-      console.error('[PreordersContext] Failed to fetch stats:', error);
+      // Silently ignore
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +70,6 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
   // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
     if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current && isAuthenticated) {
-      console.log('[PreordersContext] Socket reconnected, refreshing counts...');
       refreshCounts();
     }
     if (isConnected) hasEverConnectedRef.current = true;
@@ -79,23 +77,19 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
   }, [isConnected, isAuthenticated, refreshCounts]);
 
   // Listen for preorder events
-  useSocketEvent(SocketEvents.PREORDER_CREATED, useCallback((data: any) => {
-    console.log('[PreordersContext] PREORDER_CREATED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_CREATED, useCallback((_data: any) => {
     refreshCounts();
   }, [refreshCounts]));
 
-  useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((data: any) => {
-    console.log('[PreordersContext] PREORDER_UPDATED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((_data: any) => {
     refreshCounts();
   }, [refreshCounts]));
 
-  useSocketEvent(SocketEvents.PREORDER_COMPLETED, useCallback((data: any) => {
-    console.log('[PreordersContext] PREORDER_COMPLETED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_COMPLETED, useCallback((_data: any) => {
     refreshCounts();
   }, [refreshCounts]));
 
-  useSocketEvent(SocketEvents.PREORDER_CANCELLED, useCallback((data: any) => {
-    console.log('[PreordersContext] PREORDER_CANCELLED event received!', JSON.stringify(data, null, 2));
+  useSocketEvent(SocketEvents.PREORDER_CANCELLED, useCallback((_data: any) => {
     refreshCounts();
   }, [refreshCounts]));
 

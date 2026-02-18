@@ -44,6 +44,7 @@ import { PreordersProvider, usePreorders } from './src/context/PreordersContext'
 import { SocketEventHandlers } from './src/components/SocketEventHandlers';
 import { StripeTerminalContextProvider, useTerminal } from './src/context/StripeTerminalContext';
 import { NetworkStatus } from './src/components/NetworkStatus';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { DataPrefetcher } from './src/components/DataPrefetcher';
 import { config } from './src/lib/config';
 
@@ -307,81 +308,6 @@ function LoadingScreen({ colors, isDark }: { colors: any; isDark: boolean }) {
     </Animated.View>
   );
 }
-
-// Error Boundary to catch rendering errors and prevent blank screens
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
-}
-
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  ErrorBoundaryState
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('[ErrorBoundary] Caught error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <View style={errorBoundaryStyles.container}>
-          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-          <Text style={errorBoundaryStyles.title}>Something went wrong</Text>
-          <Text style={errorBoundaryStyles.message}>
-            The app encountered an unexpected error. Please restart the app.
-          </Text>
-          {__DEV__ && this.state.error && (
-            <Text style={errorBoundaryStyles.error}>
-              {this.state.error.toString()}
-            </Text>
-          )}
-        </View>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
-const errorBoundaryStyles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#111827',
-    padding: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  message: {
-    fontSize: 16,
-    color: '#9ca3af',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  error: {
-    fontSize: 12,
-    color: '#ef4444',
-    marginTop: 16,
-    textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-});
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();

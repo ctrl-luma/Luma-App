@@ -22,7 +22,7 @@ export function DeviceProvider({ children }: DeviceProviderProps) {
         const id = await getDeviceId();
         setDeviceId(id);
       } catch (error) {
-        console.error('Failed to load device ID:', error);
+        // Silently ignore
       } finally {
         setIsLoading(false);
       }

@@ -110,7 +110,6 @@ export function PreorderDetailScreen() {
       const data = await preordersApi.get(preorderId);
       setPreorder(data);
     } catch (error) {
-      console.error('[PreorderDetailScreen] Failed to fetch preorder:', error);
       Alert.alert('Error', 'Failed to load order details');
     } finally {
       setIsLoading(false);
@@ -126,7 +125,6 @@ export function PreorderDetailScreen() {
   // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
     if (isConnected && !wasConnectedRef.current && hasEverConnectedRef.current) {
-      console.log('[PreorderDetailScreen] Socket reconnected, refetching data...');
       fetchPreorder();
     }
     if (isConnected) hasEverConnectedRef.current = true;
@@ -275,14 +273,14 @@ export function PreorderDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Order Details</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Loading order details" />
         </View>
       </SafeAreaView>
     );
@@ -295,7 +293,7 @@ export function PreorderDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Order #{preorder.dailyNumber || '—'}</Text>
@@ -365,12 +363,12 @@ export function PreorderDetailScreen() {
           </View>
           <View style={styles.customerActions}>
             {preorder.customerPhone && (
-              <TouchableOpacity style={styles.customerAction} onPress={handleCallCustomer}>
+              <TouchableOpacity style={styles.customerAction} onPress={handleCallCustomer} accessibilityRole="button" accessibilityLabel={`Call ${preorder.customerName || 'customer'}`}>
                 <Ionicons name="call-outline" size={20} color={colors.primary} />
                 <Text style={styles.customerActionText} maxFontSizeMultiplier={1.3}>Call</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.customerAction} onPress={handleEmailCustomer}>
+            <TouchableOpacity style={styles.customerAction} onPress={handleEmailCustomer} accessibilityRole="button" accessibilityLabel={`Email ${preorder.customerName || 'customer'}`}>
               <Ionicons name="mail-outline" size={20} color={colors.primary} />
               <Text style={styles.customerActionText} maxFontSizeMultiplier={1.3}>Email</Text>
             </TouchableOpacity>
@@ -436,9 +434,12 @@ export function PreorderDetailScreen() {
             style={styles.cancelButton}
             onPress={handleCancel}
             disabled={isCancelling}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel Order"
+            accessibilityState={{ disabled: isCancelling }}
           >
             {isCancelling ? (
-              <ActivityIndicator size="small" color={colors.error} />
+              <ActivityIndicator size="small" color={colors.error} accessibilityLabel="Cancelling order" />
             ) : (
               <>
                 <Ionicons name="close-circle-outline" size={20} color={colors.error} />
@@ -462,9 +463,12 @@ export function PreorderDetailScreen() {
               }
             }}
             disabled={isUpdating}
+            accessibilityRole="button"
+            accessibilityLabel={nextAction.label}
+            accessibilityState={{ disabled: isUpdating }}
           >
             {isUpdating ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#fff" accessibilityLabel="Updating order status" />
             ) : (
               <>
                 <Text style={styles.actionButtonText} maxFontSizeMultiplier={1.3}>{nextAction.label}</Text>

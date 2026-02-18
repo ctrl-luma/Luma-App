@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -157,14 +159,17 @@ export function CategoryManagerModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
-        <Pressable style={styles.overlay} onPress={onClose} />
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Pressable style={styles.overlay} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
 
         <View style={styles.content}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title} maxFontSizeMultiplier={1.3}>Manage Categories</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Close">
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
@@ -181,6 +186,7 @@ export function CategoryManagerModal({
                 maxLength={50}
                 onSubmitEditing={handleCreateCategory}
                 returnKeyType="done"
+                accessibilityLabel="New category name"
               />
               <TouchableOpacity
                 style={[
@@ -189,9 +195,11 @@ export function CategoryManagerModal({
                 ]}
                 onPress={handleCreateCategory}
                 disabled={!newCategoryName.trim() || isCreating}
+                accessibilityRole="button"
+                accessibilityLabel={isCreating ? 'Creating category' : 'Create category'}
               >
                 {isCreating ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color="#fff" accessibilityLabel="Creating" />
                 ) : (
                   <Ionicons name="add" size={24} color="#fff" />
                 )}
@@ -239,14 +247,17 @@ export function CategoryManagerModal({
                           autoFocus
                           maxLength={50}
                           onSubmitEditing={() => handleSaveEdit(category.id)}
+                          accessibilityLabel="Edit category name"
                         />
                         <TouchableOpacity
                           style={styles.editActionButton}
                           onPress={() => handleSaveEdit(category.id)}
                           disabled={isSaving}
+                          accessibilityRole="button"
+                          accessibilityLabel="Save category name"
                         >
                           {isSaving ? (
-                            <ActivityIndicator size="small" color={colors.success} />
+                            <ActivityIndicator size="small" color={colors.success} accessibilityLabel="Saving" />
                           ) : (
                             <Ionicons name="checkmark" size={22} color={colors.success} />
                           )}
@@ -254,6 +265,8 @@ export function CategoryManagerModal({
                         <TouchableOpacity
                           style={styles.editActionButton}
                           onPress={handleCancelEdit}
+                          accessibilityRole="button"
+                          accessibilityLabel="Cancel editing"
                         >
                           <Ionicons name="close" size={22} color={colors.error} />
                         </TouchableOpacity>
@@ -263,6 +276,9 @@ export function CategoryManagerModal({
                         <TouchableOpacity
                           style={styles.categoryInfo}
                           onPress={() => handleStartEdit(category)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Edit ${category.name}`}
+                          accessibilityHint="Tap to rename this category"
                         >
                           <View style={styles.categoryNameRow}>
                             <Text style={[
@@ -284,16 +300,19 @@ export function CategoryManagerModal({
 
                         <View style={styles.categoryActions}>
                           {isSaving ? (
-                            <ActivityIndicator size="small" color={colors.primary} />
+                            <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Saving" />
                           ) : (
                             <>
                               <Toggle
                                 value={category.isActive}
                                 onValueChange={() => handleToggleActive(category)}
+                                accessibilityLabel={`${category.name} visibility`}
                               />
                               <TouchableOpacity
                                 style={styles.deleteButton}
                                 onPress={() => handleDeleteCategory(category)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Delete ${category.name}`}
                               >
                                 <Ionicons name="trash-outline" size={20} color={colors.error} />
                               </TouchableOpacity>
@@ -308,7 +327,7 @@ export function CategoryManagerModal({
             )}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

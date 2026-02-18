@@ -170,16 +170,10 @@ export function HeldOrdersScreen() {
   const styles = createStyles(colors, glassColors, isDark);
 
   const fetchHeldOrders = useCallback(async () => {
-    console.log('[HeldOrdersScreen DEBUG] fetchHeldOrders called, deviceId:', deviceId);
     try {
       const response = await ordersApi.listHeld(deviceId || undefined);
-      console.log('[HeldOrdersScreen DEBUG] fetchHeldOrders response:', {
-        orderCount: response.orders.length,
-        orderIds: response.orders.map((o: Order) => o.id),
-      });
       setOrders(response.orders);
     } catch (error: any) {
-      console.error('[HeldOrdersScreen DEBUG] Failed to fetch held orders:', error);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -195,32 +189,22 @@ export function HeldOrdersScreen() {
 
   // Listen for order updates via socket (new held orders, resumed orders, etc.)
   useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
-    console.log('[HeldOrdersScreen DEBUG] ORDER_UPDATED event received:', JSON.stringify(data, null, 2));
-    console.log('[HeldOrdersScreen DEBUG] Current orders count:', orders.length);
-    console.log('[HeldOrdersScreen DEBUG] Event status:', data.status);
     // Refresh held orders when any order is updated (held or resumed)
     if (data.status === 'held' || data.status === 'pending') {
-      console.log('[HeldOrdersScreen DEBUG] Status matches, fetching held orders...');
       fetchHeldOrders();
-    } else {
-      console.log('[HeldOrdersScreen DEBUG] Status does not match (held/pending), ignoring');
     }
   }, [fetchHeldOrders, orders.length]));
 
   useSocketEvent(SocketEvents.ORDER_CREATED, useCallback((data: any) => {
-    console.log('[HeldOrdersScreen DEBUG] ORDER_CREATED event received:', JSON.stringify(data, null, 2));
     // Refresh if a new held order is created
     if (data.status === 'held') {
-      console.log('[HeldOrdersScreen DEBUG] New held order created, fetching...');
       fetchHeldOrders();
     }
   }, [fetchHeldOrders]));
 
   useSocketEvent(SocketEvents.ORDER_DELETED, useCallback((data: any) => {
-    console.log('[HeldOrdersScreen DEBUG] ORDER_DELETED event received:', JSON.stringify(data, null, 2));
     // Remove the deleted order from the list
     if (data.orderId) {
-      console.log('[HeldOrdersScreen DEBUG] Removing order from list:', data.orderId);
       setOrders(prev => prev.filter(o => o.id !== data.orderId));
     }
   }, []));
@@ -233,25 +217,15 @@ export function HeldOrdersScreen() {
   const handleResumeOrder = async (order: Order) => {
     if (isResuming) return; // Prevent double-tap
 
-    console.log('Resume order: Starting for order', { orderId: order.id, status: order.status, holdName: order.holdName });
     setIsResuming(true);
     try {
-      console.log('Resume order: Calling resume API');
       const resumedOrder = await ordersApi.resume(order.id);
-      console.log('Resume order: API returned', { orderId: resumedOrder.id, status: resumedOrder.status });
       // Navigate to checkout with the resumed order
       navigation.navigate('Checkout', {
         resumedOrderId: order.id,
         resumedOrder: resumedOrder,
       });
     } catch (error: any) {
-      console.error('Resume order error:', error);
-      console.error('Resume order error details:', {
-        message: error.message,
-        error: error.error,
-        statusCode: error.statusCode,
-        details: error.details,
-      });
       Alert.alert('Error', error.error || error.message || 'Failed to resume order');
     } finally {
       setIsResuming(false);
@@ -285,6 +259,8 @@ export function HeldOrdersScreen() {
       <TouchableOpacity
         style={styles.deleteAction}
         onPress={() => handleCancelOrder(order)}
+        accessibilityRole="button"
+        accessibilityLabel={`Cancel order ${order.holdName || order.orderNumber}`}
       >
         <Ionicons name="trash-outline" size={24} color="#fff" />
         <Text style={styles.deleteActionText} maxFontSizeMultiplier={1.3}>Cancel</Text>
@@ -305,6 +281,9 @@ export function HeldOrdersScreen() {
           onPress={() => handleResumeOrder(item)}
           activeOpacity={0.7}
           disabled={isResuming}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.holdName || `Order ${item.orderNumber}`}, ${(item.itemCount || item.items?.length || 0)} items, $${(item.totalAmount / 100).toFixed(2)}`}
+          accessibilityHint="Double tap to resume this order"
         >
           <View style={styles.orderHeader}>
             <View style={styles.orderTitleRow}>

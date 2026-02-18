@@ -92,7 +92,7 @@ export function ResetPasswordScreen() {
                   <Text maxFontSizeMultiplier={1.2} style={styles.successIconText}>✓</Text>
                 </View>
 
-                <Text maxFontSizeMultiplier={1.2} style={styles.successTitle}>Password Reset Successful!</Text>
+                <Text maxFontSizeMultiplier={1.2} style={styles.successTitle} accessibilityRole="header">Password Reset Successful!</Text>
                 <Text maxFontSizeMultiplier={1.5} style={styles.successSubtitle}>
                   Your password has been successfully reset. You can now log in with your new password.
                 </Text>
@@ -101,6 +101,8 @@ export function ResetPasswordScreen() {
                   style={styles.button}
                   onPress={() => navigation.navigate('Login')}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Back to login"
                 >
                   <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Back to login</Text>
                 </TouchableOpacity>
@@ -140,7 +142,7 @@ export function ResetPasswordScreen() {
               {/* Card */}
               <View style={styles.card}>
                 {error && (
-                  <View style={styles.errorContainer}>
+                  <View style={styles.errorContainer} accessibilityRole="alert" accessibilityLiveRegion="assertive">
                     <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{error}</Text>
                   </View>
                 )}
@@ -157,10 +159,14 @@ export function ResetPasswordScreen() {
                         placeholderTextColor={colors.gray500}
                         secureTextEntry={!showPasswords}
                         autoComplete="new-password"
+                        accessibilityLabel="New password"
+                        accessibilityHint="Must be at least 8 characters"
                       />
                       <TouchableOpacity
                         onPress={() => setShowPasswords(!showPasswords)}
                         style={styles.showHideButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={showPasswords ? 'Hide passwords' : 'Show passwords'}
                       >
                         <Ionicons
                           name={showPasswords ? 'eye-off-outline' : 'eye-outline'}
@@ -182,6 +188,7 @@ export function ResetPasswordScreen() {
                         placeholderTextColor={colors.gray500}
                         secureTextEntry={!showPasswords}
                         autoComplete="new-password"
+                        accessibilityLabel="Confirm new password"
                       />
                     </View>
                   </View>
@@ -191,10 +198,13 @@ export function ResetPasswordScreen() {
                     onPress={handleSubmit}
                     disabled={loading || !token}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={loading ? 'Resetting password' : 'Reset password'}
+                    accessibilityState={{ disabled: loading || !token, busy: loading }}
                   >
                     {loading ? (
                       <View style={styles.buttonContent}>
-                        <ActivityIndicator color={colors.text} size="small" />
+                        <ActivityIndicator color={colors.text} size="small" accessibilityLabel="Resetting password" />
                         <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Resetting...</Text>
                       </View>
                     ) : (
@@ -207,7 +217,7 @@ export function ResetPasswordScreen() {
               {/* Footer */}
               <View style={styles.footer}>
                 <Text maxFontSizeMultiplier={1.5} style={styles.footerText}>Remember your password? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                <TouchableOpacity onPress={() => navigation.navigate('Login')} accessibilityRole="link" accessibilityLabel="Back to login">
                   <Text maxFontSizeMultiplier={1.3} style={styles.footerLink}>Back to login</Text>
                 </TouchableOpacity>
               </View>

@@ -90,7 +90,7 @@ export function TapToPayFirstUseModal({
             </View>
 
             {/* Learn More Link */}
-            <TouchableOpacity style={styles.learnMoreButton} onPress={onLearnMore}>
+            <TouchableOpacity style={styles.learnMoreButton} onPress={onLearnMore} accessibilityRole="button" accessibilityLabel="Learn how Tap to Pay works">
               <Ionicons name="school-outline" size={18} color={colors.primary} />
               <Text style={styles.learnMoreText} maxFontSizeMultiplier={1.5}>Learn how it works</Text>
             </TouchableOpacity>
@@ -100,6 +100,9 @@ export function TapToPayFirstUseModal({
               <TouchableOpacity
                 style={styles.termsLink}
                 onPress={() => Linking.openURL('https://www.apple.com/legal/privacy/en-ww/tap-to-pay/')}
+                accessibilityRole="link"
+                accessibilityLabel="Apple Tap to Pay Privacy Policy"
+                accessibilityHint="Opens the Apple privacy policy in your browser"
               >
                 <Ionicons name="shield-checkmark-outline" size={14} color={colors.textMuted} />
                 <Text style={styles.termsLinkText} maxFontSizeMultiplier={1.5}>
@@ -110,11 +113,11 @@ export function TapToPayFirstUseModal({
 
             {/* Action Buttons */}
             <View style={styles.buttonContainer}>
-              <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
+              <TouchableOpacity style={styles.skipButton} onPress={onSkip} accessibilityRole="button" accessibilityLabel="Maybe later" accessibilityHint="Skips Tap to Pay setup for now">
                 <Text style={styles.skipButtonText} maxFontSizeMultiplier={1.3}>Maybe later</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={onProceed} activeOpacity={0.9}>
+              <TouchableOpacity onPress={onProceed} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel="Got it, let's go!" accessibilityHint="Proceeds with Tap to Pay setup">
                 <LinearGradient
                   colors={[colors.primary, colors.primary700]}
                   start={{ x: 0, y: 0 }}

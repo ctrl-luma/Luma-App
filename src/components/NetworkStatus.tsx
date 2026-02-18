@@ -65,6 +65,9 @@ export function NetworkStatus() {
           transform: [{ translateY: slideAnim }],
         },
       ]}
+      accessibilityRole="alert"
+      accessibilityLabel={isOffline ? 'No Internet Connection' : 'Back Online'}
+      accessibilityLiveRegion="assertive"
     >
       <Ionicons
         name={isOffline ? 'cloud-offline' : 'cloud-done'}

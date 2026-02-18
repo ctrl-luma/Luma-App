@@ -574,13 +574,14 @@ export function SignUpScreen() {
             autoComplete="email"
             editable={!isFormDisabled}
             error={errors.email}
+            accessibilityLabel="Email address"
             rightIcon={isCheckingEmail ? (
               <View style={styles.inputSpinner}>
-                <ActivityIndicator size="small" color={colors.primary} />
+                <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Checking email availability" />
               </View>
             ) : undefined}
           />
-          {errors.email && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.email}</Text>}
+          {errors.email && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.email}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
@@ -594,10 +595,14 @@ export function SignUpScreen() {
             textContentType="newPassword"
             editable={!isFormDisabled}
             error={errors.password}
+            accessibilityLabel="Password"
+            accessibilityHint="Must be at least 8 characters"
             rightIcon={
               <TouchableOpacity
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.eyeButton}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
               >
                 <Ionicons
                   name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -607,7 +612,7 @@ export function SignUpScreen() {
               </TouchableOpacity>
             }
           />
-          {errors.password && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.password}</Text>}
+          {errors.password && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.password}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
@@ -621,8 +626,9 @@ export function SignUpScreen() {
             textContentType="newPassword"
             editable={!isFormDisabled}
             error={errors.confirmPassword}
+            accessibilityLabel="Confirm password"
           />
-          {errors.confirmPassword && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.confirmPassword}</Text>}
+          {errors.confirmPassword && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.confirmPassword}</Text>}
         </View>
       </View>
     </View>
@@ -654,8 +660,9 @@ export function SignUpScreen() {
               autoComplete="given-name"
               editable={!isFormDisabled}
               error={errors.firstName}
+              accessibilityLabel="First name"
             />
-            {errors.firstName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.firstName}</Text>}
+            {errors.firstName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.firstName}</Text>}
           </View>
 
           <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -668,8 +675,9 @@ export function SignUpScreen() {
               autoComplete="family-name"
               editable={!isFormDisabled}
               error={errors.lastName}
+              accessibilityLabel="Last name"
             />
-            {errors.lastName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.lastName}</Text>}
+            {errors.lastName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.lastName}</Text>}
           </View>
         </View>
 
@@ -684,8 +692,9 @@ export function SignUpScreen() {
             autoComplete="organization"
             editable={!isFormDisabled}
             error={errors.businessName}
+            accessibilityLabel="Business name"
           />
-          {errors.businessName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.businessName}</Text>}
+          {errors.businessName && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.businessName}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
@@ -701,6 +710,10 @@ export function SignUpScreen() {
               setShowBusinessTypePicker(true);
             }}
             disabled={isFormDisabled}
+            accessibilityRole="button"
+            accessibilityLabel={formData.businessType ? `Business type: ${formData.businessType}` : 'Select business type'}
+            accessibilityHint="Opens a list of business types to choose from"
+            accessibilityState={{ disabled: isFormDisabled }}
           >
             <Ionicons name="briefcase-outline" size={20} color={appColors.gray400} />
             <Text maxFontSizeMultiplier={1.3} style={[
@@ -711,7 +724,7 @@ export function SignUpScreen() {
             </Text>
             <Ionicons name="chevron-down" size={20} color={appColors.gray400} />
           </TouchableOpacity>
-          {errors.businessType && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.businessType}</Text>}
+          {errors.businessType && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.businessType}</Text>}
         </View>
 
         <View style={styles.inputGroup}>
@@ -744,7 +757,7 @@ export function SignUpScreen() {
               </View>
             </View>
           )}
-          {errors.phone && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.phone}</Text>}
+          {errors.phone && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.phone}</Text>}
         </View>
 
         <TouchableOpacity
@@ -752,6 +765,9 @@ export function SignUpScreen() {
           onPress={() => updateField('acceptTerms', !formData.acceptTerms)}
           activeOpacity={0.7}
           disabled={isFormDisabled}
+          accessibilityRole="checkbox"
+          accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+          accessibilityState={{ checked: formData.acceptTerms, disabled: isFormDisabled }}
         >
           <View style={[
             styles.checkbox,
@@ -772,6 +788,9 @@ export function SignUpScreen() {
                 Linking.openURL(`${config.websiteUrl}/terms`);
               }}
               suppressHighlighting
+              accessibilityRole="link"
+              accessibilityLabel="Terms of Service"
+              accessibilityHint="Opens in your browser"
             >
               Terms of Service
             </Text>
@@ -784,12 +803,15 @@ export function SignUpScreen() {
                 Linking.openURL(`${config.websiteUrl}/privacy`);
               }}
               suppressHighlighting
+              accessibilityRole="link"
+              accessibilityLabel="Privacy Policy"
+              accessibilityHint="Opens in your browser"
             >
               Privacy Policy
             </Text>
           </Text>
         </TouchableOpacity>
-        {errors.acceptTerms && <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{errors.acceptTerms}</Text>}
+        {errors.acceptTerms && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.acceptTerms}</Text>}
       </View>
 
       {/* Business Type Picker Modal */}
@@ -798,11 +820,13 @@ export function SignUpScreen() {
           <TouchableOpacity
             style={styles.pickerBackdrop}
             onPress={() => setShowBusinessTypePicker(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close business type picker"
           />
           <View style={styles.pickerContent}>
             <View style={styles.pickerHeader}>
               <Text maxFontSizeMultiplier={1.3} style={styles.pickerTitle}>Select Business Type</Text>
-              <TouchableOpacity onPress={() => setShowBusinessTypePicker(false)}>
+              <TouchableOpacity onPress={() => setShowBusinessTypePicker(false)} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={24} color={colors.text} />
               </TouchableOpacity>
             </View>
@@ -818,6 +842,9 @@ export function SignUpScreen() {
                     updateField('businessType', type);
                     setShowBusinessTypePicker(false);
                   }}
+                  accessibilityRole="radio"
+                  accessibilityLabel={type}
+                  accessibilityState={{ selected: formData.businessType === type }}
                 >
                   <Text maxFontSizeMultiplier={1.3} style={[
                     styles.pickerOptionText,
@@ -860,6 +887,9 @@ export function SignUpScreen() {
           ]}
           onPress={() => updateField('selectedPlan', 'starter')}
           disabled={isFormDisabled}
+          accessibilityRole="radio"
+          accessibilityLabel={`Starter plan, ${PLANS.starter.price}, ${PLANS.starter.transactionFee} per transaction`}
+          accessibilityState={{ selected: formData.selectedPlan === 'starter', disabled: isFormDisabled }}
         >
           <View style={styles.planHeader}>
             <Text maxFontSizeMultiplier={1.3} style={styles.planName}>{PLANS.starter.name}</Text>
@@ -907,6 +937,9 @@ export function SignUpScreen() {
           ]}
           onPress={() => updateField('selectedPlan', 'pro')}
           disabled={isFormDisabled}
+          accessibilityRole="radio"
+          accessibilityLabel={`Pro plan, ${iapProduct?.localizedPrice || PLANS.pro.price} per month, ${PLANS.pro.transactionFee} per transaction, most popular`}
+          accessibilityState={{ selected: formData.selectedPlan === 'pro', disabled: isFormDisabled }}
         >
           <View style={styles.popularBadge}>
             <Text maxFontSizeMultiplier={1.3} style={styles.popularBadgeText}>Most Popular</Text>
@@ -987,7 +1020,7 @@ export function SignUpScreen() {
         </View>
         <View style={styles.checklistItem}>
           <View style={[styles.checklistIconWrapper, styles.checklistIconLoading]}>
-            <ActivityIndicator size="small" color={colors.primary} />
+            <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Signing you in" />
           </View>
           <Text maxFontSizeMultiplier={1.5} style={styles.checklistText}>Signing you in...</Text>
         </View>
@@ -1042,7 +1075,7 @@ export function SignUpScreen() {
         {/* Header */}
         <View style={styles.header}>
           {currentStep !== 'confirmation' ? (
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <TouchableOpacity onPress={handleBack} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
               <View style={styles.backButtonInner}>
                 <Ionicons name="chevron-back" size={20} color={colors.text} />
               </View>
@@ -1136,6 +1169,17 @@ export function SignUpScreen() {
               onPress={handleNext}
               disabled={isLoading || isCheckingEmail || isCheckingPassword || isPurchasing}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={
+                isLoading || isPurchasing
+                  ? (isPurchasing ? 'Processing purchase' : 'Creating account')
+                  : currentStep === 'plan'
+                    ? formData.selectedPlan === 'pro'
+                      ? 'Subscribe to Pro'
+                      : 'Create Account'
+                    : 'Continue'
+              }
+              accessibilityState={{ disabled: isLoading || isCheckingEmail || isCheckingPassword || isPurchasing, busy: isLoading || isPurchasing }}
             >
               <LinearGradient
                 colors={[colors.primary, '#1d4ed8']}
@@ -1145,7 +1189,7 @@ export function SignUpScreen() {
               >
                 {isLoading || isPurchasing ? (
                   <View style={styles.buttonLoadingContent}>
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color="#fff" size="small" accessibilityLabel={isPurchasing ? 'Processing purchase' : 'Creating account'} />
                     <Text maxFontSizeMultiplier={1.3} style={styles.nextButtonText}>
                       {isPurchasing ? 'Processing...' : 'Creating account...'}
                     </Text>
@@ -1168,7 +1212,7 @@ export function SignUpScreen() {
             {currentStep === 'account' && (
               <View style={styles.signInRow}>
                 <Text maxFontSizeMultiplier={1.5} style={styles.signInText}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
+                <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="link" accessibilityLabel="Sign in to existing account">
                   <Text maxFontSizeMultiplier={1.3} style={styles.signInLink}>Sign in</Text>
                 </TouchableOpacity>
               </View>

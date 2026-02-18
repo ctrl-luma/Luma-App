@@ -81,7 +81,7 @@ export function ItemNotesModal({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <Pressable style={styles.overlay} onPress={onCancel}>
+        <Pressable style={styles.overlay} onPress={onCancel} accessibilityLabel="Close" accessibilityRole="button">
           <Pressable
             style={[styles.container, { backgroundColor: colors.card }]}
             onPress={(e) => e.stopPropagation()}
@@ -99,6 +99,8 @@ export function ItemNotesModal({
               <TouchableOpacity
                 style={[styles.closeButton, { backgroundColor: glassColors.backgroundElevated }]}
                 onPress={onCancel}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
               >
                 <Ionicons name="close" size={20} color={colors.text} />
               </TouchableOpacity>
@@ -116,6 +118,7 @@ export function ItemNotesModal({
                 numberOfLines={3}
                 maxLength={500}
                 autoFocus
+                accessibilityLabel={`Special instructions for ${product.name}`}
               />
             </View>
 
@@ -129,6 +132,8 @@ export function ItemNotesModal({
                   key={note}
                   style={[styles.quickNoteButton, { backgroundColor: glassColors.backgroundElevated, borderColor: glassColors.border }]}
                   onPress={() => handleQuickNote(note)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${note}`}
                 >
                   <Text style={[styles.quickNoteText, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
                     {note}
@@ -142,6 +147,9 @@ export function ItemNotesModal({
               <TouchableOpacity
                 style={[styles.button, styles.skipButton, { borderColor: colors.border }]}
                 onPress={() => onConfirm('')}
+                accessibilityRole="button"
+                accessibilityLabel="Skip notes"
+                accessibilityHint="Adds item to cart without special instructions"
               >
                 <Text style={[styles.buttonText, { color: colors.text }]} maxFontSizeMultiplier={1.3}>
                   Skip Notes
@@ -150,6 +158,9 @@ export function ItemNotesModal({
               <TouchableOpacity
                 style={[styles.button, styles.addButton, { backgroundColor: colors.primary }]}
                 onPress={handleConfirm}
+                accessibilityRole="button"
+                accessibilityLabel="Add to cart"
+                accessibilityHint="Adds item with notes to cart"
               >
                 <Text style={[styles.buttonText, { color: '#FFFFFF' }]} maxFontSizeMultiplier={1.3}>
                   Add to Cart

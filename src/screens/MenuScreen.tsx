@@ -31,14 +31,11 @@ if (!isExpoGo) {
     const draggable = require('react-native-draggable-flatlist');
     DraggableFlatList = draggable.default;
     ScaleDecorator = draggable.ScaleDecorator;
-    console.log('DraggableFlatList loaded successfully');
   } catch (e) {
-    console.log('DraggableFlatList failed to load:', e);
     DraggableFlatList = FlatList; // Fallback to regular FlatList
     ScaleDecorator = ({ children }: any) => children;
   }
 } else {
-  console.log('Running in Expo Go - using FlatList fallback');
   DraggableFlatList = FlatList; // Fallback to regular FlatList in Expo Go
   ScaleDecorator = ({ children }: any) => children;
 }
@@ -241,6 +238,8 @@ function EmptyMenuState({
             <TouchableOpacity
               style={[emptyMenuStyles.actionButton, { borderColor: colors.primary }]}
               onPress={onClearSearch}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
             >
               <Text maxFontSizeMultiplier={1.3} style={[emptyMenuStyles.actionButtonText, { color: colors.primary }]}>
                 Clear Search
@@ -265,6 +264,8 @@ function EmptyMenuState({
             <TouchableOpacity
               style={[emptyMenuStyles.primaryButton, { backgroundColor: colors.primary }]}
               onPress={onAddProduct}
+              accessibilityRole="button"
+              accessibilityLabel="Add product"
             >
               <Ionicons name="add" size={20} color="#fff" />
               <Text maxFontSizeMultiplier={1.3} style={emptyMenuStyles.primaryButtonText}>Add Product</Text>
@@ -291,6 +292,9 @@ function EmptyMenuState({
               <TouchableOpacity
                 style={[emptyMenuStyles.primaryButton, { backgroundColor: colors.primary }]}
                 onPress={onStartEditing}
+                accessibilityRole="button"
+                accessibilityLabel="Start editing"
+                accessibilityHint="Enter edit mode to add products to this catalog"
               >
                 <Ionicons name="pencil" size={18} color="#fff" />
                 <Text maxFontSizeMultiplier={1.3} style={emptyMenuStyles.primaryButtonText}>Start Editing</Text>
@@ -413,6 +417,9 @@ function CategoryPill({ label, count, isActive, onPress, colors, glassColors }: 
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} category${count !== undefined && count > 0 ? `, ${count} products` : ''}`}
+      accessibilityState={{ selected: isActive }}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -461,11 +468,15 @@ const AnimatedPressable = memo(function AnimatedPressable({
   onPress,
   onLongPress,
   style,
+  accessibilityLabel,
+  accessibilityHint,
 }: {
   children: React.ReactNode;
   onPress: () => void;
   onLongPress?: () => void;
   style?: any;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -493,6 +504,9 @@ const AnimatedPressable = memo(function AnimatedPressable({
       onLongPress={onLongPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
     >
       <Animated.View style={[style, { transform: [{ scale: scaleAnim }] }]}>
         {children}
@@ -1036,7 +1050,6 @@ export function MenuScreen() {
 
   // Handle drag end for product reordering
   const handleDragEnd = useCallback(async ({ data }: { data: Product[] }) => {
-    console.log('handleDragEnd called with', data.length, 'products');
     if (!selectedCatalog) return;
 
     // Create the new order array
@@ -1044,7 +1057,6 @@ export function MenuScreen() {
       catalogProductId: product.id,
       sortOrder: index,
     }));
-    console.log('Reordering products:', productOrders);
 
     // Optimistically update the local query cache
     queryClient.setQueryData(['products', selectedCatalog.id], data);
@@ -1181,10 +1193,12 @@ export function MenuScreen() {
       <Pressable
         style={styles.dragHandle}
         onLongPress={() => {
-          console.log('Drag handle long pressed for:', item.name);
           drag();
         }}
         delayLongPress={150}
+        accessibilityRole="button"
+        accessibilityLabel={`Reorder ${item.name}`}
+        accessibilityHint="Long press and drag to reorder"
       >
         <Ionicons name="reorder-three" size={22} color={colors.textMuted} />
       </Pressable>
@@ -1195,6 +1209,9 @@ export function MenuScreen() {
       <TouchableOpacity
         style={styles.selectionCheckbox}
         onPress={() => toggleProductSelection(item.id)}
+        accessibilityRole="checkbox"
+        accessibilityLabel={`Select ${item.name}`}
+        accessibilityState={{ checked: isSelected }}
       >
         <View style={[styles.checkboxCircle, isSelected && styles.checkboxCircleSelected]}>
           {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
@@ -1208,12 +1225,16 @@ export function MenuScreen() {
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => handleOpenProductModal(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${item.name}`}
         >
           <Ionicons name="pencil" size={18} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => handleDeleteProduct(item)}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${item.name}`}
         >
           <Ionicons name="trash-outline" size={18} color="#fff" />
         </TouchableOpacity>
@@ -1239,6 +1260,8 @@ export function MenuScreen() {
           ]}
           onPress={handlePress}
           onLongPress={supportsDragAndDrop ? undefined : () => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
+          accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+          accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
         >
           {dragHandle}
           {selectionCheckbox}
@@ -1264,15 +1287,19 @@ export function MenuScreen() {
                       <TouchableOpacity
                         style={styles.listQuantityDecrementButton}
                         onPress={() => decrementItem(item.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove one ${item.name} from cart`}
                       >
                         <Ionicons name="remove" size={14} color="#fff" />
                       </TouchableOpacity>
-                      <View style={styles.listQuantityBadge}>
+                      <View style={styles.listQuantityBadge} accessibilityLabel={`${quantity} in cart`}>
                         <Text maxFontSizeMultiplier={1.5} style={styles.quantityText}>{quantity}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.listQuantityIncrementButton}
                         onPress={() => handleAddToCart(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Add one more ${item.name} to cart`}
                       >
                         <Ionicons name="add" size={14} color="#fff" />
                       </TouchableOpacity>
@@ -1281,6 +1308,8 @@ export function MenuScreen() {
                     <TouchableOpacity
                       style={styles.listQuantityIncrementButton}
                       onPress={() => handleAddToCart(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Add ${item.name} to cart`}
                     >
                       <Ionicons name="add" size={14} color="#fff" />
                     </TouchableOpacity>
@@ -1317,6 +1346,8 @@ export function MenuScreen() {
           ]}
           onPress={handlePress}
           onLongPress={supportsDragAndDrop ? undefined : () => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
+          accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+          accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
         >
           {dragHandle}
           {selectionCheckbox}
@@ -1353,15 +1384,19 @@ export function MenuScreen() {
                       <TouchableOpacity
                         style={styles.largeQuantityDecrementButton}
                         onPress={() => decrementItem(item.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove one ${item.name} from cart`}
                       >
                         <Ionicons name="remove" size={18} color="#fff" />
                       </TouchableOpacity>
-                      <View style={styles.largeQuantityBadge}>
+                      <View style={styles.largeQuantityBadge} accessibilityLabel={`${quantity} in cart`}>
                         <Text maxFontSizeMultiplier={1.3} style={styles.largeQuantityText}>{quantity}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.largeQuantityIncrementButton}
                         onPress={() => handleAddToCart(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Add one more ${item.name} to cart`}
                       >
                         <Ionicons name="add" size={18} color="#fff" />
                       </TouchableOpacity>
@@ -1370,6 +1405,8 @@ export function MenuScreen() {
                     <TouchableOpacity
                       style={styles.largeQuantityIncrementButton}
                       onPress={() => handleAddToCart(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Add ${item.name} to cart`}
                     >
                       <Ionicons name="add" size={18} color="#fff" />
                     </TouchableOpacity>
@@ -1397,6 +1434,8 @@ export function MenuScreen() {
           ]}
           onPress={handlePress}
           onLongPress={supportsDragAndDrop ? undefined : () => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
+          accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+          accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
         >
           {supportsDragAndDrop && (
             <Pressable
@@ -1404,6 +1443,9 @@ export function MenuScreen() {
               onLongPress={drag}
               delayLongPress={150}
               onPressIn={(e) => e.stopPropagation()}
+              accessibilityRole="button"
+              accessibilityLabel={`Reorder ${item.name}`}
+              accessibilityHint="Long press and drag to reorder"
             >
               <Ionicons name="reorder-three" size={20} color={colors.textMuted} />
             </Pressable>
@@ -1431,12 +1473,16 @@ export function MenuScreen() {
               <TouchableOpacity
                 style={styles.compactEditButton}
                 onPress={() => handleOpenProductModal(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Edit ${item.name}`}
               >
                 <Ionicons name="pencil" size={16} color={colors.primary} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.compactDeleteButton}
                 onPress={() => handleDeleteProduct(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${item.name}`}
               >
                 <Ionicons name="trash-outline" size={16} color={colors.error} />
               </TouchableOpacity>
@@ -1448,15 +1494,19 @@ export function MenuScreen() {
                   <TouchableOpacity
                     style={styles.compactQuantityDecrementButton}
                     onPress={() => decrementItem(item.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove one ${item.name} from cart`}
                   >
                     <Ionicons name="remove" size={12} color="#fff" />
                   </TouchableOpacity>
-                  <View style={styles.compactQuantityBadge}>
+                  <View style={styles.compactQuantityBadge} accessibilityLabel={`${quantity} in cart`}>
                     <Text maxFontSizeMultiplier={1.5} style={styles.compactQuantityText}>{quantity}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.compactQuantityIncrementButton}
                     onPress={() => handleAddToCart(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add one more ${item.name} to cart`}
                   >
                     <Ionicons name="add" size={12} color="#fff" />
                   </TouchableOpacity>
@@ -1465,6 +1515,8 @@ export function MenuScreen() {
                 <TouchableOpacity
                   style={styles.compactQuantityIncrementButton}
                   onPress={() => handleAddToCart(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add ${item.name} to cart`}
                 >
                   <Ionicons name="add" size={14} color="#fff" />
                 </TouchableOpacity>
@@ -1488,6 +1540,8 @@ export function MenuScreen() {
         ]}
         onPress={handlePress}
         onLongPress={() => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
+        accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+        accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
       >
         {selectionCheckbox}
         <View style={styles.productImageContainer}>
@@ -1516,15 +1570,19 @@ export function MenuScreen() {
                     <TouchableOpacity
                       style={styles.quantityDecrementButton}
                       onPress={() => decrementItem(item.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove one ${item.name} from cart`}
                     >
                       <Ionicons name="remove" size={14} color="#fff" />
                     </TouchableOpacity>
-                    <View style={styles.quantityBadge}>
+                    <View style={styles.quantityBadge} accessibilityLabel={`${quantity} in cart`}>
                       <Text maxFontSizeMultiplier={1.5} style={styles.quantityText}>{quantity}</Text>
                     </View>
                     <TouchableOpacity
                       style={styles.quantityIncrementButton}
                       onPress={() => handleAddToCart(item)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Add one more ${item.name} to cart`}
                     >
                       <Ionicons name="add" size={14} color="#fff" />
                     </TouchableOpacity>
@@ -1533,6 +1591,8 @@ export function MenuScreen() {
                   <TouchableOpacity
                     style={styles.quantityIncrementButton}
                     onPress={() => handleAddToCart(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${item.name} to cart`}
                   >
                     <Ionicons name="add" size={14} color="#fff" />
                   </TouchableOpacity>
@@ -1589,6 +1649,9 @@ export function MenuScreen() {
             style={[styles.quickChargeFab, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
             onPress={() => setQuickChargeVisible(true)}
             activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel="Quick charge"
+            accessibilityHint="Open quick charge to enter a custom amount"
           >
             <Ionicons name="flash" size={24} color={isDark ? '#09090b' : '#fff'} />
           </TouchableOpacity>
@@ -1667,6 +1730,8 @@ export function MenuScreen() {
           <TouchableOpacity
             onPress={() => refetch()}
             style={{ marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: colors.primary, borderRadius: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading menu"
           >
             <Text maxFontSizeMultiplier={1.3} style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Retry</Text>
           </TouchableOpacity>
@@ -1694,9 +1759,15 @@ export function MenuScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
+              accessibilityLabel="Search products"
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search text"
+              >
                 <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
@@ -1706,6 +1777,8 @@ export function MenuScreen() {
                 setIsSearching(false);
                 setSearchQuery('');
               }}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel search"
             >
               <Text maxFontSizeMultiplier={1.3} style={styles.cancelSearchText}>Cancel</Text>
             </TouchableOpacity>
@@ -1722,6 +1795,9 @@ export function MenuScreen() {
                     onPress={() => setIsEditMode(!isEditMode)}
                     activeOpacity={0.8}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={isEditMode ? 'Exit edit mode' : 'Enter edit mode'}
+                    accessibilityState={{ selected: isEditMode }}
                   >
                     <Ionicons
                       name={isEditMode ? 'checkmark' : 'pencil'}
@@ -1744,6 +1820,8 @@ export function MenuScreen() {
                     setTimeout(() => searchInputRef.current?.focus(), 100);
                   }}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Search products"
                 >
                   <Ionicons name="search" size={20} color={colors.text} />
                 </TouchableOpacity>
@@ -1754,6 +1832,8 @@ export function MenuScreen() {
                     style={styles.headerIconButton}
                     onPress={() => setCatalogSettingsVisible(true)}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Catalog settings"
                   >
                     <Ionicons name="settings-outline" size={22} color={colors.text} />
                   </TouchableOpacity>
@@ -1761,6 +1841,8 @@ export function MenuScreen() {
                     style={styles.headerIconButton}
                     onPress={() => setCategoryManagerVisible(true)}
                     activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Manage categories"
                   >
                     <Ionicons name="folder-outline" size={22} color={colors.text} />
                   </TouchableOpacity>
@@ -1831,18 +1913,24 @@ export function MenuScreen() {
                 <TouchableOpacity
                   style={styles.bulkActionButton}
                   onPress={() => handleBulkToggleVisibility(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Show ${selectedProducts.size} selected products`}
                 >
                   <Ionicons name="eye-outline" size={20} color={colors.success} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.bulkActionButton}
                   onPress={() => handleBulkToggleVisibility(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Hide ${selectedProducts.size} selected products`}
                 >
                   <Ionicons name="eye-off-outline" size={20} color={colors.warning} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.bulkActionButton}
                   onPress={handleBulkDelete}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Delete ${selectedProducts.size} selected products`}
                 >
                   <Ionicons name="trash-outline" size={20} color={colors.error} />
                 </TouchableOpacity>
@@ -1906,6 +1994,8 @@ export function MenuScreen() {
           style={[styles.fab, { backgroundColor: colors.primary }]}
           onPress={() => handleOpenProductModal()}
           activeOpacity={0.9}
+          accessibilityRole="button"
+          accessibilityLabel="Add new product"
         >
           <Ionicons name="add" size={28} color="#fff" />
         </TouchableOpacity>
@@ -1919,6 +2009,9 @@ export function MenuScreen() {
             style={[styles.quickChargeFab, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
             onPress={() => setQuickChargeVisible(true)}
             activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel="Quick charge"
+            accessibilityHint="Open quick charge to enter a custom amount"
           >
             <Ionicons name="flash" size={24} color={isDark ? '#09090b' : '#fff'} />
           </TouchableOpacity>
@@ -1929,6 +2022,8 @@ export function MenuScreen() {
               style={styles.goToCartButton}
               onPress={() => navigation.navigate('Checkout', { total: subtotal })}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel={`Go to cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}
             >
               <View style={styles.goToCartBadge}>
                 <Text maxFontSizeMultiplier={1.3} style={styles.goToCartBadgeText}>{itemCount}</Text>

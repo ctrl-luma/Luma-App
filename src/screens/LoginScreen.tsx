@@ -227,6 +227,7 @@ export function LoginScreen() {
                 source={require('../../assets/luma-wordmark.png')}
                 style={styles.wordmark}
                 resizeMode="contain"
+                accessibilityLabel="Luma"
               />
               <Text maxFontSizeMultiplier={1.2} style={styles.title}>Sign In</Text>
               <Text maxFontSizeMultiplier={1.5} style={styles.subtitle}>Access your account to start taking payments</Text>
@@ -240,7 +241,7 @@ export function LoginScreen() {
               style={styles.card}
             >
               {error && (
-                <View style={styles.errorContainer}>
+                <View style={styles.errorContainer} accessibilityRole="alert" accessibilityLiveRegion="assertive">
                   <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>{error}</Text>
                 </View>
               )}
@@ -257,6 +258,7 @@ export function LoginScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="email"
+                    accessibilityLabel="Email address"
                   />
                 </View>
 
@@ -269,10 +271,13 @@ export function LoginScreen() {
                     placeholder="Enter your password"
                     secureTextEntry={!showPassword}
                     autoComplete="password"
+                    accessibilityLabel="Password"
                     rightIcon={
                       <TouchableOpacity
                         onPress={() => setShowPassword(!showPassword)}
                         style={styles.showHideButton}
+                        accessibilityRole="button"
+                        accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                       >
                         <Ionicons
                           name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -288,6 +293,8 @@ export function LoginScreen() {
                 <TouchableOpacity
                   onPress={handleForgotPassword}
                   style={styles.forgotPasswordButton}
+                  accessibilityRole="link"
+                  accessibilityLabel="Forgot password"
                 >
                   <Text maxFontSizeMultiplier={1.3} style={styles.forgotPassword}>Forgot password?</Text>
                 </TouchableOpacity>
@@ -297,10 +304,13 @@ export function LoginScreen() {
                   onPress={handleLogin}
                   disabled={loading}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={loading ? 'Signing in' : 'Sign in'}
+                  accessibilityState={{ disabled: loading, busy: loading }}
                 >
                   {loading ? (
                     <View style={styles.buttonContent}>
-                      <ActivityIndicator color={colors.text} size="small" />
+                      <ActivityIndicator color={colors.text} size="small" accessibilityLabel="Signing in" />
                       <Text maxFontSizeMultiplier={1.3} style={styles.buttonText}>Signing in...</Text>
                     </View>
                   ) : (
@@ -322,9 +332,12 @@ export function LoginScreen() {
                       onPress={handleBiometricLogin}
                       disabled={biometricLoading}
                       activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel={biometricLoading ? 'Authenticating with biometrics' : `Sign in with ${biometricCapabilities?.biometricName}`}
+                      accessibilityState={{ disabled: biometricLoading, busy: biometricLoading }}
                     >
                       {biometricLoading ? (
-                        <ActivityIndicator color={colors.primary} size="small" />
+                        <ActivityIndicator color={colors.primary} size="small" accessibilityLabel="Authenticating" />
                       ) : (
                         <>
                           <Ionicons
@@ -356,7 +369,7 @@ export function LoginScreen() {
             {/* Footer */}
             <View style={styles.footer}>
               <Text maxFontSizeMultiplier={1.5} style={styles.footerText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={handleCreateAccount}>
+              <TouchableOpacity onPress={handleCreateAccount} accessibilityRole="link" accessibilityLabel="Create an account">
                 <Text maxFontSizeMultiplier={1.3} style={styles.footerLink}>Create One</Text>
               </TouchableOpacity>
             </View>

@@ -395,6 +395,8 @@ export function PaymentResultScreen() {
               <TouchableOpacity
                 style={styles.cardPageBackButton}
                 onPress={() => setShowCardEntry(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Go back to payment result"
               >
                 <Ionicons name="arrow-back" size={24} color={colors.text} />
               </TouchableOpacity>
@@ -406,14 +408,14 @@ export function PaymentResultScreen() {
               {/* Amount Display */}
               <View style={styles.cardPageAmountContainer}>
                 <Text style={styles.cardPageAmountLabel} maxFontSizeMultiplier={1.5}>Amount to Pay</Text>
-                <Text style={styles.cardPageAmount} maxFontSizeMultiplier={1.2}>${(amount / 100).toFixed(2)}</Text>
+                <Text style={styles.cardPageAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount to pay $${(amount / 100).toFixed(2)}`}>${(amount / 100).toFixed(2)}</Text>
                 {orderNumber && (
                   <Text style={styles.cardPageOrderNumber} maxFontSizeMultiplier={1.5}>Order #{orderNumber}</Text>
                 )}
               </View>
 
               {/* Fee Warning */}
-              <View style={styles.feeWarningContainer}>
+              <View style={styles.feeWarningContainer} accessibilityRole="alert">
                 <Ionicons name="information-circle" size={16} color={colors.warning} />
                 <Text style={styles.feeWarningText} maxFontSizeMultiplier={1.5}>
                   Manual card entry costs 0.2% + 15¢ more per transaction than Tap to Pay, plus standard tiered processing fees apply.
@@ -462,9 +464,12 @@ export function PaymentResultScreen() {
                   { backgroundColor: isDark ? '#fff' : '#09090b' },
                   (!cardDetails?.complete || processingCard) && styles.cardPagePayButtonDisabled,
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel={processingCard ? 'Processing card payment' : `Pay $${(amount / 100).toFixed(2)} with card`}
+                accessibilityState={{ disabled: !cardDetails?.complete || processingCard }}
               >
                 {processingCard ? (
-                  <ActivityIndicator size="small" color={isDark ? '#09090b' : '#fff'} />
+                  <ActivityIndicator size="small" color={isDark ? '#09090b' : '#fff'} accessibilityLabel="Processing card payment" />
                 ) : (
                   <>
                     <Ionicons name="lock-closed" size={20} color={isDark ? '#09090b' : '#fff'} />
@@ -542,7 +547,7 @@ export function PaymentResultScreen() {
           </Animated.View>
 
           <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', width: '100%' }}>
-            <Text style={[styles.title, { fontSize: titleFontSize }]} maxFontSizeMultiplier={1.3}>
+            <Text style={[styles.title, { fontSize: titleFontSize }]} maxFontSizeMultiplier={1.3} accessibilityRole="header">
               {success ? 'Payment Successful!' : 'Payment Failed'}
             </Text>
 
@@ -550,14 +555,14 @@ export function PaymentResultScreen() {
               <>
                 <View style={styles.amountContainer}>
                   <Text style={styles.amountLabel} maxFontSizeMultiplier={1.5}>Amount Charged</Text>
-                  <Text style={[styles.amount, { fontSize: amountFontSize }]} maxFontSizeMultiplier={1.2}>
+                  <Text style={[styles.amount, { fontSize: amountFontSize }]} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount charged ${amountText}`}>
                     {amountText}
                   </Text>
                 </View>
                 {orderNumber && (
                   <Text style={styles.orderNumber} maxFontSizeMultiplier={1.5}>Order #{orderNumber}</Text>
                 )}
-                <View style={styles.successBadge}>
+                <View style={styles.successBadge} accessibilityRole="text" accessibilityLabel={receiptSent ? 'Receipt sent' : 'Transaction completed'}>
                   <Ionicons name="shield-checkmark" size={18} color={colors.success} />
                   <Text style={styles.successBadgeText} maxFontSizeMultiplier={1.5}>
                     {receiptSent ? 'Receipt sent' : 'Transaction completed'}
@@ -569,6 +574,9 @@ export function PaymentResultScreen() {
                   <TouchableOpacity
                     style={styles.receiptButton}
                     onPress={() => setShowEmailInput(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Send receipt"
+                    accessibilityHint="Enter an email address to send the receipt"
                   >
                     <Ionicons name="mail-outline" size={20} color={colors.primary} />
                     <Text style={styles.receiptButtonText} maxFontSizeMultiplier={1.3}>Send Receipt</Text>
@@ -586,14 +594,18 @@ export function PaymentResultScreen() {
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
+                      accessibilityLabel="Email address for receipt"
                     />
                     <TouchableOpacity
                       style={[styles.sendButton, sendingReceipt && styles.sendButtonDisabled]}
                       onPress={handleSendReceipt}
                       disabled={sendingReceipt}
+                      accessibilityRole="button"
+                      accessibilityLabel={sendingReceipt ? 'Sending receipt' : 'Send receipt'}
+                      accessibilityState={{ disabled: sendingReceipt }}
                     >
                       {sendingReceipt ? (
-                        <ActivityIndicator size="small" color="#fff" />
+                        <ActivityIndicator size="small" color="#fff" accessibilityLabel="Sending receipt" />
                       ) : (
                         <Ionicons name="send" size={18} color="#fff" />
                       )}
@@ -616,7 +628,7 @@ export function PaymentResultScreen() {
               </>
             ) : (
               <>
-                <View style={styles.errorContainer}>
+                <View style={styles.errorContainer} accessibilityRole="alert">
                   <Text style={styles.errorText} maxFontSizeMultiplier={1.5}>
                     {errorMessage || 'The payment could not be processed. Please try again.'}
                   </Text>
@@ -634,6 +646,9 @@ export function PaymentResultScreen() {
                   <TouchableOpacity
                     style={styles.fallbackButton}
                     onPress={() => setShowCardEntry(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Enter card manually"
+                    accessibilityHint="Enter card details as an alternative to Tap to Pay"
                   >
                     <Ionicons name="keypad-outline" size={18} color={colors.primary} />
                     <Text style={styles.fallbackButtonText} maxFontSizeMultiplier={1.3}>Enter Card Manually</Text>
@@ -647,7 +662,7 @@ export function PaymentResultScreen() {
         {/* Actions */}
         <Animated.View style={[styles.footer, { opacity: fadeAnim }]}>
           {success ? (
-            <TouchableOpacity onPress={handleNewSale} activeOpacity={0.9}>
+            <TouchableOpacity onPress={handleNewSale} activeOpacity={0.9} accessibilityRole="button" accessibilityLabel="New sale">
               <LinearGradient
                 colors={[colors.success, '#16a34a']}
                 start={{ x: 0, y: 0 }}
@@ -664,11 +679,14 @@ export function PaymentResultScreen() {
                 onPress={handleTryAgain}
                 activeOpacity={0.9}
                 style={[styles.primaryButton, { backgroundColor: isDark ? '#fff' : '#09090b' }]}
+                accessibilityRole="button"
+                accessibilityLabel="Try again"
+                accessibilityHint="Retry the payment"
               >
                 <Ionicons name="refresh" size={24} color={isDark ? '#09090b' : '#fff'} />
                 <Text style={[styles.primaryButtonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>Try Again</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={handleNewSale}>
+              <TouchableOpacity style={styles.secondaryButton} onPress={handleNewSale} accessibilityRole="button" accessibilityLabel="Cancel order">
                 <Text style={styles.secondaryButtonText} maxFontSizeMultiplier={1.3}>Cancel Order</Text>
               </TouchableOpacity>
             </>
@@ -816,7 +834,7 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, success: bool
     emailInput: {
       flex: 1,
       minWidth: 0,
-      height: 48,
+      minHeight: 48,
       backgroundColor: glassColors.backgroundElevated,
       borderRadius: 14,
       paddingHorizontal: 16,

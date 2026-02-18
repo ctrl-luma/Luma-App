@@ -355,7 +355,7 @@ export function TapToPayEducationScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Setting Up Tap to Pay</Text>
@@ -366,7 +366,7 @@ export function TapToPayEducationScreen() {
             <>
               <View style={styles.progressIconContainer}>
                 <View style={styles.progressRing}>
-                  <ActivityIndicator size="large" color={colors.primary} />
+                  <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Enabling Tap to Pay" />
                 </View>
               </View>
               <Text style={styles.slideTitle} maxFontSizeMultiplier={1.3}>Enabling Tap to Pay</Text>
@@ -396,6 +396,8 @@ export function TapToPayEducationScreen() {
                     onPress={handleClose}
                     activeOpacity={0.9}
                     style={{ marginTop: 32, width: '100%' }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Got It"
                   >
                     <LinearGradient
                       colors={[colors.primary, colors.primary700]}
@@ -418,6 +420,8 @@ export function TapToPayEducationScreen() {
                     onPress={handleAndroidAutoEnable}
                     activeOpacity={0.9}
                     style={{ marginTop: 32, width: '100%' }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Try Again"
                   >
                     <LinearGradient
                       colors={[colors.primary, colors.primary700]}
@@ -485,7 +489,7 @@ export function TapToPayEducationScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+        <TouchableOpacity style={styles.closeButton} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Close">
           <Ionicons name="close" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} maxFontSizeMultiplier={1.3}>Set Up Tap to Pay</Text>
@@ -503,10 +507,10 @@ export function TapToPayEducationScreen() {
           <>
             <View style={styles.progressIconContainer}>
               <View style={styles.progressRing}>
-                <ActivityIndicator size="large" color={colors.primary} />
+                <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Setting up Tap to Pay" />
               </View>
             </View>
-            <Text style={styles.progressPercent} maxFontSizeMultiplier={1.2}>{Math.round(configurationProgress)}%</Text>
+            <Text style={styles.progressPercent} maxFontSizeMultiplier={1.2} accessibilityRole="text" accessibilityLabel={`${Math.round(configurationProgress)} percent complete`}>{Math.round(configurationProgress)}%</Text>
             <View style={styles.progressBarContainer}>
               <View style={[styles.progressBarFill, { width: `${configurationProgress}%` }]}>
                 <LinearGradient
@@ -561,7 +565,7 @@ export function TapToPayEducationScreen() {
 
             {/* Error message */}
             {(enableError || terminalError) && (
-              <View style={styles.errorContainer}>
+              <View style={styles.errorContainer} accessibilityRole="alert">
                 <View style={styles.errorRow}>
                   <Ionicons name="alert-circle" size={18} color={colors.error} />
                   <Text style={styles.errorText} maxFontSizeMultiplier={1.5}>{enableError || terminalError}</Text>
@@ -570,6 +574,9 @@ export function TapToPayEducationScreen() {
                   <TouchableOpacity
                     style={styles.setupPaymentsButton}
                     onPress={handleGoToPaymentSetup}
+                    accessibilityRole="button"
+                    accessibilityLabel="Set Up Payments"
+                    accessibilityHint="Navigate to payment setup"
                   >
                     <Ionicons name="card-outline" size={18} color="#fff" />
                     <Text style={styles.setupPaymentsButtonText} maxFontSizeMultiplier={1.3}>Set Up Payments</Text>
@@ -587,6 +594,9 @@ export function TapToPayEducationScreen() {
           onPress={handleButtonPress}
           activeOpacity={0.9}
           disabled={isButtonDisabled}
+          accessibilityRole="button"
+          accessibilityLabel={getButtonText()}
+          accessibilityState={{ disabled: isButtonDisabled }}
         >
           <LinearGradient
             colors={isButtonDisabled ? [colors.gray600, colors.gray700] : [colors.primary, colors.primary700]}
@@ -595,7 +605,7 @@ export function TapToPayEducationScreen() {
             style={[styles.nextButton, isButtonDisabled && { opacity: 0.6 }]}
           >
             {isEnabling ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color="#fff" accessibilityLabel="Enabling" />
             ) : (
               <>
                 <Text style={styles.nextButtonText} maxFontSizeMultiplier={1.3}>{getButtonText()}</Text>

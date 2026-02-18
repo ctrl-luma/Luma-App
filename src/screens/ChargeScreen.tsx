@@ -91,6 +91,8 @@ function KeypadButton({ keyValue, onPress, colors, buttonSize, glassColors }: Ke
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}
+        accessibilityRole="button"
+        accessibilityLabel={keyValue === 'DEL' ? 'Delete' : keyValue === 'C' ? 'Clear' : keyValue}
         style={({ pressed }) => [
           {
             width: buttonSize,
@@ -265,7 +267,7 @@ export function ChargeScreen() {
       {/* Centered Content - Amount & Keypad */}
       <View style={styles.mainContent}>
         {/* Amount Display */}
-        <View style={styles.amountContainer}>
+        <View style={styles.amountContainer} accessibilityRole="summary" accessibilityLabel={`Amount $${displayAmount}`}>
           <Text style={[styles.currencySymbol, { fontSize: responsiveSizes.currencyFontSize }]} maxFontSizeMultiplier={1.2}>$</Text>
           <Text style={[styles.amount, { fontSize: responsiveSizes.amountFontSize }]} maxFontSizeMultiplier={1.2}>{displayAmount}</Text>
         </View>
@@ -299,6 +301,9 @@ export function ChargeScreen() {
             }
           }}
           disabled={chargeDisabled}
+          accessibilityRole="button"
+          accessibilityLabel={cents < 50 ? 'Enter amount' : `Charge $${displayAmount}`}
+          accessibilityState={{ disabled: chargeDisabled }}
           style={({ pressed }) => [
             styles.chargeButton,
             { backgroundColor: chargeDisabled ? glassColors.backgroundElevated : (isDark ? '#fff' : '#09090b') },
@@ -311,7 +316,7 @@ export function ChargeScreen() {
           </Text>
         </Pressable>
 
-        <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]} maxFontSizeMultiplier={1.5}>
+        <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]} maxFontSizeMultiplier={1.5} accessibilityRole={cents > 0 && cents < 50 ? 'alert' : 'text'}>
           Minimum charge is $0.50
         </Text>
       </View>

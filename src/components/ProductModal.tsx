@@ -108,7 +108,6 @@ export function ProductModal({
       );
       return manipulated.uri;
     } catch (error) {
-      console.error('Error compressing image:', error);
       return uri; // Return original if compression fails
     }
   };
@@ -136,7 +135,6 @@ export function ProductModal({
         setRemoveImage(false);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
       Alert.alert('Error', 'Failed to pick image');
     }
   };
@@ -200,7 +198,7 @@ export function ProductModal({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <Pressable style={styles.overlay} onPress={onClose} />
+        <Pressable style={styles.overlay} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -208,7 +206,7 @@ export function ProductModal({
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Close">
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.title} maxFontSizeMultiplier={1.3}>
@@ -218,9 +216,11 @@ export function ProductModal({
               onPress={handleSave}
               disabled={isSaving}
               style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel={isSaving ? 'Saving product' : 'Save product'}
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color="#fff" accessibilityLabel="Saving" />
               ) : (
                 <Text style={styles.saveButtonText} maxFontSizeMultiplier={1.3}>Save</Text>
               )}
@@ -239,6 +239,9 @@ export function ProductModal({
                 style={styles.imagePicker}
                 onPress={handlePickImage}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={displayImage ? 'Change product image' : 'Add product image'}
+                accessibilityHint="Opens the photo library to select an image"
               >
                 {displayImage ? (
                   <View style={styles.imageContainer}>
@@ -250,6 +253,8 @@ export function ProductModal({
                     <TouchableOpacity
                       style={styles.removeImageButton}
                       onPress={handleRemoveImage}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove product image"
                     >
                       <Ionicons name="close-circle" size={28} color={colors.error} />
                     </TouchableOpacity>
@@ -273,6 +278,7 @@ export function ProductModal({
                 placeholder="Product name"
                 placeholderTextColor={colors.textMuted}
                 maxLength={100}
+                accessibilityLabel="Product name"
               />
             </View>
 
@@ -288,6 +294,7 @@ export function ProductModal({
                 multiline
                 numberOfLines={3}
                 maxLength={500}
+                accessibilityLabel="Product description"
               />
             </View>
 
@@ -303,6 +310,7 @@ export function ProductModal({
                   placeholder="0.00"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
+                  accessibilityLabel="Product price in dollars"
                 />
               </View>
             </View>
@@ -312,7 +320,7 @@ export function ProductModal({
               <View style={styles.labelRow}>
                 <Text style={styles.label} maxFontSizeMultiplier={1.5}>Category</Text>
                 {onOpenCategoryManager && (
-                  <TouchableOpacity onPress={onOpenCategoryManager}>
+                  <TouchableOpacity onPress={onOpenCategoryManager} accessibilityRole="button" accessibilityLabel="Manage categories">
                     <Text style={styles.manageLink} maxFontSizeMultiplier={1.5}>Manage</Text>
                   </TouchableOpacity>
                 )}
@@ -321,6 +329,9 @@ export function ProductModal({
                 <TouchableOpacity
                   style={styles.categorySelector}
                   onPress={() => setShowCategoryPicker(!showCategoryPicker)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Category: ${selectedCategory?.name || 'No category'}`}
+                  accessibilityHint="Opens category picker"
                 >
                   <Text style={[
                     styles.categorySelectorText,
@@ -338,6 +349,8 @@ export function ProductModal({
                   <TouchableOpacity
                     style={styles.addCategoryButton}
                     onPress={onOpenCategoryManager}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add new category"
                   >
                     <Ionicons name="add" size={22} color={colors.primary} />
                   </TouchableOpacity>
@@ -355,6 +368,9 @@ export function ProductModal({
                       setCategoryId(null);
                       setShowCategoryPicker(false);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel="No category"
+                    accessibilityState={{ selected: categoryId === null }}
                   >
                     <Text style={[
                       styles.categoryOptionText,
@@ -377,6 +393,9 @@ export function ProductModal({
                         setCategoryId(category.id);
                         setShowCategoryPicker(false);
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel={category.name}
+                      accessibilityState={{ selected: categoryId === category.id }}
                     >
                       <Text style={[
                         styles.categoryOptionText,
@@ -405,6 +424,7 @@ export function ProductModal({
                 <Toggle
                   value={isActive}
                   onValueChange={setIsActive}
+                  accessibilityLabel="Product available"
                 />
               </View>
             </View>

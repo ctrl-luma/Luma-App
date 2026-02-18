@@ -85,7 +85,7 @@ export function EventsScannerScreen() {
         }));
         setRecentScans(scans);
       } catch (err) {
-        console.error('[EventsScanner] Failed to fetch recent scans:', err);
+        // Silently ignore
       } finally {
         setLoadingScans(false);
       }
@@ -260,6 +260,9 @@ export function EventsScannerScreen() {
               style={styles.upgradeButton}
               onPress={() => navigation.navigate('Upgrade')}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Upgrade to Pro"
+              accessibilityHint="Navigate to the upgrade screen"
             >
               <LinearGradient
                 colors={[colors.primary, '#3B82F6']}
@@ -308,6 +311,9 @@ export function EventsScannerScreen() {
                 style={[styles.eventCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => setSelectedEvent(item)}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.name}, ${item.ticketsSold} tickets sold, ${item.ticketsScanned ?? 0} scanned`}
+                accessibilityHint="Double tap to start scanning for this event"
               >
                 <View style={styles.eventCardContent}>
                   <Text style={[styles.eventName, { color: colors.text }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
@@ -347,7 +353,7 @@ export function EventsScannerScreen() {
       <StarBackground colors={colors} isDark={isDark}>
         <View style={[styles.container, { paddingTop: insets.top }]}>
           <View style={styles.selectHeader}>
-            <TouchableOpacity onPress={() => setSelectedEvent(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <TouchableOpacity onPress={() => setSelectedEvent(null)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }} accessibilityRole="button" accessibilityLabel="Back to event selection">
               <Ionicons name="chevron-back" size={20} color={colors.primary} />
               <Text style={{ color: colors.primary, fontSize: 15 }} maxFontSizeMultiplier={1.3}>Back</Text>
             </TouchableOpacity>
@@ -379,6 +385,9 @@ export function EventsScannerScreen() {
                 style={styles.primaryButton}
                 onPress={requestPermission}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Enable Camera"
+                accessibilityHint="Grant camera permission to scan QR codes"
               >
                 <LinearGradient
                   colors={[colors.primary, '#3B82F6']}
@@ -423,6 +432,8 @@ export function EventsScannerScreen() {
                 lastScannedRef.current = '';
               }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Scanning ${selectedEvent.name}. Tap to change event`}
             >
               <View style={styles.eventSelectorContent}>
                 <Text style={styles.headerTitle} numberOfLines={1} maxFontSizeMultiplier={1.3}>{selectedEvent.name}</Text>
@@ -465,6 +476,8 @@ export function EventsScannerScreen() {
                   borderColor: lastScan.valid ? '#10B981' : '#EF4444',
                 },
               ]}
+              accessibilityRole="alert"
+              accessibilityLabel={`${lastScan.valid ? 'Valid Ticket' : 'Invalid Ticket'}. ${lastScan.message || ''}${lastScan.customerName ? `, ${lastScan.customerName}` : ''}`}
             >
               <Ionicons
                 name={lastScan.valid ? 'checkmark-circle' : 'close-circle'}

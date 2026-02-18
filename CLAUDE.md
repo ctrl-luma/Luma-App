@@ -75,6 +75,61 @@ Rules for choosing the value:
 
 Also use `minHeight` instead of fixed `height` on containers that hold text, so they can expand when text scales up.
 
+**VoiceOver / Accessibility Labels (Section 4.4 - MANDATORY):**
+
+Every interactive element MUST have accessibility props for VoiceOver support. This is required by Apple for TTPOi App Store approval and is enforced across ALL screens and components.
+
+Rules by element type:
+
+- **TouchableOpacity / Pressable (buttons):**
+  ```tsx
+  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Pay with Tap to Pay">
+  ```
+
+- **TextInput:**
+  ```tsx
+  <TextInput accessibilityLabel="Email address" />
+  ```
+
+- **Toggle / Switch:**
+  ```tsx
+  <TouchableOpacity accessibilityRole="switch" accessibilityState={{ checked: isEnabled }}>
+  ```
+
+- **Links (opening URLs, external navigation):**
+  ```tsx
+  <TouchableOpacity accessibilityRole="link" accessibilityLabel="Open Vendor Portal">
+  ```
+
+- **Alert banners / error messages:**
+  ```tsx
+  <View accessibilityRole="alert"><Text>Payment failed</Text></View>
+  ```
+
+- **Loading indicators:**
+  ```tsx
+  <ActivityIndicator accessibilityLabel="Loading" />
+  ```
+
+- **Images:**
+  ```tsx
+  <Image accessibilityLabel="Luma logo" />
+  ```
+
+- **Modal close buttons:**
+  ```tsx
+  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close">
+  ```
+
+When to use `accessibilityHint`: Only when the action isn't obvious from the label alone. Example: `accessibilityHint="Double tap to process payment"`.
+
+What NOT to label: Decorative elements (star backgrounds, gradients, dividers, spacers).
+
+Dynamic labels: When content is dynamic, build the label from the data:
+```tsx
+<TouchableOpacity accessibilityLabel={`Refund $${amount} transaction`}>
+```
+
 ### Marketing Requirements (Section 5.1-5.3)
 - Use official Apple Tap to Pay branding assets
 - Follow trademark guidelines

@@ -76,7 +76,6 @@ export function SplitPaymentScreen() {
         handleOrderComplete();
       }
     } catch (error: any) {
-      console.error('Failed to fetch payments:', error);
     } finally {
       setIsLoading(false);
     }
@@ -114,20 +113,14 @@ export function SplitPaymentScreen() {
   const processTapToPayPayment = async (amount: number) => {
     setIsProcessing(true);
     try {
-      console.log('[SplitPayment] Starting tap to pay, amount cents:', amount);
-
       // Ensure terminal is initialized and reader connected
-      console.log('[SplitPayment] Initializing terminal...');
       await initializeTerminal();
-      console.log('[SplitPayment] Connecting reader...');
       await connectReader();
 
       // Create payment intent via API
-      console.log('[SplitPayment] Creating payment intent...');
       const piResponse = await stripeTerminalApi.createPaymentIntent({
         amount: amount / 100, // Convert cents to dollars for API
       });
-      console.log('[SplitPayment] Payment intent created:', piResponse.id, 'clientSecret present:', !!piResponse.clientSecret);
 
       // Initialize Stripe SDK with connected account for Terminal PI retrieval
       await initStripe({
@@ -137,9 +130,7 @@ export function SplitPaymentScreen() {
       });
 
       // Process payment through the Terminal context (retrieve → collect → confirm)
-      console.log('[SplitPayment] Processing payment via terminal context...');
       const result = await terminalProcessPayment(piResponse.clientSecret);
-      console.log('[SplitPayment] Payment result status:', result.status);
 
       if (result.status !== 'succeeded') {
         throw new Error(`Payment status: ${result.status}`);
@@ -155,7 +146,6 @@ export function SplitPaymentScreen() {
       setShowAddPayment(false);
       resetPaymentForm();
     } catch (error: any) {
-      console.error('[SplitPayment] Tap to pay error:', error.message, error);
       Alert.alert('Payment Failed', error.message || 'Failed to process tap to pay payment');
     } finally {
       setIsProcessing(false);
@@ -252,9 +242,20 @@ export function SplitPaymentScreen() {
     setSelectedMethod('tap_to_pay');
   };
 
-  const handleAddPayment = async () => {
-    const amountCents = Math.round(parseFloat(paymentAmount || '0') * 100);
+  const MIN_STRIPE_AMOUNT_CENTS = 50; // $0.50 minimum for Stripe
 
+  const amountCents = Math.round(parseFloat(paymentAmount || '0') * 100);
+  const isStripeMethod = selectedMethod === 'tap_to_pay' || selectedMethod === 'card';
+  const isBelowStripeMinimum = isStripeMethod && amountCents > 0 && amountCents < MIN_STRIPE_AMOUNT_CENTS;
+
+  // Auto-switch to cash if remaining balance drops below Stripe minimum
+  useEffect(() => {
+    if (remainingBalance > 0 && remainingBalance < MIN_STRIPE_AMOUNT_CENTS && (selectedMethod === 'tap_to_pay' || selectedMethod === 'card')) {
+      setSelectedMethod('cash');
+    }
+  }, [remainingBalance, selectedMethod]);
+
+  const handleAddPayment = async () => {
     if (amountCents <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid payment amount');
       return;
@@ -313,7 +314,7 @@ export function SplitPaymentScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Loading payment details" />
         </View>
       </SafeAreaView>
     );
@@ -331,6 +332,8 @@ export function SplitPaymentScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </TouchableOpacity>
@@ -345,7 +348,7 @@ export function SplitPaymentScreen() {
           automaticallyAdjustKeyboardInsets
         >
           {/* Order Summary */}
-          <View style={styles.summaryCard}>
+          <View style={styles.summaryCard} accessibilityRole="summary" accessibilityLabel={`Order total $${(totalAmount / 100).toFixed(2)}, paid $${(totalPaid / 100).toFixed(2)}, remaining $${(remainingBalance / 100).toFixed(2)}`}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel} maxFontSizeMultiplier={1.5}>Order Total</Text>
               <Text style={styles.summaryValue} maxFontSizeMultiplier={1.3}>${(totalAmount / 100).toFixed(2)}</Text>
@@ -393,6 +396,9 @@ export function SplitPaymentScreen() {
                 <TouchableOpacity
                   style={styles.addPaymentButton}
                   onPress={() => setShowAddPayment(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add payment"
+                  accessibilityHint={`$${(remainingBalance / 100).toFixed(2)} remaining`}
                 >
                   <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                   <Text style={styles.addPaymentButtonText} maxFontSizeMultiplier={1.3}>Add Payment</Text>
@@ -403,32 +409,52 @@ export function SplitPaymentScreen() {
 
                   {/* Payment Method Selection */}
                   <View style={styles.methodSelection}>
-                    {(['tap_to_pay', 'card', 'cash'] as PaymentMethod[]).map((method) => (
-                      <TouchableOpacity
-                        key={method}
-                        style={[
-                          styles.methodButton,
-                          selectedMethod === method && styles.methodButtonSelected,
-                        ]}
-                        onPress={() => setSelectedMethod(method)}
-                      >
-                        <Ionicons
-                          name={getPaymentMethodIcon(method)}
-                          size={20}
-                          color={selectedMethod === method ? '#fff' : colors.text}
-                        />
-                        <Text
+                    {(['tap_to_pay', 'card', 'cash'] as PaymentMethod[]).map((method) => {
+                      const isStripe = method === 'tap_to_pay' || method === 'card';
+                      const belowMin = isStripe && remainingBalance < MIN_STRIPE_AMOUNT_CENTS;
+                      return (
+                        <TouchableOpacity
+                          key={method}
                           style={[
-                            styles.methodButtonText,
-                            selectedMethod === method && styles.methodButtonTextSelected,
+                            styles.methodButton,
+                            selectedMethod === method && styles.methodButtonSelected,
+                            belowMin && styles.methodButtonDisabled,
                           ]}
-                          maxFontSizeMultiplier={1.3}
+                          onPress={() => setSelectedMethod(method)}
+                          disabled={belowMin}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${getPaymentMethodLabel(method)}${belowMin ? ', unavailable, below minimum' : ''}`}
+                          accessibilityState={{ selected: selectedMethod === method, disabled: belowMin }}
                         >
-                          {getPaymentMethodLabel(method)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Ionicons
+                            name={getPaymentMethodIcon(method)}
+                            size={20}
+                            color={belowMin ? colors.textMuted : selectedMethod === method ? '#fff' : colors.text}
+                          />
+                          <Text
+                            style={[
+                              styles.methodButtonText,
+                              selectedMethod === method && styles.methodButtonTextSelected,
+                              belowMin && styles.methodButtonTextDisabled,
+                            ]}
+                            maxFontSizeMultiplier={1.3}
+                          >
+                            {getPaymentMethodLabel(method)}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
+
+                  {/* Stripe minimum warning */}
+                  {isBelowStripeMinimum && (
+                    <View style={styles.minimumWarning} accessibilityRole="alert">
+                      <Ionicons name="warning" size={16} color={colors.warning} style={styles.minimumWarningIcon} />
+                      <Text style={styles.minimumWarningText} maxFontSizeMultiplier={1.5}>
+                        Minimum for {selectedMethod === 'tap_to_pay' ? 'Tap to Pay' : 'Card'} is $0.50. Use cash for smaller amounts.
+                      </Text>
+                    </View>
+                  )}
 
                   {/* Amount Input */}
                   <View style={styles.inputGroup}>
@@ -442,10 +468,13 @@ export function SplitPaymentScreen() {
                         keyboardType="decimal-pad"
                         placeholder="0.00"
                         placeholderTextColor={colors.textMuted}
+                        accessibilityLabel="Payment amount"
                       />
                       <TouchableOpacity
                         style={styles.remainingButton}
                         onPress={handlePayRemaining}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Fill remaining balance $${(remainingBalance / 100).toFixed(2)}`}
                       >
                         <Text style={styles.remainingButtonText} maxFontSizeMultiplier={1.3}>Remaining</Text>
                       </TouchableOpacity>
@@ -465,6 +494,7 @@ export function SplitPaymentScreen() {
                           keyboardType="decimal-pad"
                           placeholder="0.00"
                           placeholderTextColor={colors.textMuted}
+                          accessibilityLabel="Cash tendered amount"
                         />
                       </View>
                       {/* Change calculation */}
@@ -508,19 +538,24 @@ export function SplitPaymentScreen() {
                         setShowAddPayment(false);
                         resetPaymentForm();
                       }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Cancel adding payment"
                     >
                       <Text style={styles.cancelFormButtonText} maxFontSizeMultiplier={1.3}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
                         styles.processButton,
-                        isProcessing && styles.processButtonDisabled,
+                        (isProcessing || isBelowStripeMinimum) && styles.processButtonDisabled,
                       ]}
                       onPress={handleAddPayment}
-                      disabled={isProcessing}
+                      disabled={isProcessing || isBelowStripeMinimum}
+                      accessibilityRole="button"
+                      accessibilityLabel={isProcessing ? 'Processing payment' : 'Process payment'}
+                      accessibilityState={{ disabled: isProcessing || isBelowStripeMinimum }}
                     >
                       {isProcessing ? (
-                        <ActivityIndicator color="#fff" size="small" />
+                        <ActivityIndicator color="#fff" size="small" accessibilityLabel="Processing payment" />
                       ) : (
                         <>
                           <Ionicons name="checkmark-circle" size={20} color="#fff" />
@@ -541,6 +576,9 @@ export function SplitPaymentScreen() {
             <TouchableOpacity
               style={styles.completeButton}
               onPress={handleOrderComplete}
+              accessibilityRole="button"
+              accessibilityLabel="Payment complete"
+              accessibilityHint="Finish the order and go to results"
             >
               <Ionicons name="checkmark-circle" size={24} color="#fff" />
               <Text style={styles.completeButtonText} maxFontSizeMultiplier={1.3}>Payment Complete</Text>
@@ -728,6 +766,9 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       backgroundColor: colors.primary,
       borderColor: colors.primary,
     },
+    methodButtonDisabled: {
+      opacity: 0.4,
+    },
     methodButtonText: {
       fontSize: 13,
       fontFamily: fonts.medium,
@@ -735,6 +776,31 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
     },
     methodButtonTextSelected: {
       color: '#fff',
+    },
+    methodButtonTextDisabled: {
+      color: colors.textMuted,
+    },
+    minimumWarning: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: colors.warning + '15',
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.warning + '30',
+    },
+    minimumWarningIcon: {
+      marginTop: 1,
+    },
+    minimumWarningText: {
+      flex: 1,
+      fontSize: 13,
+      fontFamily: fonts.medium,
+      color: colors.warning,
+      lineHeight: 18,
     },
     inputGroup: {
       marginBottom: 16,

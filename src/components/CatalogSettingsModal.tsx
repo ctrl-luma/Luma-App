@@ -253,7 +253,7 @@ export function CatalogSettingsModal({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        <Pressable style={styles.overlay} onPress={onClose} />
+        <Pressable style={styles.overlay} onPress={onClose} accessibilityLabel="Close" accessibilityRole="button" />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -261,7 +261,7 @@ export function CatalogSettingsModal({
         >
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Close">
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
             <Text style={styles.title} maxFontSizeMultiplier={1.3}>Menu Settings</Text>
@@ -269,9 +269,11 @@ export function CatalogSettingsModal({
               onPress={handleSave}
               disabled={isSaving}
               style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel={isSaving ? 'Saving menu settings' : 'Save menu settings'}
             >
               {isSaving ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color="#fff" accessibilityLabel="Saving" />
               ) : (
                 <Text style={styles.saveButtonText} maxFontSizeMultiplier={1.3}>Save</Text>
               )}
@@ -293,6 +295,7 @@ export function CatalogSettingsModal({
                 placeholder="e.g., Summer Menu"
                 placeholderTextColor={colors.textMuted}
                 maxLength={100}
+                accessibilityLabel="Menu name"
               />
             </View>
 
@@ -308,6 +311,7 @@ export function CatalogSettingsModal({
                 multiline
                 numberOfLines={2}
                 maxLength={500}
+                accessibilityLabel="Menu description"
               />
             </View>
 
@@ -323,6 +327,7 @@ export function CatalogSettingsModal({
                   placeholder="e.g., Main Stage"
                   placeholderTextColor={colors.textMuted}
                   maxLength={100}
+                  accessibilityLabel="Menu location"
                 />
               </View>
             </View>
@@ -333,6 +338,9 @@ export function CatalogSettingsModal({
               <TouchableOpacity
                 style={styles.dateSelector}
                 onPress={() => setShowDatePicker(true)}
+                accessibilityRole="button"
+                accessibilityLabel={date ? `Date: ${formatDate(date)}` : 'Select a date'}
+                accessibilityHint="Opens date picker"
               >
                 <Ionicons name="calendar-outline" size={20} color={colors.textMuted} />
                 <Text style={[
@@ -345,6 +353,8 @@ export function CatalogSettingsModal({
                   <TouchableOpacity
                     onPress={handleClearDate}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear date"
                   >
                     <Ionicons name="close-circle" size={20} color={colors.textMuted} />
                   </TouchableOpacity>
@@ -354,10 +364,10 @@ export function CatalogSettingsModal({
                 Platform.OS === 'ios' ? (
                   <View style={styles.datePickerContainer}>
                     <View style={styles.datePickerHeader}>
-                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)} accessibilityRole="button" accessibilityLabel="Cancel date selection">
                         <Text style={styles.datePickerCancel} maxFontSizeMultiplier={1.5}>Cancel</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)} accessibilityRole="button" accessibilityLabel="Confirm date selection">
                         <Text style={styles.datePickerDone} maxFontSizeMultiplier={1.5}>Done</Text>
                       </TouchableOpacity>
                     </View>
@@ -390,7 +400,7 @@ export function CatalogSettingsModal({
                     Show this menu in the app
                   </Text>
                 </View>
-                <Toggle value={isActive} onValueChange={setIsActive} />
+                <Toggle value={isActive} onValueChange={setIsActive} accessibilityLabel="Menu active" />
               </View>
             </View>
 
@@ -406,6 +416,9 @@ export function CatalogSettingsModal({
                       layoutType === option.value && styles.layoutOptionSelected
                     ]}
                     onPress={() => setLayoutType(option.value)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${option.label} layout`}
+                    accessibilityState={{ selected: layoutType === option.value }}
                   >
                     <Ionicons
                       name={option.icon}
@@ -434,6 +447,7 @@ export function CatalogSettingsModal({
                   placeholder="0"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
+                  accessibilityLabel="Tax rate percentage"
                 />
                 <Text style={styles.taxSymbol} maxFontSizeMultiplier={1.5}>%</Text>
               </View>
@@ -451,7 +465,7 @@ export function CatalogSettingsModal({
                     Show tip options during checkout
                   </Text>
                 </View>
-                <Toggle value={showTipScreen} onValueChange={setShowTipScreen} />
+                <Toggle value={showTipScreen} onValueChange={setShowTipScreen} accessibilityLabel="Show tip screen" />
               </View>
             </View>
 
@@ -462,7 +476,7 @@ export function CatalogSettingsModal({
                   <View style={styles.tipHeader}>
                     <Text style={styles.label} maxFontSizeMultiplier={1.5}>Tip Options</Text>
                     {tipPercentages.length < 6 && (
-                      <TouchableOpacity onPress={handleAddTipPercentage}>
+                      <TouchableOpacity onPress={handleAddTipPercentage} accessibilityRole="button" accessibilityLabel="Add tip percentage">
                         <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                       </TouchableOpacity>
                     )}
@@ -480,11 +494,12 @@ export function CatalogSettingsModal({
                               autoFocus
                               maxLength={3}
                               onSubmitEditing={handleSaveTipEdit}
+                              accessibilityLabel="Edit tip percentage"
                             />
-                            <TouchableOpacity onPress={handleSaveTipEdit}>
+                            <TouchableOpacity onPress={handleSaveTipEdit} accessibilityRole="button" accessibilityLabel="Save tip percentage">
                               <Ionicons name="checkmark" size={18} color={colors.success} />
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={handleCancelTipEdit}>
+                            <TouchableOpacity onPress={handleCancelTipEdit} accessibilityRole="button" accessibilityLabel="Cancel editing tip">
                               <Ionicons name="close" size={18} color={colors.error} />
                             </TouchableOpacity>
                           </View>
@@ -493,6 +508,8 @@ export function CatalogSettingsModal({
                             <TouchableOpacity
                               onPress={() => handleStartEditTip(index)}
                               style={styles.tipValueButton}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Edit ${percentage}% tip option`}
                             >
                               <Text style={styles.tipText} maxFontSizeMultiplier={1.5}>{percentage}%</Text>
                             </TouchableOpacity>
@@ -500,6 +517,8 @@ export function CatalogSettingsModal({
                               <TouchableOpacity
                                 onPress={() => handleRemoveTipPercentage(index)}
                                 style={styles.tipRemove}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Remove ${percentage}% tip option`}
                               >
                                 <Ionicons name="close-circle" size={18} color={colors.textMuted} />
                               </TouchableOpacity>
@@ -519,7 +538,7 @@ export function CatalogSettingsModal({
                         Let customers enter a custom tip amount
                       </Text>
                     </View>
-                    <Toggle value={allowCustomTip} onValueChange={setAllowCustomTip} />
+                    <Toggle value={allowCustomTip} onValueChange={setAllowCustomTip} accessibilityLabel="Allow custom tip" />
                   </View>
                 </View>
               </>
@@ -534,7 +553,7 @@ export function CatalogSettingsModal({
                     Ask for customer email during checkout
                   </Text>
                 </View>
-                <Toggle value={promptForEmail} onValueChange={setPromptForEmail} />
+                <Toggle value={promptForEmail} onValueChange={setPromptForEmail} accessibilityLabel="Prompt for email" />
               </View>
             </View>
 
@@ -585,9 +604,11 @@ export function CatalogSettingsModal({
                     style={[styles.actionButton, styles.duplicateButton]}
                     onPress={handleDuplicate}
                     disabled={isDuplicating}
+                    accessibilityRole="button"
+                    accessibilityLabel={isDuplicating ? 'Duplicating catalog' : 'Duplicate catalog'}
                   >
                     {isDuplicating ? (
-                      <ActivityIndicator size="small" color={colors.primary} />
+                      <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Duplicating" />
                     ) : (
                       <>
                         <Ionicons name="copy-outline" size={20} color={colors.primary} />
@@ -604,9 +625,11 @@ export function CatalogSettingsModal({
                     style={[styles.actionButton, styles.deleteButton]}
                     onPress={handleDelete}
                     disabled={isDeleting}
+                    accessibilityRole="button"
+                    accessibilityLabel={isDeleting ? 'Deleting catalog' : 'Delete catalog'}
                   >
                     {isDeleting ? (
-                      <ActivityIndicator size="small" color={colors.error} />
+                      <ActivityIndicator size="small" color={colors.error} accessibilityLabel="Deleting" />
                     ) : (
                       <>
                         <Ionicons name="trash-outline" size={20} color={colors.error} />
