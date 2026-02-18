@@ -77,21 +77,14 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
   }, [isConnected, isAuthenticated, refreshCounts]);
 
   // Listen for preorder events
-  useSocketEvent(SocketEvents.PREORDER_CREATED, useCallback((_data: any) => {
+  const handlePreorderEvent = useCallback((_data: any) => {
     refreshCounts();
-  }, [refreshCounts]));
+  }, [refreshCounts]);
 
-  useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((_data: any) => {
-    refreshCounts();
-  }, [refreshCounts]));
-
-  useSocketEvent(SocketEvents.PREORDER_COMPLETED, useCallback((_data: any) => {
-    refreshCounts();
-  }, [refreshCounts]));
-
-  useSocketEvent(SocketEvents.PREORDER_CANCELLED, useCallback((_data: any) => {
-    refreshCounts();
-  }, [refreshCounts]));
+  useSocketEvent(SocketEvents.PREORDER_CREATED, handlePreorderEvent);
+  useSocketEvent(SocketEvents.PREORDER_UPDATED, handlePreorderEvent);
+  useSocketEvent(SocketEvents.PREORDER_COMPLETED, handlePreorderEvent);
+  useSocketEvent(SocketEvents.PREORDER_CANCELLED, handlePreorderEvent);
 
   return (
     <PreordersContext.Provider value={{ counts, isLoading, refreshCounts }}>

@@ -73,13 +73,15 @@ export function SettingsScreen() {
   const insets = useSafeAreaInsets();
 
   // Listen for subscription updates via socket and refresh data
-  useSocketEvent(SocketEvents.SUBSCRIPTION_UPDATED, useCallback((data: any) => {
+  const handleSubscriptionUpdated = useCallback((data: any) => {
     logger.log('[SettingsScreen] Received SUBSCRIPTION_UPDATED event:', data);
     // Invalidate and refetch subscription info
     queryClient.invalidateQueries({ queryKey: ['subscription-info'] });
     // Also refresh auth to update subscription in AuthContext
     refreshAuth();
-  }, [queryClient, refreshAuth]));
+  }, [queryClient, refreshAuth]);
+
+  useSocketEvent(SocketEvents.SUBSCRIPTION_UPDATED, handleSubscriptionUpdated);
 
   // Fetch detailed billing info for all users - needed to check platform (Stripe vs Apple/Google)
   // and to show appropriate manage subscription options

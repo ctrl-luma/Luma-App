@@ -30,6 +30,7 @@ export const SocketEvents = {
   CATEGORY_UPDATED: 'category:updated',
   CATEGORY_CREATED: 'category:created',
   CATEGORY_DELETED: 'category:deleted',
+  CATEGORIES_REORDERED: 'categories:reordered',
   // Transaction events
   TRANSACTION_CREATED: 'transaction:created',
   TRANSACTION_UPDATED: 'transaction:updated',

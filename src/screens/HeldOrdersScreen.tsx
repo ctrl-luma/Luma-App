@@ -188,26 +188,30 @@ export function HeldOrdersScreen() {
   );
 
   // Listen for order updates via socket (new held orders, resumed orders, etc.)
-  useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
+  const handleOrderUpdated = useCallback((data: any) => {
     // Refresh held orders when any order is updated (held or resumed)
     if (data.status === 'held' || data.status === 'pending') {
       fetchHeldOrders();
     }
-  }, [fetchHeldOrders, orders.length]));
+  }, [fetchHeldOrders]);
 
-  useSocketEvent(SocketEvents.ORDER_CREATED, useCallback((data: any) => {
+  const handleOrderCreated = useCallback((data: any) => {
     // Refresh if a new held order is created
     if (data.status === 'held') {
       fetchHeldOrders();
     }
-  }, [fetchHeldOrders]));
+  }, [fetchHeldOrders]);
 
-  useSocketEvent(SocketEvents.ORDER_DELETED, useCallback((data: any) => {
+  const handleOrderDeleted = useCallback((data: any) => {
     // Remove the deleted order from the list
     if (data.orderId) {
       setOrders(prev => prev.filter(o => o.id !== data.orderId));
     }
-  }, []));
+  }, []);
+
+  useSocketEvent(SocketEvents.ORDER_UPDATED, handleOrderUpdated);
+  useSocketEvent(SocketEvents.ORDER_CREATED, handleOrderCreated);
+  useSocketEvent(SocketEvents.ORDER_DELETED, handleOrderDeleted);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

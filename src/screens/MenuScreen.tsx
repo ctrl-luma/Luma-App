@@ -633,22 +633,25 @@ export function MenuScreen() {
     }
   }, [queryClient, selectedCatalog]);
 
-  const handleCatalogsUpdate = useCallback(() => {
-    refreshCatalogs();
-  }, [refreshCatalogs]);
+  // Memoized handler for CATALOG_UPDATED - also refreshes products and categories
+  // since catalog-product operations (add/update/remove) emit this event.
+  // Note: CatalogContext already handles refreshCatalogs() for this event,
+  // so we only need to refetch products and categories here.
+  const handleCatalogUpdatedEvent = useCallback(() => {
+    handleProductsUpdate();
+    handleCategoriesUpdate();
+  }, [handleProductsUpdate, handleCategoriesUpdate]);
 
   // Subscribe to socket events for real-time updates
   // CATALOG_UPDATED is also triggered when catalog products are changed (add/update/remove)
   useSocketEvent(SocketEvents.PRODUCT_CREATED, handleProductsUpdate);
   useSocketEvent(SocketEvents.PRODUCT_UPDATED, handleProductsUpdate);
   useSocketEvent(SocketEvents.PRODUCT_DELETED, handleProductsUpdate);
-  useSocketEvent(SocketEvents.CATALOG_UPDATED, () => {
-    handleProductsUpdate();
-    handleCatalogsUpdate();
-  });
+  useSocketEvent(SocketEvents.CATALOG_UPDATED, handleCatalogUpdatedEvent);
   useSocketEvent(SocketEvents.CATEGORY_CREATED, handleCategoriesUpdate);
   useSocketEvent(SocketEvents.CATEGORY_UPDATED, handleCategoriesUpdate);
   useSocketEvent(SocketEvents.CATEGORY_DELETED, handleCategoriesUpdate);
+  useSocketEvent(SocketEvents.CATEGORIES_REORDERED, handleCategoriesUpdate);
 
   // ============================================================================
   // Mutations

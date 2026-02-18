@@ -291,29 +291,24 @@ export function PreordersScreen() {
   }, [isConnected, fetchPreorders, refreshCounts]);
 
   // Listen for preorder events via socket - clear all tab caches and refetch
-  useSocketEvent(SocketEvents.PREORDER_CREATED, useCallback((_data: any) => {
+  const handlePreorderCreated = useCallback((_data: any) => {
     // Play notification sound/vibration for new orders
     if (Platform.OS !== 'web') {
       Vibration.vibrate([0, 200, 100, 200]);
     }
     tabCacheRef.current = {};
     fetchPreorders();
-  }, [fetchPreorders]));
+  }, [fetchPreorders]);
 
-  useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((_data: any) => {
+  const handlePreorderChanged = useCallback((_data: any) => {
     tabCacheRef.current = {};
     fetchPreorders();
-  }, [fetchPreorders]));
+  }, [fetchPreorders]);
 
-  useSocketEvent(SocketEvents.PREORDER_COMPLETED, useCallback((_data: any) => {
-    tabCacheRef.current = {};
-    fetchPreorders();
-  }, [fetchPreorders]));
-
-  useSocketEvent(SocketEvents.PREORDER_CANCELLED, useCallback((_data: any) => {
-    tabCacheRef.current = {};
-    fetchPreorders();
-  }, [fetchPreorders]));
+  useSocketEvent(SocketEvents.PREORDER_CREATED, handlePreorderCreated);
+  useSocketEvent(SocketEvents.PREORDER_UPDATED, handlePreorderChanged);
+  useSocketEvent(SocketEvents.PREORDER_COMPLETED, handlePreorderChanged);
+  useSocketEvent(SocketEvents.PREORDER_CANCELLED, handlePreorderChanged);
 
   const handleRefresh = () => {
     setIsRefreshing(true);

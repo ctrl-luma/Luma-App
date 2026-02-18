@@ -432,26 +432,30 @@ export function TransactionsScreen() {
   useSocketEvent(SocketEvents.PREORDER_CANCELLED, handlePaymentEvent);
 
   // Listen for held order updates via socket
-  useSocketEvent(SocketEvents.ORDER_UPDATED, useCallback((data: any) => {
+  const handleHeldOrderUpdated = useCallback((data: any) => {
     // Refresh held orders when any order is held or resumed
     if (data.status === 'held' || data.status === 'pending') {
       fetchHeldOrders();
     }
-  }, [fetchHeldOrders]));
+  }, [fetchHeldOrders]);
 
-  useSocketEvent(SocketEvents.ORDER_CREATED, useCallback((data: any) => {
+  const handleHeldOrderCreated = useCallback((data: any) => {
     // Refresh if a new held order is created
     if (data.status === 'held') {
       fetchHeldOrders();
     }
-  }, [fetchHeldOrders]));
+  }, [fetchHeldOrders]);
 
-  useSocketEvent(SocketEvents.ORDER_DELETED, useCallback((data: any) => {
+  const handleHeldOrderDeleted = useCallback((data: any) => {
     // Remove the deleted order from the list
     if (data.orderId) {
       setHeldOrders(prev => prev.filter(o => o.id !== data.orderId));
     }
-  }, []));
+  }, []);
+
+  useSocketEvent(SocketEvents.ORDER_UPDATED, handleHeldOrderUpdated);
+  useSocketEvent(SocketEvents.ORDER_CREATED, handleHeldOrderCreated);
+  useSocketEvent(SocketEvents.ORDER_DELETED, handleHeldOrderDeleted);
 
   // Refetch stale data when the tab gains focus (catches any missed socket events)
   useFocusEffect(

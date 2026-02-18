@@ -132,11 +132,13 @@ export function PreorderDetailScreen() {
   }, [isConnected, fetchPreorder]);
 
   // Listen for updates to this preorder
-  useSocketEvent(SocketEvents.PREORDER_UPDATED, useCallback((data: any) => {
+  const handlePreorderUpdated = useCallback((data: any) => {
     if (data.preorderId === preorderId) {
       fetchPreorder();
     }
-  }, [preorderId, fetchPreorder]));
+  }, [preorderId, fetchPreorder]);
+
+  useSocketEvent(SocketEvents.PREORDER_UPDATED, handlePreorderUpdated);
 
   const handleUpdateStatus = async (newStatus: PreorderStatus) => {
     if (!preorder || isUpdating) return;
