@@ -285,8 +285,8 @@ function EmptyMenuState({
             </Text>
             <Text maxFontSizeMultiplier={1.5} style={[emptyMenuStyles.subtitle, { color: isDark ? 'rgba(255,255,255,0.55)' : colors.textSecondary }]}>
               {canManage
-                ? 'Tap the edit button to add products to this catalog'
-                : 'Ask your manager to add products to this catalog'}
+                ? 'Tap the edit button to add products to this menu'
+                : 'Ask your manager to add products to this menu'}
             </Text>
             {canManage && (
               <TouchableOpacity
@@ -294,7 +294,7 @@ function EmptyMenuState({
                 onPress={onStartEditing}
                 accessibilityRole="button"
                 accessibilityLabel="Start editing"
-                accessibilityHint="Enter edit mode to add products to this catalog"
+                accessibilityHint="Enter edit mode to add products to this menu"
               >
                 <Ionicons name="pencil" size={18} color="#fff" />
                 <Text maxFontSizeMultiplier={1.3} style={emptyMenuStyles.primaryButtonText}>Start Editing</Text>
@@ -526,7 +526,7 @@ export function MenuScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { isLoading: authLoading, user, completeOnboarding } = useAuth();
+  const { isLoading: authLoading, user, completeOnboarding, subscription } = useAuth();
   const { selectedCatalog, catalogs, isLoading: catalogsLoading, refreshCatalogs, setSelectedCatalog } = useCatalog();
   const { addItem, getItemQuantity, decrementItem, itemCount, subtotal } = useCart();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -897,7 +897,7 @@ export function MenuScreen() {
   const handleDeleteProduct = (product: Product) => {
     Alert.alert(
       'Remove Product',
-      `Remove "${product.name}" from this catalog? The product will remain in your library.`,
+      `Remove "${product.name}" from this menu? The product will remain in your library.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -946,7 +946,7 @@ export function MenuScreen() {
 
   const handleSaveCatalog = async (data: UpdateCatalogData) => {
     if (!selectedCatalog) {
-      throw new Error('No catalog selected');
+      throw new Error('No menu selected');
     }
     await updateCatalogMutation.mutateAsync({
       catalogId: selectedCatalog.id,
@@ -1000,7 +1000,7 @@ export function MenuScreen() {
 
     Alert.alert(
       'Delete Products',
-      `Are you sure you want to remove ${selectedProducts.size} product(s) from this catalog?`,
+      `Are you sure you want to remove ${selectedProducts.size} product(s) from this menu?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -1836,7 +1836,7 @@ export function MenuScreen() {
                     onPress={() => setCatalogSettingsVisible(true)}
                     activeOpacity={0.8}
                     accessibilityRole="button"
-                    accessibilityLabel="Catalog settings"
+                    accessibilityLabel="Menu settings"
                   >
                     <Ionicons name="settings-outline" size={22} color={colors.text} />
                   </TouchableOpacity>
@@ -2068,7 +2068,7 @@ export function MenuScreen() {
         visible={catalogSettingsVisible}
         catalog={selectedCatalog}
         onSave={handleSaveCatalog}
-        onDuplicate={handleDuplicateCatalog}
+        onDuplicate={subscription?.tier !== 'starter' && subscription?.tier !== 'free' ? handleDuplicateCatalog : undefined}
         onDelete={user?.role === 'owner' ? handleDeleteCatalog : undefined}
         onClose={() => setCatalogSettingsVisible(false)}
       />

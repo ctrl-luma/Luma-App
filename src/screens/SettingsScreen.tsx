@@ -336,7 +336,7 @@ export function SettingsScreen() {
                 )}
               </View>
               {catalogs.length > 1 && (
-                <TouchableOpacity style={styles.switchButton} onPress={handleSwitchCatalog} accessibilityRole="button" accessibilityLabel="Switch catalog">
+                <TouchableOpacity style={styles.switchButton} onPress={handleSwitchCatalog} accessibilityRole="button" accessibilityLabel="Switch menu">
                   <Ionicons name="swap-horizontal" size={16} color={colors.primary} />
                   <Text style={styles.switchButtonText} maxFontSizeMultiplier={1.3}>Switch</Text>
                 </TouchableOpacity>

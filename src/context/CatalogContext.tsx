@@ -41,7 +41,7 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
         return true;
       }
     } catch (error) {
-      logger.error('Failed to load cached catalog:', error);
+      logger.error('Failed to load cached menus:', error);
     }
     return false;
   }, []);

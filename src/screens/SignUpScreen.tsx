@@ -99,7 +99,7 @@ const PLANS = {
     transactionFee: '2.8% + $0.16',
     features: [
       'Everything in Starter',
-      'Unlimited custom catalogs',
+      'Unlimited custom menus',
       'Unlimited events & locations',
       'Unlimited users & devices',
       'Staff account management',

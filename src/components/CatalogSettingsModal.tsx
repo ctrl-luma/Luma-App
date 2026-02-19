@@ -605,7 +605,7 @@ export function CatalogSettingsModal({
                     onPress={handleDuplicate}
                     disabled={isDuplicating}
                     accessibilityRole="button"
-                    accessibilityLabel={isDuplicating ? 'Duplicating catalog' : 'Duplicate catalog'}
+                    accessibilityLabel={isDuplicating ? 'Duplicating menu' : 'Duplicate menu'}
                   >
                     {isDuplicating ? (
                       <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Duplicating" />
@@ -613,7 +613,7 @@ export function CatalogSettingsModal({
                       <>
                         <Ionicons name="copy-outline" size={20} color={colors.primary} />
                         <Text style={[styles.actionButtonText, { color: colors.primary }]} maxFontSizeMultiplier={1.3}>
-                          Duplicate Catalog
+                          Duplicate Menu
                         </Text>
                       </>
                     )}
@@ -626,7 +626,7 @@ export function CatalogSettingsModal({
                     onPress={handleDelete}
                     disabled={isDeleting}
                     accessibilityRole="button"
-                    accessibilityLabel={isDeleting ? 'Deleting catalog' : 'Delete catalog'}
+                    accessibilityLabel={isDeleting ? 'Deleting menu' : 'Delete menu'}
                   >
                     {isDeleting ? (
                       <ActivityIndicator size="small" color={colors.error} accessibilityLabel="Deleting" />
@@ -634,7 +634,7 @@ export function CatalogSettingsModal({
                       <>
                         <Ionicons name="trash-outline" size={20} color={colors.error} />
                         <Text style={[styles.actionButtonText, { color: colors.error }]} maxFontSizeMultiplier={1.3}>
-                          Delete Catalog
+                          Delete Menu
                         </Text>
                       </>
                     )}

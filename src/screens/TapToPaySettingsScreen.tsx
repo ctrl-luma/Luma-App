@@ -365,7 +365,7 @@ export function TapToPaySettingsScreen() {
         <View style={styles.infoNote}>
           <Ionicons name="information-circle-outline" size={18} color={colors.textMuted} />
           <Text style={styles.infoNoteText} maxFontSizeMultiplier={1.5}>
-            These settings only apply to the "{selectedCatalog.name}" catalog. Each catalog can have different checkout settings.
+            These settings only apply to the "{selectedCatalog.name}" menu. Each menu can have different checkout settings.
           </Text>
         </View>
 
