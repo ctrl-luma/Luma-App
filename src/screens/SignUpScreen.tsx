@@ -624,7 +624,7 @@ export function SignUpScreen() {
             onChangeText={onChangePassword}
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
-            textContentType="oneTimeCode"
+
             editable={!isFormDisabled}
             error={errors.password}
             accessibilityLabel="Password"
@@ -642,7 +642,7 @@ export function SignUpScreen() {
             onChangeText={onChangeConfirmPassword}
             placeholder="Re-enter your password"
             secureTextEntry={!showPassword}
-            textContentType="oneTimeCode"
+
             editable={!isFormDisabled}
             error={errors.confirmPassword}
             accessibilityLabel="Confirm password"
