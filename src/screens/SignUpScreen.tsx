@@ -13,7 +13,12 @@ import {
   Keyboard,
   Linking,
   InteractionManager,
+  LogBox,
 } from 'react-native';
+
+// Suppress known warning from react-native-phone-number-input's internal FlatList
+// rendered inside our ScrollView — cannot be fixed without forking the library
+LogBox.ignoreLogs(['VirtualizedLists should never be nested']);
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -619,7 +624,7 @@ export function SignUpScreen() {
             onChangeText={onChangePassword}
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
-            textContentType="newPassword"
+            textContentType="oneTimeCode"
             editable={!isFormDisabled}
             error={errors.password}
             accessibilityLabel="Password"
@@ -637,7 +642,7 @@ export function SignUpScreen() {
             onChangeText={onChangeConfirmPassword}
             placeholder="Re-enter your password"
             secureTextEntry={!showPassword}
-            textContentType="newPassword"
+            textContentType="oneTimeCode"
             editable={!isFormDisabled}
             error={errors.confirmPassword}
             accessibilityLabel="Confirm password"
