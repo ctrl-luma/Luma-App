@@ -408,8 +408,8 @@ const createStyles = (glassColors: typeof glass.dark) => StyleSheet.create({
     marginBottom: 8,
   },
   wordmark: {
-    width: 200,
-    height: 80,
+    width: 260,
+    height: 104,
     marginBottom: 8,
   },
   title: {
