@@ -88,12 +88,12 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     setTheme(newTheme);
   }, [isDark, setTheme]);
 
+  const value = useMemo(() => ({ theme, isDark, colors, setTheme, toggleTheme }), [theme, isDark, colors, setTheme, toggleTheme]);
+
   // Don't render until theme is loaded to prevent flash
   if (!isLoaded) {
     return null;
   }
-
-  const value = useMemo(() => ({ theme, isDark, colors, setTheme, toggleTheme }), [theme, isDark, colors, setTheme, toggleTheme]);
 
   return (
     <ThemeContext.Provider value={value}>

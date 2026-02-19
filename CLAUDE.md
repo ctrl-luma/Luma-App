@@ -255,6 +255,26 @@ const completeOnboarding = useCallback(async () => {
 }, []);
 ```
 
+### 6. Rules of Hooks — NEVER call hooks conditionally or after early returns
+
+All hooks (`useState`, `useEffect`, `useCallback`, `useMemo`, `useRef`, `useContext`, and custom hooks like `useTheme`, `useSocketEvent`, etc.) MUST be called at the top level of the component, BEFORE any conditional `return` statements. React tracks hooks by call order — if a hook is skipped on one render but called on the next, the app crashes.
+
+```tsx
+// BAD — useMemo is after early return, skipped when !isLoaded → crash
+if (!isLoaded) {
+  return null;
+}
+const value = useMemo(() => ({ theme, isDark }), [theme, isDark]);
+
+// GOOD — all hooks called before any early return
+const value = useMemo(() => ({ theme, isDark }), [theme, isDark]);
+if (!isLoaded) {
+  return null;
+}
+```
+
+Also NEVER call hooks inside `if` blocks, loops, ternaries, `switch` cases, or `&&`/`||` expressions.
+
 ---
 
 ## Directory Structure
