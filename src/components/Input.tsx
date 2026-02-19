@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { memo, useRef } from 'react';
 import {
   Animated,
   TextInput,
@@ -21,7 +21,7 @@ interface InputProps extends Omit<TextInputProps, 'style'>, AccessibilityProps {
   error?: string;
 }
 
-export function Input({
+export const Input = memo(function Input({
   icon,
   rightIcon,
   containerStyle,
@@ -98,7 +98,7 @@ export function Input({
       {rightIcon}
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

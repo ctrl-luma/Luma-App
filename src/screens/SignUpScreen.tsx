@@ -166,6 +166,7 @@ export function SignUpScreen() {
     withEmoji: false,
     withFilter: true,
     withFlag: true,
+    flatListProps: { nestedScrollEnabled: true },
   }), []);
 
   // Steps configuration
@@ -198,12 +199,17 @@ export function SignUpScreen() {
   }, [currentStep, phoneInputReady]);
 
   // Initialize IAP and fetch products
+  // Note: No cleanup on unmount — iapService is a singleton and cleanup() from a stale
+  // unmount races with initialize() from the next mount, tearing down the connection
+  // mid-fetch. The IAP connection is lightweight and persists safely.
   useEffect(() => {
+    let mounted = true;
+
     const initIAP = async () => {
       try {
         await iapService.initialize();
         const products = await iapService.getProducts();
-        if (products.length > 0) {
+        if (mounted && products.length > 0) {
           setIapProduct(products[0]);
           logger.log('[SignUp] IAP product loaded:', products[0].productId);
         }
@@ -214,8 +220,7 @@ export function SignUpScreen() {
     initIAP();
 
     return () => {
-      // Cleanup IAP on unmount
-      iapService.cleanup();
+      mounted = false;
     };
   }, []);
 
@@ -231,6 +236,31 @@ export function SignUpScreen() {
       return newErrors;
     });
   }, []);
+
+  // Stable per-field callbacks so memo'd Input components don't re-render
+  const onChangeEmail = useCallback((v: string) => updateField('email', v), [updateField]);
+  const onChangePassword = useCallback((v: string) => updateField('password', v), [updateField]);
+  const onChangeConfirmPassword = useCallback((v: string) => updateField('confirmPassword', v), [updateField]);
+  const onChangeFirstName = useCallback((v: string) => updateField('firstName', v), [updateField]);
+  const onChangeLastName = useCallback((v: string) => updateField('lastName', v), [updateField]);
+  const onChangeBusinessName = useCallback((v: string) => updateField('businessName', v), [updateField]);
+  const toggleShowPassword = useCallback(() => setShowPassword(prev => !prev), []);
+
+  // Memoized rightIcon for password field so Input memo isn't defeated
+  const passwordRightIcon = useMemo(() => (
+    <TouchableOpacity
+      onPress={toggleShowPassword}
+      style={styles.eyeButton}
+      accessibilityRole="button"
+      accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+    >
+      <Ionicons
+        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+        size={20}
+        color={appColors.gray400}
+      />
+    </TouchableOpacity>
+  ), [showPassword, toggleShowPassword, styles.eyeButton]);
 
   // Check email availability
   const checkEmailAvailability = async (email: string): Promise<boolean> => {
@@ -563,7 +593,7 @@ export function SignUpScreen() {
           <Input
             icon="mail-outline"
             value={formData.email}
-            onChangeText={(value) => updateField('email', value)}
+            onChangeText={onChangeEmail}
             placeholder="you@example.com"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -586,7 +616,7 @@ export function SignUpScreen() {
           <Input
             icon="lock-closed-outline"
             value={formData.password}
-            onChangeText={(value) => updateField('password', value)}
+            onChangeText={onChangePassword}
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
             textContentType="newPassword"
@@ -594,20 +624,7 @@ export function SignUpScreen() {
             error={errors.password}
             accessibilityLabel="Password"
             accessibilityHint="Must be at least 8 characters"
-            rightIcon={
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeButton}
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={appColors.gray400}
-                />
-              </TouchableOpacity>
-            }
+            rightIcon={passwordRightIcon}
           />
           {errors.password && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.password}</Text>}
         </View>
@@ -617,7 +634,7 @@ export function SignUpScreen() {
           <Input
             icon="lock-closed-outline"
             value={formData.confirmPassword}
-            onChangeText={(value) => updateField('confirmPassword', value)}
+            onChangeText={onChangeConfirmPassword}
             placeholder="Re-enter your password"
             secureTextEntry={!showPassword}
             textContentType="newPassword"
@@ -651,7 +668,7 @@ export function SignUpScreen() {
             <Input
               icon="person-outline"
               value={formData.firstName}
-              onChangeText={(value) => updateField('firstName', value)}
+              onChangeText={onChangeFirstName}
               placeholder="John"
               autoCapitalize="words"
               autoComplete="given-name"
@@ -666,7 +683,7 @@ export function SignUpScreen() {
             <Text maxFontSizeMultiplier={1.5} style={styles.label}>Last Name</Text>
             <Input
               value={formData.lastName}
-              onChangeText={(value) => updateField('lastName', value)}
+              onChangeText={onChangeLastName}
               placeholder="Doe"
               autoCapitalize="words"
               autoComplete="family-name"
@@ -683,7 +700,7 @@ export function SignUpScreen() {
           <Input
             icon="storefront-outline"
             value={formData.businessName}
-            onChangeText={(value) => updateField('businessName', value)}
+            onChangeText={onChangeBusinessName}
             placeholder="The Rolling Bar Co."
             autoCapitalize="words"
             autoComplete="organization"
