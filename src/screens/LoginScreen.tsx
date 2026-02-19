@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -38,6 +38,7 @@ import logger from '../lib/logger';
 
 // Key to track if user has been asked about biometric setup
 const BIOMETRIC_PROMPT_SHOWN_KEY = 'biometric_prompt_shown';
+
 
 export function LoginScreen() {
   const { isDark } = useTheme();
@@ -78,19 +79,18 @@ export function LoginScreen() {
     checkBiometric();
   }, []);
 
-  // Auto-trigger biometric on screen focus if enabled
-  useFocusEffect(
-    useCallback(() => {
-      const attemptBiometricLogin = async () => {
-        if (biometricEnabled && biometricCapabilities?.isAvailable) {
-          // Small delay to let the screen render first
-          await new Promise(resolve => setTimeout(resolve, 500));
-          handleBiometricLogin();
-        }
-      };
-      attemptBiometricLogin();
-    }, [biometricEnabled, biometricCapabilities])
-  );
+  // Auto-trigger biometric only on initial mount (app launch), not on every focus
+  const hasAttemptedBiometricRef = React.useRef(false);
+  useEffect(() => {
+    if (biometricEnabled && biometricCapabilities?.isAvailable && !hasAttemptedBiometricRef.current) {
+      hasAttemptedBiometricRef.current = true;
+      // Small delay to let the screen render first
+      const timer = setTimeout(() => {
+        handleBiometricLogin();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [biometricEnabled, biometricCapabilities]);
 
   // Handle biometric login
   const handleBiometricLogin = async () => {

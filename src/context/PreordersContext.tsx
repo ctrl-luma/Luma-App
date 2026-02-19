@@ -24,9 +24,10 @@ interface PreordersProviderProps {
 }
 
 export function PreordersProvider({ children }: PreordersProviderProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, subscription } = useAuth();
   const { isConnected } = useSocket();
   const { selectedCatalog } = useCatalog();
+  const isPro = subscription?.tier === 'pro' || subscription?.tier === 'enterprise';
   const wasConnectedRef = useRef(isConnected);
   const hasEverConnectedRef = useRef(false);
 
@@ -39,7 +40,7 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshCounts = useCallback(async () => {
-    if (!isAuthenticated || !selectedCatalog) return;
+    if (!isAuthenticated || !selectedCatalog || !isPro) return;
 
     try {
       const stats = await preordersApi.getStats(selectedCatalog.id);
@@ -55,17 +56,17 @@ export function PreordersProvider({ children }: PreordersProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, selectedCatalog]);
+  }, [isAuthenticated, selectedCatalog, isPro]);
 
-  // Refetch when authenticated or selected catalog changes
+  // Refetch when authenticated or selected catalog changes (Pro/Enterprise only)
   useEffect(() => {
-    if (isAuthenticated && selectedCatalog) {
+    if (isAuthenticated && selectedCatalog && isPro) {
       refreshCounts();
     } else {
       setCounts({ pending: 0, preparing: 0, ready: 0, total: 0 });
       setIsLoading(false);
     }
-  }, [isAuthenticated, selectedCatalog, refreshCounts]);
+  }, [isAuthenticated, selectedCatalog, isPro, refreshCounts]);
 
   // Refetch when socket REconnects (not initial connection)
   useEffect(() => {
