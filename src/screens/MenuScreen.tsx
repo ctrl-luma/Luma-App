@@ -1672,7 +1672,7 @@ export function MenuScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>No catalog selected</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>No menu selected</Text>
         </View>
       </View>
     );

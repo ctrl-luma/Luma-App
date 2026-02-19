@@ -206,8 +206,8 @@ export function TapToPaySettingsScreen() {
         </View>
         <View style={styles.emptyContainer}>
           <Ionicons name="folder-open-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyText} maxFontSizeMultiplier={1.3}>No catalog selected</Text>
-          <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.5}>Please select a catalog first</Text>
+          <Text style={styles.emptyText} maxFontSizeMultiplier={1.3}>No menu selected</Text>
+          <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.5}>Please select a menu first</Text>
         </View>
       </SafeAreaView>
     );

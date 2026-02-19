@@ -171,6 +171,11 @@ export function CatalogProvider({ children }: CatalogProviderProps) {
           setSelectedCatalogState(null);
           await AsyncStorage.removeItem(CATALOG_STORAGE_KEY);
         }
+      } else if (availableCatalogs.length > 0) {
+        // No catalog selected, auto-select the first available one
+        logger.log('[CatalogContext] No catalog selected, auto-selecting:', availableCatalogs[0].name);
+        setSelectedCatalogState(availableCatalogs[0]);
+        await AsyncStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(availableCatalogs[0]));
       }
     } catch (error) {
       logger.error('Failed to refresh catalogs:', error);
