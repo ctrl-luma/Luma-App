@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -115,7 +114,7 @@ export function SignUpScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const navigation = useNavigation<any>();
   const { signIn } = useAuth();
-  const scrollViewRef = useRef<FlatList>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const phoneRef = useRef<PhoneInput>(null);
   const phoneE164 = useRef('');
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -185,7 +184,7 @@ export function SignUpScreen() {
 
   // Scroll to top when step changes
   useEffect(() => {
-    scrollViewRef.current?.scrollToOffset({ offset: 0, animated: true });
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, [currentStep]);
 
   // Lazy-mount PhoneInput after business step transition to avoid blocking JS thread
@@ -222,18 +221,16 @@ export function SignUpScreen() {
 
   const styles = useMemo(() => createStyles(colors, glassColors, isDark), [colors, glassColors, isDark]);
 
-  // Update form field
-  const updateField = (field: keyof FormData, value: string | boolean) => {
+  // Update form field — stable callback to prevent Input re-renders
+  const updateField = useCallback((field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
+    setErrors(prev => {
+      if (!prev[field]) return prev;
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  }, []);
 
   // Check email availability
   const checkEmailAvailability = async (email: string): Promise<boolean> => {
@@ -1143,22 +1140,17 @@ export function SignUpScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <FlatList
+          <ScrollView
             ref={scrollViewRef}
-            data={[]}
-            renderItem={null}
-            ListHeaderComponent={
-              <>
-                {currentStep === 'account' && renderAccountStep()}
-                {currentStep === 'business' && renderBusinessStep()}
-                {currentStep === 'plan' && renderPlanStep()}
-                {currentStep === 'confirmation' && renderConfirmationStep()}
-              </>
-            }
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-          />
+          >
+            {currentStep === 'account' && renderAccountStep()}
+            {currentStep === 'business' && renderBusinessStep()}
+            {currentStep === 'plan' && renderPlanStep()}
+            {currentStep === 'confirmation' && renderConfirmationStep()}
+          </ScrollView>
         </KeyboardAvoidingView>
 
         {/* Footer with button */}
