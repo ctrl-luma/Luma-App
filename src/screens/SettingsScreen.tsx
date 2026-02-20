@@ -192,7 +192,9 @@ export function SettingsScreen() {
   };
 
   // Subscription management handlers
-  const handleManageSubscription = () => {
+  const [manageLoading, setManageLoading] = useState(false);
+
+  const handleManageSubscription = async () => {
     if (!subscriptionInfo) return;
 
     if (subscriptionInfo.platform === 'apple') {
@@ -201,9 +203,22 @@ export function SettingsScreen() {
     } else if (subscriptionInfo.platform === 'google') {
       // Open Google Play subscription management
       Linking.openURL('https://play.google.com/store/account/subscriptions');
-    } else if (subscriptionInfo.platform === 'stripe' && subscriptionInfo.manage_subscription_url) {
-      // Open Stripe billing portal
-      Linking.openURL(subscriptionInfo.manage_subscription_url);
+    } else if (subscriptionInfo.platform === 'stripe') {
+      // Fetch a fresh portal session URL — portal URLs are single-use and expire
+      // This matches how the vendor portal works (fresh URL on each request)
+      setManageLoading(true);
+      try {
+        const freshInfo = await billingService.getSubscriptionInfo();
+        if (freshInfo.manage_subscription_url) {
+          Linking.openURL(freshInfo.manage_subscription_url);
+        } else {
+          handleOpenVendorPortal();
+        }
+      } catch {
+        handleOpenVendorPortal();
+      } finally {
+        setManageLoading(false);
+      }
     } else {
       // Fallback: open vendor portal billing page
       handleOpenVendorPortal();
@@ -440,14 +455,18 @@ export function SettingsScreen() {
             {isPro && subscriptionInfo && subscriptionInfo.status !== 'none' && (
               <>
                 <View style={styles.divider} />
-                <TouchableOpacity style={styles.row} onPress={handleManageSubscription} accessibilityRole="link" accessibilityLabel={`Manage subscription via ${getSubscriptionPlatformName()}`}>
+                <TouchableOpacity style={styles.row} onPress={handleManageSubscription} disabled={manageLoading} accessibilityRole="link" accessibilityLabel={`Manage subscription via ${getSubscriptionPlatformName()}`}>
                   <View style={styles.rowLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
                       <Ionicons name={getSubscriptionPlatformIcon() as any} size={18} color={colors.textSecondary} />
                     </View>
                     <Text style={styles.label} maxFontSizeMultiplier={1.3}>Manage Subscription</Text>
                   </View>
-                  <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+                  {manageLoading ? (
+                    <ActivityIndicator size="small" color={colors.textMuted} accessibilityLabel="Loading billing portal" />
+                  ) : (
+                    <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+                  )}
                 </TouchableOpacity>
               </>
             )}
@@ -477,19 +496,22 @@ export function SettingsScreen() {
                       )}
                     </View>
                   </View>
-                  {connectLoading ? (
-                    <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Loading banking status" />
-                  ) : connectStatus?.chargesEnabled ? (
-                    <View style={styles.statusBadgeSuccess}>
-                      <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-                      <Text style={[styles.statusBadgeText, { color: colors.success }]} maxFontSizeMultiplier={1.3}>Active</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.statusBadgeWarning}>
-                      <Ionicons name="alert-circle" size={14} color={colors.warning} />
-                      <Text style={[styles.statusBadgeText, { color: colors.warning }]} maxFontSizeMultiplier={1.3}>Setup</Text>
-                    </View>
-                  )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {connectLoading ? (
+                      <ActivityIndicator size="small" color={colors.primary} accessibilityLabel="Loading banking status" />
+                    ) : connectStatus?.chargesEnabled ? (
+                      <View style={styles.statusBadgeSuccess}>
+                        <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+                        <Text style={[styles.statusBadgeText, { color: colors.success }]} maxFontSizeMultiplier={1.3}>Active</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.statusBadgeWarning}>
+                        <Ionicons name="alert-circle" size={14} color={colors.warning} />
+                        <Text style={[styles.statusBadgeText, { color: colors.warning }]} maxFontSizeMultiplier={1.3}>Setup</Text>
+                      </View>
+                    )}
+                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                  </View>
                 </TouchableOpacity>
               </>
             )}
