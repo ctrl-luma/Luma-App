@@ -564,10 +564,7 @@ export function CatalogSettingsModal({
             <View style={styles.section}>
               <View style={styles.toggleRow}>
                 <View style={styles.toggleInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="receipt-outline" size={16} color={colors.primary} />
-                    <Text style={styles.label} maxFontSizeMultiplier={1.5}>Pre-Orders</Text>
-                  </View>
+                  <Text style={styles.label} maxFontSizeMultiplier={1.5}>Pre-Orders</Text>
                   <Text style={styles.toggleDescription} maxFontSizeMultiplier={1.5}>
                     {catalog?.preorderEnabled
                       ? 'Pre-orders are enabled for this menu'

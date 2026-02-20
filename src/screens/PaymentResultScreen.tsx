@@ -14,7 +14,7 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,6 +55,7 @@ export function PaymentResultScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const { clearCart } = useCart();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const queryClient = useQueryClient();
   const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage, skipToCardEntry, preorderId } = route.params;
@@ -389,7 +390,7 @@ export function PaymentResultScreen() {
     return (
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <StarBackground colors={colors} isDark={isDark}>
-          <SafeAreaView style={styles.safeArea}>
+          <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             {/* Header */}
             <View style={styles.cardPageHeader}>
               <TouchableOpacity
@@ -480,7 +481,7 @@ export function PaymentResultScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
+          </View>
         </StarBackground>
       </TouchableWithoutFeedback>
     );
@@ -525,7 +526,7 @@ export function PaymentResultScreen() {
         </View>
       )}
 
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.content}>
           {/* Success/Failure Icon */}
           <Animated.View
@@ -692,7 +693,7 @@ export function PaymentResultScreen() {
             </>
           )}
         </Animated.View>
-      </SafeAreaView>
+      </View>
       </StarBackground>
     </TouchableWithoutFeedback>
   );
