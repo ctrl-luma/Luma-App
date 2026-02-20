@@ -63,11 +63,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     loadTheme();
   }, []);
 
-  // Update app icon when theme changes (iOS only)
+  // Update app icon when theme changes (iOS only, real devices)
   useEffect(() => {
     if (setAlternateAppIcon && isLoaded) {
-      setAlternateAppIcon(isDark ? 'dark' : 'light').catch((e) => {
-        logger.warn('[ThemeContext] Failed to set alternate app icon:', e);
+      setAlternateAppIcon(isDark ? 'dark' : 'light').catch(() => {
+        // Expected to fail in simulator — alternate icons only work on physical devices
       });
     }
   }, [isDark, isLoaded]);

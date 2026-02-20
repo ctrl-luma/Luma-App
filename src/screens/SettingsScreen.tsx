@@ -103,24 +103,6 @@ export function SettingsScreen() {
   // They must manage their subscription via the vendor portal
   const isStripePlatformUser = subscriptionInfo?.platform === 'stripe';
 
-  // Debug logging for subscription state
-  logger.log('[SettingsScreen] Subscription Debug:', {
-    // From AuthContext
-    authSubscription: subscription,
-    authTier: subscription?.tier,
-    authStatus: subscription?.status,
-    // From billing API
-    subscriptionInfo,
-    infoTier: subscriptionInfo?.tier,
-    infoStatus: subscriptionInfo?.status,
-    infoPlatform: subscriptionInfo?.platform,
-    // Computed values (API response preferred over AuthContext)
-    computedTier: tier,
-    computedStatus: status,
-    isPro,
-    isStripePlatformUser,
-    subscriptionLoading,
-  });
 
   // Profile edit modal
   const [showProfileEdit, setShowProfileEdit] = useState(false);
