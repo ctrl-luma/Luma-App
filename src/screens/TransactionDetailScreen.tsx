@@ -12,7 +12,7 @@ import {
   Dimensions,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -264,6 +264,7 @@ type RouteParams = {
 
 export function TransactionDetailScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'TransactionDetail'>>();
   const glassColors = isDark ? glass.dark : glass.light;
@@ -373,9 +374,9 @@ export function TransactionDetailScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <LoadingWithStars colors={colors} isDark={isDark} />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -383,11 +384,11 @@ export function TransactionDetailScreen() {
   if (sourceType === 'preorder') {
     if (!preorder) {
       return (
-        <SafeAreaView style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
           <View style={styles.centered}>
             <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>Preorder not found</Text>
           </View>
-        </SafeAreaView>
+        </View>
       );
     }
 
@@ -400,7 +401,7 @@ export function TransactionDetailScreen() {
 
     return (
       <StarBackground colors={colors} isDark={isDark}>
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -598,7 +599,7 @@ export function TransactionDetailScreen() {
             </View>
           </View>
         </Modal>
-      </SafeAreaView>
+      </View>
       </StarBackground>
     );
   }
@@ -606,11 +607,11 @@ export function TransactionDetailScreen() {
   // Default: Order detail view
   if (!transaction) {
     return (
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.centered}>
           <Text maxFontSizeMultiplier={1.5} style={styles.errorText}>Transaction not found</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -619,7 +620,7 @@ export function TransactionDetailScreen() {
 
   return (
     <StarBackground colors={colors} isDark={isDark}>
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -942,7 +943,7 @@ export function TransactionDetailScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
     </StarBackground>
   );
 }
