@@ -8,7 +8,7 @@ import {
   Alert,
   Vibration,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -28,6 +28,7 @@ type RouteParams = {
 
 export function CashPaymentScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'CashPayment'>>();
   const glassColors = isDark ? glass.dark : glass.light;
@@ -107,7 +108,7 @@ export function CashPaymentScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -208,7 +209,7 @@ export function CashPaymentScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 

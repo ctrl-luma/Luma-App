@@ -17,7 +17,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -59,6 +59,7 @@ type RouteParams = {
 
 export function CheckoutScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'Checkout'>>();
   const glassColors = isDark ? glass.dark : glass.light;
@@ -631,7 +632,7 @@ export function CheckoutScreen() {
 
   return (
     <StarBackground colors={colors} isDark={isDark}>
-      <SafeAreaView style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -1226,7 +1227,7 @@ export function CheckoutScreen() {
         </Pressable>
       </Modal>
       </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </StarBackground>
   );
 }

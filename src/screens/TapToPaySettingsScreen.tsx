@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +36,7 @@ interface CatalogSettings {
 
 export function TapToPaySettingsScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const { selectedCatalog, refreshCatalogs } = useCatalog();
 
@@ -196,7 +197,7 @@ export function TapToPaySettingsScreen() {
 
   if (!selectedCatalog) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityRole="button" accessibilityLabel="Go back">
             <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -209,12 +210,12 @@ export function TapToPaySettingsScreen() {
           <Text style={styles.emptyText} maxFontSizeMultiplier={1.3}>No menu selected</Text>
           <Text style={styles.emptySubtext} maxFontSizeMultiplier={1.5}>Please select a menu first</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} accessibilityRole="button" accessibilityLabel="Go back">
           <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -408,7 +409,7 @@ export function TapToPaySettingsScreen() {
           </LinearGradient>
         </Animated.View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

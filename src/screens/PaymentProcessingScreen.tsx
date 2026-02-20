@@ -8,7 +8,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 import { initStripe } from '@stripe/stripe-react-native';
@@ -37,6 +37,7 @@ type RouteParams = {
 
 export function PaymentProcessingScreen() {
   const { colors, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PaymentProcessing'>>();
   const glassColors = isDark ? glass.dark : glass.light;
@@ -146,7 +147,7 @@ export function PaymentProcessingScreen() {
 
   return (
     <StarBackground colors={colors} isDark={isDark}>
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.content}>
           {/* Amount Display */}
           <Text style={styles.amount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount $${(amount / 100).toFixed(2)}`}>${(amount / 100).toFixed(2)}</Text>
@@ -177,7 +178,7 @@ export function PaymentProcessingScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </StarBackground>
   );
 }
