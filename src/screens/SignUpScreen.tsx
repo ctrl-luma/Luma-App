@@ -70,6 +70,14 @@ const BUSINESS_TYPES = [
   'Other',
 ];
 
+// Static constants — hoisted out of component to avoid re-creation on every render
+const STEPS: Step[] = ['account', 'business', 'plan', 'confirmation'];
+const STEP_CONFIG = [
+  { key: 'account', icon: 'mail-outline', label: 'Account' },
+  { key: 'business', icon: 'briefcase-outline', label: 'Business' },
+  { key: 'plan', icon: 'rocket-outline', label: 'Plan' },
+] as const;
+
 // Plan configurations
 const PLANS = {
   starter: {
@@ -174,19 +182,23 @@ export function SignUpScreen() {
     flatListProps: { nestedScrollEnabled: true },
   }), []);
 
-  // Steps configuration
-  const steps: Step[] = ['account', 'business', 'plan', 'confirmation'];
-  const currentStepIndex = steps.indexOf(currentStep);
+  const currentStepIndex = STEPS.indexOf(currentStep);
+
+  // Memoize progress bar interpolation so it's not recreated on every render
+  const progressWidth = useMemo(() => progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  }), [progressAnim]);
 
   // Animate progress bar
   useEffect(() => {
-    const progress = ((currentStepIndex + 1) / steps.length) * 100;
+    const progress = ((currentStepIndex + 1) / STEPS.length) * 100;
     Animated.timing(progressAnim, {
       toValue: progress,
       duration: 300,
       useNativeDriver: false,
     }).start();
-  }, [currentStepIndex, progressAnim, steps.length]);
+  }, [currentStepIndex, progressAnim]);
 
   // Scroll to top when step changes
   useEffect(() => {
@@ -203,11 +215,15 @@ export function SignUpScreen() {
     }
   }, [currentStep, phoneInputReady]);
 
-  // Initialize IAP and fetch products
+  // Initialize IAP and fetch products — deferred until plan step to avoid blocking
+  // the JS-native bridge during account/business steps (StoreKit/Play Billing init is heavy).
   // Note: No cleanup on unmount — iapService is a singleton and cleanup() from a stale
   // unmount races with initialize() from the next mount, tearing down the connection
   // mid-fetch. The IAP connection is lightweight and persists safely.
   useEffect(() => {
+    if (currentStep !== 'plan') return;
+    if (iapProduct) return; // Already loaded
+
     let mounted = true;
 
     const initIAP = async () => {
@@ -227,7 +243,7 @@ export function SignUpScreen() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [currentStep, iapProduct]);
 
   const styles = useMemo(() => createStyles(colors, glassColors, isDark), [colors, glassColors, isDark]);
 
@@ -1082,24 +1098,6 @@ export function SignUpScreen() {
     </View>
   );
 
-  // Get step title for header
-  const getStepLabel = () => {
-    switch (currentStep) {
-      case 'account': return 'Step 1 of 3';
-      case 'business': return 'Step 2 of 3';
-      case 'plan': return 'Step 3 of 3';
-      case 'confirmation': return 'Complete';
-      default: return '';
-    }
-  };
-
-  // Step indicator config
-  const stepConfig = [
-    { key: 'account', icon: 'mail-outline', label: 'Account' },
-    { key: 'business', icon: 'briefcase-outline', label: 'Business' },
-    { key: 'plan', icon: 'rocket-outline', label: 'Plan' },
-  ];
-
   return (
     <LinearGradient
       colors={['#030712', '#0c1a2d', '#030712']}
@@ -1124,8 +1122,8 @@ export function SignUpScreen() {
           {/* Step Indicators */}
           {currentStep !== 'confirmation' ? (
             <View style={styles.stepIndicators}>
-              {stepConfig.map((step, index) => {
-                const isActive = steps.indexOf(currentStep) >= index;
+              {STEP_CONFIG.map((step, index) => {
+                const isActive = STEPS.indexOf(currentStep) >= index;
                 const isCurrent = currentStep === step.key;
                 return (
                   <View key={step.key} style={styles.stepIndicatorWrapper}>
@@ -1140,7 +1138,7 @@ export function SignUpScreen() {
                         color={isActive ? '#fff' : colors.textMuted}
                       />
                     </View>
-                    {index < stepConfig.length - 1 && (
+                    {index < STEP_CONFIG.length - 1 && (
                       <View style={[
                         styles.stepConnector,
                         isActive && styles.stepConnectorActive,
@@ -1164,12 +1162,7 @@ export function SignUpScreen() {
               <Animated.View
                 style={[
                   styles.progressFill,
-                  {
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 100],
-                      outputRange: ['0%', '100%'],
-                    }),
-                  },
+                  { width: progressWidth },
                 ]}
               />
             </View>
