@@ -71,6 +71,7 @@ import { StarBackground } from '../components/StarBackground';
 import { QuickChargeBottomSheet } from '../components/QuickChargeBottomSheet';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
+import { useTapToPayGuard } from '../hooks';
 
 const isWeb = Platform.OS === 'web';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -529,6 +530,7 @@ export function MenuScreen() {
   const { isLoading: authLoading, user, completeOnboarding, subscription } = useAuth();
   const { selectedCatalog, catalogs, isLoading: catalogsLoading, refreshCatalogs, setSelectedCatalog } = useCatalog();
   const { addItem, getItemQuantity, decrementItem, itemCount, subtotal } = useCart();
+  const { guardCheckout } = useTapToPayGuard();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -2023,7 +2025,7 @@ export function MenuScreen() {
           {itemCount > 0 && (
             <TouchableOpacity
               style={styles.goToCartButton}
-              onPress={() => navigation.navigate('Checkout', { total: subtotal })}
+              onPress={() => { if (guardCheckout()) navigation.navigate('Checkout', { total: subtotal }); }}
               activeOpacity={0.9}
               accessibilityRole="button"
               accessibilityLabel={`Go to cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}

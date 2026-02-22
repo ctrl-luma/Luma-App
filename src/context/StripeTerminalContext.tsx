@@ -146,6 +146,7 @@ interface StripeTerminalContextValue {
   processPayment: (clientSecret: string) => Promise<{ status: string; paymentIntent: any }>;
   cancelPayment: () => Promise<void>;
   warmTerminal: () => Promise<void>;
+  waitForWarm: () => Promise<void>;
   checkDeviceCompatibility: () => DeviceCompatibility;
 }
 
@@ -225,6 +226,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
   // Track if we've already warmed the terminal
   const hasWarmedRef = useRef(false);
+  const warmPromiseRef = useRef<Promise<void> | null>(null);
   const appStateRef = useRef(AppState.currentState);
 
   // Use ref to store discovered readers (avoids closure issues with state)
@@ -401,13 +403,25 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Initial warm on mount
+    // Initial warm on mount — initialize SDK, fetch location, then pre-connect reader
     if (!hasWarmedRef.current && deviceCompatibility.isCompatible) {
       logger.log('[StripeTerminal] Auto-warming on mount...');
       hasWarmedRef.current = true;
-      warmTerminal().catch(err => {
+      const warmPromise = warmTerminal().then(async () => {
+        // Pre-connect reader after warm completes (non-fatal if it fails)
+        try {
+          logger.log('[StripeTerminal] Pre-connecting reader after warm...');
+          await connectReader();
+          logger.log('[StripeTerminal] Reader pre-connected successfully');
+        } catch (readerErr: any) {
+          logger.warn('[StripeTerminal] Reader pre-connect failed (non-fatal):', readerErr.message);
+        }
+      }).catch(err => {
         logger.error('[StripeTerminal] Auto-warm failed:', err);
+        // Reset so warm can retry (e.g. new account where Stripe isn't ready yet)
+        hasWarmedRef.current = false;
       });
+      warmPromiseRef.current = warmPromise;
     }
 
     // Listen for app state changes to re-warm when coming to foreground
@@ -430,7 +444,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.remove();
     };
-  }, [warmTerminal, deviceCompatibility.isCompatible, isInitialized, chargesEnabled]);
+  }, [warmTerminal, connectReader, deviceCompatibility.isCompatible, isInitialized, chargesEnabled]);
 
   // Fetch terminal location on mount (only if Stripe Connect is set up)
   useEffect(() => {
@@ -564,12 +578,12 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
 
     // Wait for readers to be discovered via callback
-    // Poll for up to 5 seconds for readers to appear
+    // Poll for up to 3 seconds for readers to appear (200ms x 15)
     let readers: any[] = discoveredReadersRef.current;
     if (readers.length === 0) {
       logger.log('[StripeTerminal] No readers in ref yet, polling...');
-      for (let i = 0; i < 10; i++) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+      for (let i = 0; i < 15; i++) {
+        await new Promise(resolve => setTimeout(resolve, 200));
         // Check ref first (updated by callback), then hook state
         readers = discoveredReadersRef.current.length > 0
           ? discoveredReadersRef.current
@@ -784,6 +798,13 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
   }, [cancelCollectPaymentMethod]);
 
+  // Wait for the background warm (SDK init + reader pre-connect) to complete
+  const waitForWarm = useCallback(async () => {
+    if (warmPromiseRef.current) {
+      await warmPromiseRef.current;
+    }
+  }, []);
+
   const value = useMemo<StripeTerminalContextValue>(() => ({
     isInitialized,
     isConnected,
@@ -800,8 +821,9 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     processPayment,
     cancelPayment,
     warmTerminal,
+    waitForWarm,
     checkDeviceCompatibility,
-  }), [isInitialized, isConnected, isProcessing, isWarming, error, deviceCompatibility, configurationStage, configurationProgress, readerUpdateProgress, termsAcceptance, initializeTerminal, connectReader, processPayment, cancelPayment, warmTerminal, checkDeviceCompatibility]);
+  }), [isInitialized, isConnected, isProcessing, isWarming, error, deviceCompatibility, configurationStage, configurationProgress, readerUpdateProgress, termsAcceptance, initializeTerminal, connectReader, processPayment, cancelPayment, warmTerminal, waitForWarm, checkDeviceCompatibility]);
 
   return (
     <StripeTerminalContext.Provider value={value}>
@@ -887,6 +909,7 @@ export function StripeTerminalContextProvider({ children }: { children: React.Re
       warmTerminal: async () => {
         throw new Error(errorMessage);
       },
+      waitForWarm: async () => {},
       checkDeviceCompatibility: () => ({
         isCompatible: false,
         iosVersionSupported: false,

@@ -168,7 +168,7 @@ export function SignUpScreen() {
     <Ionicons name="chevron-down" size={14} color={appColors.gray500} />
   ), []);
   const phoneCountryPickerProps = useMemo(() => ({
-    withEmoji: false,
+    withEmoji: Platform.OS === 'ios',
     withFilter: true,
     withFlag: true,
     flatListProps: { nestedScrollEnabled: true },

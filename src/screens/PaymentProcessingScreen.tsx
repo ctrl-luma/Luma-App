@@ -41,7 +41,7 @@ export function PaymentProcessingScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PaymentProcessing'>>();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { initializeTerminal, connectReader, processPayment: terminalProcessPayment, cancelPayment } = useTerminal();
+  const { connectReader, processPayment: terminalProcessPayment, cancelPayment, waitForWarm } = useTerminal();
 
   const { paymentIntentId, clientSecret, stripeAccountId, amount, orderId, orderNumber, customerEmail, preorderId } = route.params;
   const [isCancelling, setIsCancelling] = useState(false);
@@ -59,16 +59,12 @@ export function PaymentProcessingScreen() {
         return;
       }
 
-      setStatusText('Initializing...');
+      // Wait for background warm (SDK init + reader pre-connect) to finish
+      setStatusText('Preparing...');
+      await waitForWarm();
 
-      try {
-        await initializeTerminal();
-      } catch (initErr: any) {
-        throw new Error(`Initialization failed: ${initErr.message}`);
-      }
-
+      // Ensure reader is connected (fast no-op if warm already connected it)
       setStatusText('Connecting...');
-
       try {
         await connectReader();
       } catch (connectErr: any) {
@@ -116,6 +112,8 @@ export function PaymentProcessingScreen() {
       if (errorMessage.toLowerCase().includes('command was canceled') ||
           errorMessage.toLowerCase().includes('command was cancelled')) {
         errorMessage = 'The transaction was canceled.';
+      } else if (errorMessage.toLowerCase().includes('no such payment_intent')) {
+        errorMessage = 'Stripe is still setting up your account. This can take a few minutes after onboarding. Please try again shortly, or contact support if the issue persists.';
       }
 
       navigation.replace('PaymentResult', {

@@ -69,7 +69,7 @@ index b89c388..4ad209d
          <Flag
            countryCode={countryCode}
            flagSize={flagSize ? flagSize : DEFAULT_THEME.flagSize}
-+          withEmoji={false}
++          withEmoji
 +          withFlagButton
          />
        );

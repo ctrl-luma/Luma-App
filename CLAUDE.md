@@ -902,6 +902,7 @@ EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 | Biometric not available | Check device capabilities and permissions |
 | Theme not persisting | Check AsyncStorage access |
 | Held orders not showing | Verify device ID is being sent with requests |
+| Tap to Pay blocked / "merchant blocked" after testing | Stripe/Apple limits a device to ~3 Stripe Connect account sessions for Tap to Pay. After linking to too many accounts (e.g. repeatedly creating test accounts), the device gets blocked. This is NOT a code bug — it's an anti-fraud measure. You must use a different physical device or contact Stripe support to reset. |
 
 ---
 

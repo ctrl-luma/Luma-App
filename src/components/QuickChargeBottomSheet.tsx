@@ -20,6 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
+import { useTapToPayGuard } from '../hooks';
 
 const KEYPAD_ROWS = [
   ['1', '2', '3'],
@@ -126,6 +127,7 @@ interface QuickChargeBottomSheetProps {
 export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSheetProps) {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
+  const { guardCheckout } = useTapToPayGuard();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
   const { width: screenWidth } = useWindowDimensions();
@@ -168,6 +170,8 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
       return;
     }
 
+    if (!guardCheckout()) return;
+
     // Close the bottom sheet
     onClose();
 
@@ -180,7 +184,7 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
 
     // Reset form
     setAmount('');
-  }, [cents, displayAmount, navigation, onClose]);
+  }, [cents, displayAmount, navigation, onClose, guardCheckout]);
 
   const handleClose = useCallback(() => {
     setAmount('');

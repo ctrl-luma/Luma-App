@@ -532,6 +532,8 @@ function TapToPayOnboardingWrapper() {
 
   // Track if user has completed onboarding this session
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  // Track previous chargesEnabled to detect when Connect is newly set up
+  const prevChargesEnabledRef = useRef(connectStatus?.chargesEnabled ?? false);
 
   // Determine if Connect is set up
   const isConnectSetUp = connectStatus?.chargesEnabled === true;
@@ -542,6 +544,18 @@ function TapToPayOnboardingWrapper() {
     user?.tapToPayDeviceIds &&
     user.tapToPayDeviceIds.includes(deviceId)
   );
+
+  // When chargesEnabled changes from false to true (user just completed Connect setup)
+  // and device hasn't done TTP education yet, reset the session flag so education triggers
+  useEffect(() => {
+    const wasEnabled = prevChargesEnabledRef.current;
+    const isEnabled = connectStatus?.chargesEnabled === true;
+    prevChargesEnabledRef.current = isEnabled;
+
+    if (!wasEnabled && isEnabled && !deviceAlreadyRegistered && !isTerminalConnected) {
+      setHasCompletedOnboarding(false);
+    }
+  }, [connectStatus?.chargesEnabled, deviceAlreadyRegistered, isTerminalConnected]);
 
   // Show education if: device not registered AND terminal not connected AND not completed this session
   const needsEducation = !hasCompletedOnboarding && !deviceAlreadyRegistered && !isTerminalConnected;

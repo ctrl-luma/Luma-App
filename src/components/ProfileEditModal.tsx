@@ -341,7 +341,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
                 flagButtonStyle={styles.phoneFlagButton}
                 countryPickerButtonStyle={styles.phoneCountryButton}
                 countryPickerProps={{
-                  withEmoji: false,
+                  withEmoji: Platform.OS === 'ios',
                   withFilter: true,
                   withFlag: true,
                 }}

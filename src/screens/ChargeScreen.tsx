@@ -23,6 +23,7 @@ import { shadows, glow } from '../lib/shadows';
 import { PayoutsSetupBanner } from '../components/PayoutsSetupBanner';
 import { SetupRequiredBanner } from '../components/SetupRequiredBanner';
 import { StarBackground } from '../components/StarBackground';
+import { useTapToPayGuard } from '../hooks';
 
 // Responsive sizing constants
 const MIN_BUTTON_SIZE = 56;
@@ -136,6 +137,7 @@ export function ChargeScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
   const { isPaymentReady, connectLoading, connectStatus } = useAuth();
+  const { guardCheckout } = useTapToPayGuard();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -225,6 +227,8 @@ export function ChargeScreen() {
       Alert.alert('Invalid Amount', 'Minimum charge is $0.50');
       return;
     }
+
+    if (!guardCheckout()) return;
 
     // Navigate to checkout screen with quick charge params
     // This ensures tip/email screens are shown based on catalog settings

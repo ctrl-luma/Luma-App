@@ -20,6 +20,7 @@ import { ordersApi, Order } from '../lib/api';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
+import { useTapToPayGuard } from '../hooks';
 
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -160,6 +161,7 @@ export function HeldOrdersScreen() {
   const { colors, isDark } = useTheme();
   const { deviceId } = useDevice();
   const navigation = useNavigation<any>();
+  const { guardCheckout } = useTapToPayGuard();
   const glassColors = isDark ? glass.dark : glass.light;
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -220,6 +222,7 @@ export function HeldOrdersScreen() {
 
   const handleResumeOrder = async (order: Order) => {
     if (isResuming) return; // Prevent double-tap
+    if (!guardCheckout()) return;
 
     setIsResuming(true);
     try {

@@ -28,6 +28,7 @@ import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
 import { Swipeable } from 'react-native-gesture-handler';
 import { StarBackground } from '../components/StarBackground';
+import { useTapToPayGuard } from '../hooks';
 
 type TabType = 'transactions' | 'held';
 
@@ -349,6 +350,7 @@ export function TransactionsScreen() {
   const { deviceId } = useDevice();
   const { isConnected } = useSocket();
   const navigation = useNavigation<any>();
+  const { guardCheckout } = useTapToPayGuard();
   const route = useRoute<RouteProp<TransactionsScreenParams, 'History'>>();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
@@ -598,6 +600,7 @@ export function TransactionsScreen() {
   };
 
   const handleResumeOrder = async (order: Order) => {
+    if (!guardCheckout()) return;
     try {
       const resumedOrder = await ordersApi.resume(order.id);
       navigation.navigate('Checkout', {

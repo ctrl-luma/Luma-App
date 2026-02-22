@@ -84,6 +84,7 @@ export function TapToPayEducationScreen() {
     configurationProgress,
     connectReader,
     initializeTerminal,
+    waitForWarm,
     isInitialized,
     isConnected,
     isWarming,
@@ -169,7 +170,7 @@ export function TapToPayEducationScreen() {
     if (!isIOS || educationCompleteRef.current || autoHandledRef.current) return;
     if (proximityDiscoveryAvailable === null) return;
 
-    // Device already registered — skip enable screen entirely
+    // Device already registered — auto-handle (show Apple education or navigate back)
     if (deviceAlreadyRegistered) {
       autoHandledRef.current = true;
       if (useAppleNativeEducation) {
@@ -177,13 +178,13 @@ export function TapToPayEducationScreen() {
         (async () => {
           try {
             if (!isConnected) {
+              await waitForWarm();
               if (!isInitialized) await initializeTerminal();
               await connectReader();
             }
             await showAppleNativeEducation();
           } catch (err: any) {
             logger.warn('[TapToPayEducation] Auto-enable failed:', err.message);
-            // Still navigate back — don't show enable screen for registered device
             navigateBack();
           }
         })();
@@ -218,6 +219,7 @@ export function TapToPayEducationScreen() {
   const handleAndroidAutoEnable = async () => {
     setIsEnabling(true);
     try {
+      await waitForWarm();
       if (!isInitialized) {
         await initializeTerminal();
       }
@@ -240,15 +242,16 @@ export function TapToPayEducationScreen() {
   const showAppleNativeEducation = async () => {
     autoHandledRef.current = true;
     setAppleEducationActive(true);
-    if (!deviceAlreadyRegistered) {
-      logger.log('[TapToPayEducation] Apple education opening, registering device');
-      registerDevice();
-    }
     try {
       const { showProximityReaderDiscoveryEducation } = await import('../lib/native/ProximityReaderDiscovery');
       await showProximityReaderDiscoveryEducation();
     } catch (err: any) {
       logger.warn('[TapToPayEducation] Apple education dismissed or failed:', err);
+    }
+    // Register device AFTER education completes (not before)
+    if (!deviceAlreadyRegistered) {
+      logger.log('[TapToPayEducation] Apple education complete, registering device');
+      await registerDevice();
     }
     // Mark complete so loading guard doesn't re-show
     educationCompleteRef.current = true;
@@ -277,6 +280,9 @@ export function TapToPayEducationScreen() {
     setIsConnectSetupError(false);
 
     try {
+      // Wait for background warm to finish first (avoids race conditions)
+      await waitForWarm();
+
       // Initialize terminal if not already done
       if (!isInitialized) {
         await initializeTerminal();
@@ -337,12 +343,17 @@ export function TapToPayEducationScreen() {
   // Determine button text based on current state
   const getButtonText = () => {
     if (isEnabling) return 'Enabling...';
+    // If there's an error, show retry regardless of connection state
+    if (enableError) return 'Try Again';
     if (isConnected) return 'Continue';
     return `Enable ${TAP_TO_PAY_NAME}`;
   };
 
   const handleButtonPress = () => {
-    if (isConnected) {
+    if (enableError) {
+      // Retry — clear error and re-enable
+      handleEnable();
+    } else if (isConnected) {
       // Already enabled, show Apple education
       showAppleNativeEducation();
     } else {
@@ -453,16 +464,10 @@ export function TapToPayEducationScreen() {
 
   // iOS loading states:
   // - Apple education sheet active → blank screen (native sheet covers it)
-  // - Auto-connect in progress for registered device → loading spinner
-  // - Checking ProximityReaderDiscovery for registered device → loading spinner
-  // For unregistered devices, show the enable screen immediately with button disabled
+  // - Auto-education in progress for registered device → loading spinner
+  // - Initial async checks still running → loading spinner
+  // For unregistered devices, show the enable screen immediately
   const pendingAutoEducation = isIOS && autoHandledRef.current && !educationCompleteRef.current;
-  // Show loading while:
-  // 1. Apple education sheet is active
-  // 2. Auto-education is pending (ref set, effect running)
-  // 3. Registered device waiting for education to complete
-  // 4. Initial async checks still running (proximityDiscoveryAvailable not yet resolved)
-  //    — prevents flash of enable screen before deviceId/user data loads
   const showLoadingScreen = appleEducationActive || pendingAutoEducation ||
     (deviceAlreadyRegistered && !educationCompleteRef.current) ||
     (isIOS && proximityDiscoveryAvailable === null);
@@ -563,12 +568,12 @@ export function TapToPayEducationScreen() {
               ))}
             </View>
 
-            {/* Error message */}
-            {(enableError || terminalError) && (
+            {/* Error message — only show errors from user-initiated enable, not background warm */}
+            {enableError && (
               <View style={styles.errorContainer} accessibilityRole="alert">
                 <View style={styles.errorRow}>
                   <Ionicons name="alert-circle" size={18} color={colors.error} />
-                  <Text style={styles.errorText} maxFontSizeMultiplier={1.5}>{enableError || terminalError}</Text>
+                  <Text style={styles.errorText} maxFontSizeMultiplier={1.5}>{enableError}</Text>
                 </View>
                 {isConnectSetupError && (
                   <TouchableOpacity
