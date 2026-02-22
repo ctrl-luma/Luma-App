@@ -996,6 +996,24 @@ export function SignUpScreen() {
           )}
         </TouchableOpacity>
       </View>
+
+      <View style={styles.legalLinks}>
+        <TouchableOpacity
+          onPress={() => Linking.openURL(`${config.websiteUrl}/terms`)}
+          accessibilityRole="link"
+          accessibilityLabel="Terms of Use"
+        >
+          <Text style={styles.legalLinkText} maxFontSizeMultiplier={1.5}>Terms of Use</Text>
+        </TouchableOpacity>
+        <Text style={styles.legalLinkSeparator} maxFontSizeMultiplier={1.5}> | </Text>
+        <TouchableOpacity
+          onPress={() => Linking.openURL(`${config.websiteUrl}/privacy`)}
+          accessibilityRole="link"
+          accessibilityLabel="Privacy Policy"
+        >
+          <Text style={styles.legalLinkText} maxFontSizeMultiplier={1.5}>Privacy Policy</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -1644,6 +1662,22 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontSize: 14,
       fontFamily: fonts.semiBold,
       color: colors.primary,
+    },
+    legalLinks: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    legalLinkText: {
+      fontSize: 12,
+      fontFamily: fonts.medium,
+      color: colors.primary,
+    },
+    legalLinkSeparator: {
+      fontSize: 12,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
     },
     // Confirmation styles
     confirmationContent: {

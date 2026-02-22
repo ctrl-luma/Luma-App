@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,6 +21,7 @@ import { iapService, SubscriptionProduct, SUBSCRIPTION_SKUS } from '../lib/iap';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
+import { config } from '../lib/config';
 import logger from '../lib/logger';
 
 const PRO_FEATURES = [
@@ -255,6 +257,24 @@ export function UpgradeScreen() {
           24 hours prior to the end of the current period. You can manage and cancel your
           subscriptions in your {platformName} account settings.
         </Text>
+
+        <View style={styles.legalLinks}>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`${config.websiteUrl}/terms`)}
+            accessibilityRole="link"
+            accessibilityLabel="Terms of Use"
+          >
+            <Text style={styles.legalLinkText} maxFontSizeMultiplier={1.5}>Terms of Use</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalLinkSeparator} maxFontSizeMultiplier={1.5}> | </Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(`${config.websiteUrl}/privacy`)}
+            accessibilityRole="link"
+            accessibilityLabel="Privacy Policy"
+          >
+            <Text style={styles.legalLinkText} maxFontSizeMultiplier={1.5}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -434,6 +454,23 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       color: colors.textMuted,
       textAlign: 'center',
       lineHeight: 16,
+    },
+    legalLinks: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 8,
+      marginBottom: 16,
+    },
+    legalLinkText: {
+      fontSize: 11,
+      fontFamily: fonts.medium,
+      color: colors.primary,
+    },
+    legalLinkSeparator: {
+      fontSize: 11,
+      fontFamily: fonts.regular,
+      color: colors.textMuted,
     },
   });
 };
