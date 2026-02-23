@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -12,18 +13,12 @@ import {
   Animated,
   Keyboard,
   Linking,
-  InteractionManager,
-  LogBox,
 } from 'react-native';
-
-// Suppress known warning from react-native-phone-number-input's internal FlatList
-// rendered inside our ScrollView — cannot be fixed without forking the library
-LogBox.ignoreLogs(['VirtualizedLists should never be nested']);
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import PhoneInput from 'react-native-phone-number-input';
+import PhoneInput, { ICountry, isValidPhoneNumber } from 'react-native-international-phone-number';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -128,8 +123,6 @@ export function SignUpScreen() {
   const navigation = useNavigation<any>();
   const { signIn } = useAuth();
   const scrollViewRef = useRef<ScrollView>(null);
-  const phoneRef = useRef<PhoneInput>(null);
-  const phoneE164 = useRef('');
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   // Form state
@@ -154,33 +147,21 @@ export function SignUpScreen() {
   const [iapProduct, setIapProduct] = useState<SubscriptionProduct | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
-  const [phoneInputReady, setPhoneInputReady] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
 
   // Combined loading state for disabling form fields
   const isFormDisabled = isLoading || isCheckingEmail || isCheckingPassword || isPurchasing;
 
-  // Memoize PhoneInput props to prevent heavy re-renders on every keystroke
-  const phoneOnChangeFormatted = useCallback((text: string) => {
-    phoneE164.current = text;
-    const digits = text.replace(/\D/g, '');
-    const phone = digits.length === 11 && digits.startsWith('1')
-      ? digits.slice(1)
-      : digits;
-    setFormData(prev => ({ ...prev, phone }));
+  // Phone input callbacks — store raw digits for submission but don't feed back into value
+  const [phoneInputValue, setPhoneInputValue] = useState('');
+  const phoneOnChange = useCallback((phoneNumber: string) => {
+    setPhoneInputValue(phoneNumber);
+    const digits = phoneNumber.replace(/\D/g, '');
+    setFormData(prev => ({ ...prev, phone: digits }));
   }, []);
-  const phoneTextInputProps = useMemo(() => ({
-    placeholderTextColor: appColors.gray500,
-    selectionColor: colors.primary,
-  }), [colors.primary]);
-  const phoneDropdownImage = useMemo(() => (
-    <Ionicons name="chevron-down" size={14} color={appColors.gray500} />
-  ), []);
-  const phoneCountryPickerProps = useMemo(() => ({
-    withEmoji: Platform.OS === 'ios',
-    withFilter: true,
-    withFlag: true,
-    flatListProps: { nestedScrollEnabled: true },
-  }), []);
+  const phoneOnChangeCountry = useCallback((country: ICountry) => {
+    setSelectedCountry(country);
+  }, []);
 
   const currentStepIndex = STEPS.indexOf(currentStep);
 
@@ -204,16 +185,6 @@ export function SignUpScreen() {
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, [currentStep]);
-
-  // Lazy-mount PhoneInput after business step transition to avoid blocking JS thread
-  useEffect(() => {
-    if (currentStep === 'business' && !phoneInputReady) {
-      const handle = InteractionManager.runAfterInteractions(() => {
-        setPhoneInputReady(true);
-      });
-      return () => handle.cancel();
-    }
-  }, [currentStep, phoneInputReady]);
 
   // Initialize IAP and fetch products — deferred until plan step to avoid blocking
   // the JS-native bridge during account/business steps (StoreKit/Play Billing init is heavy).
@@ -362,7 +333,7 @@ export function SignUpScreen() {
       if (!formData.acceptTerms) {
         newErrors.acceptTerms = 'You must accept the terms and privacy policy';
       }
-      if (formData.phone && phoneRef.current && !phoneRef.current.isValidNumber(phoneE164.current)) {
+      if (formData.phone && selectedCountry && !isValidPhoneNumber(formData.phone, selectedCountry)) {
         newErrors.phone = 'Please enter a valid phone number';
       }
     }
@@ -620,6 +591,7 @@ export function SignUpScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="email"
+            textContentType="none"
             editable={!isFormDisabled}
             error={errors.email}
             accessibilityLabel="Email address"
@@ -640,7 +612,7 @@ export function SignUpScreen() {
             onChangeText={onChangePassword}
             placeholder="At least 8 characters"
             secureTextEntry={!showPassword}
-
+            textContentType="none"
             editable={!isFormDisabled}
             error={errors.password}
             accessibilityLabel="Password"
@@ -658,7 +630,7 @@ export function SignUpScreen() {
             onChangeText={onChangeConfirmPassword}
             placeholder="Re-enter your password"
             secureTextEntry={!showPassword}
-
+            textContentType="none"
             editable={!isFormDisabled}
             error={errors.confirmPassword}
             accessibilityLabel="Confirm password"
@@ -693,6 +665,7 @@ export function SignUpScreen() {
               placeholder="John"
               autoCapitalize="words"
               autoComplete="given-name"
+              textContentType="none"
               editable={!isFormDisabled}
               error={errors.firstName}
               accessibilityLabel="First name"
@@ -708,6 +681,7 @@ export function SignUpScreen() {
               placeholder="Doe"
               autoCapitalize="words"
               autoComplete="family-name"
+              textContentType="none"
               editable={!isFormDisabled}
               error={errors.lastName}
               accessibilityLabel="Last name"
@@ -725,6 +699,7 @@ export function SignUpScreen() {
             placeholder="The Rolling Bar Co."
             autoCapitalize="words"
             autoComplete="organization"
+            textContentType="none"
             editable={!isFormDisabled}
             error={errors.businessName}
             accessibilityLabel="Business name"
@@ -764,34 +739,30 @@ export function SignUpScreen() {
 
         <View style={styles.inputGroup}>
           <Text maxFontSizeMultiplier={1.5} style={styles.label}>Phone Number (Optional)</Text>
-          {phoneInputReady ? (
-            <PhoneInput
-              ref={phoneRef}
-              defaultCode="US"
-              layout="first"
-              withDarkTheme={isDark}
-              onChangeFormattedText={phoneOnChangeFormatted}
-              placeholder="(555) 123-4567"
-              textInputProps={phoneTextInputProps}
-              renderDropdownImage={phoneDropdownImage}
-              disabled={isFormDisabled}
-              containerStyle={styles.phoneContainer}
-              textContainerStyle={styles.phoneTextContainer}
-              textInputStyle={styles.phoneInput}
-              codeTextStyle={styles.phoneCode}
-              flagButtonStyle={styles.phoneFlagButton}
-              countryPickerButtonStyle={styles.phoneCountryButton}
-              countryPickerProps={phoneCountryPickerProps}
-            />
-          ) : (
-            <View style={styles.phoneContainer}>
-              <View style={styles.phoneTextContainer}>
-                <Text maxFontSizeMultiplier={1.5} style={[styles.phoneInput, { lineHeight: 48, color: appColors.gray500 }]}>
-                  (555) 123-4567
-                </Text>
-              </View>
-            </View>
-          )}
+          <PhoneInput
+            value={phoneInputValue}
+            onChangePhoneNumber={phoneOnChange}
+            selectedCountry={selectedCountry}
+            onChangeSelectedCountry={phoneOnChangeCountry}
+            defaultCountry="US"
+            placeholder="Phone Number"
+            disabled={isFormDisabled}
+            theme={isDark ? 'dark' : 'light'}
+            phoneInputStyles={{
+              container: styles.phoneContainer,
+              flagContainer: styles.phoneFlagContainer,
+              callingCode: styles.phoneCode,
+              input: styles.phoneInput,
+              divider: styles.phoneDivider,
+              caret: styles.phoneCaret,
+            }}
+            modalStyles={isDark ? {
+              content: { backgroundColor: colors.card },
+              searchInput: { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+              countryItem: { backgroundColor: colors.background, borderColor: colors.border },
+              closeButton: { backgroundColor: colors.background, borderColor: colors.border },
+            } : undefined}
+          />
           {errors.phone && <Text maxFontSizeMultiplier={1.5} style={styles.errorText} accessibilityRole="alert">{errors.phone}</Text>}
         </View>
 
@@ -1177,12 +1148,16 @@ export function SignUpScreen() {
             ref={scrollViewRef}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={Keyboard.dismiss}
           >
-            {currentStep === 'account' && renderAccountStep()}
-            {currentStep === 'business' && renderBusinessStep()}
-            {currentStep === 'plan' && renderPlanStep()}
-            {currentStep === 'confirmation' && renderConfirmationStep()}
+            <Pressable onPress={Keyboard.dismiss} accessible={false}>
+              {currentStep === 'account' && <View key="account">{renderAccountStep()}</View>}
+              {currentStep === 'business' && <View key="business">{renderBusinessStep()}</View>}
+              {currentStep === 'plan' && <View key="plan">{renderPlanStep()}</View>}
+              {currentStep === 'confirmation' && <View key="confirmation">{renderConfirmationStep()}</View>}
+            </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>
 
@@ -1843,19 +1818,17 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontFamily: fonts.semiBold,
       color: colors.primary,
     },
-    // Phone input styles - matches Input component
+    // Phone input styles
     phoneContainer: {
-      backgroundColor: 'rgba(31, 41, 55, 0.5)',
+      backgroundColor: isDark ? 'rgba(31, 41, 55, 0.5)' : '#FFFFFF',
       borderRadius: 12,
-      borderWidth: 2,
-      borderColor: appColors.gray700,
-      width: '100%',
+      borderWidth: isDark ? 2 : 1,
+      borderColor: isDark ? appColors.gray700 : appColors.gray300,
     },
-    phoneTextContainer: {
-      backgroundColor: 'transparent',
-      borderRadius: 12,
-      paddingVertical: 0,
-      paddingHorizontal: 8,
+    phoneFlagContainer: {
+      backgroundColor: isDark ? 'rgba(31, 41, 55, 0.5)' : appColors.gray100,
+      borderTopLeftRadius: 11,
+      borderBottomLeftRadius: 11,
     },
     phoneInput: {
       fontSize: 16,
@@ -1868,10 +1841,10 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontFamily: fonts.regular,
       color: colors.text,
     },
-    phoneFlagButton: {
-      marginLeft: 12,
+    phoneDivider: {
+      backgroundColor: isDark ? appColors.gray600 : appColors.gray300,
     },
-    phoneCountryButton: {
-      backgroundColor: 'transparent',
+    phoneCaret: {
+      color: colors.textSecondary,
     },
   });

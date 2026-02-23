@@ -729,6 +729,40 @@ export function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => Linking.openURL(`${config.websiteUrl}/terms`)}
+              accessibilityRole="link"
+              accessibilityLabel="Terms of Use"
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
+                  <Ionicons name="document-text-outline" size={18} color={colors.textSecondary} />
+                </View>
+                <Text style={styles.label} maxFontSizeMultiplier={1.3}>Terms of Use</Text>
+              </View>
+              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => Linking.openURL(`${config.websiteUrl}/privacy`)}
+              accessibilityRole="link"
+              accessibilityLabel="Privacy Policy"
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.textSecondary + '15' }]}>
+                  <Ionicons name="shield-checkmark-outline" size={18} color={colors.textSecondary} />
+                </View>
+                <Text style={styles.label} maxFontSizeMultiplier={1.3}>Privacy Policy</Text>
+              </View>
+              <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
           </View>
         </View>
 

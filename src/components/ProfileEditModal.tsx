@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import PhoneInput from 'react-native-phone-number-input';
+import PhoneInput, { ICountry, isValidPhoneNumber } from 'react-native-international-phone-number';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -35,12 +35,10 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
   const { user, refreshAuth } = useAuth();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const phoneInputRef = useRef<PhoneInput>(null);
-
   const [firstName, setFirstName] = useState(user?.firstName || '');
   const [lastName, setLastName] = useState(user?.lastName || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [formattedPhone, setFormattedPhone] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -169,7 +167,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
       if (cleanPhone !== originalPhone) {
         if (cleanPhone.length === 0) {
           updateData.phone = null;
-        } else if (phoneInputRef.current && !phoneInputRef.current.isValidNumber(phone)) {
+        } else if (selectedCountry && !isValidPhoneNumber(phone, selectedCountry)) {
           Alert.alert('Invalid Phone', 'Please enter a valid phone number.');
           setIsSaving(false);
           return;
@@ -191,7 +189,7 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
       onClose();
     } catch (error: any) {
       logger.error('[ProfileEditModal] Error saving profile:', error);
-      Alert.alert('Save Failed', error.message || 'Failed to save profile.');
+      Alert.alert('Save Failed', error.error || error.message || 'Failed to save profile.');
     } finally {
       setIsSaving(false);
     }
@@ -320,31 +318,28 @@ export function ProfileEditModal({ visible, onClose }: ProfileEditModalProps) {
             <View style={styles.inputGroup}>
               <Text style={styles.label} maxFontSizeMultiplier={1.5}>Phone Number</Text>
               <PhoneInput
-                ref={phoneInputRef}
-                defaultValue={phone}
-                defaultCode="US"
-                layout="first"
-                withDarkTheme={isDark}
-                onChangeFormattedText={(text) => setPhone(text)}
+                defaultValue={phone ? `+1${phone}` : undefined}
+                onChangePhoneNumber={(text) => setPhone(text.replace(/\D/g, ''))}
+                selectedCountry={selectedCountry}
+                onChangeSelectedCountry={setSelectedCountry}
+                defaultCountry="US"
                 placeholder="(555) 123-4567"
-                textInputProps={{
-                  placeholderTextColor: colors.textMuted,
-                  selectionColor: colors.primary,
+                disabled={isSaving}
+                theme={isDark ? 'dark' : 'light'}
+                phoneInputStyles={{
+                  container: styles.phoneContainer,
+                  flagContainer: styles.phoneFlagContainer,
+                  callingCode: styles.phoneCode,
+                  input: styles.phoneInput,
+                  divider: styles.phoneDivider,
+                  caret: styles.phoneCaret,
                 }}
-                renderDropdownImage={
-                  <Ionicons name="chevron-down" size={14} color={colors.textMuted} />
-                }
-                containerStyle={styles.phoneContainer}
-                textContainerStyle={styles.phoneTextContainer}
-                textInputStyle={styles.phoneInput}
-                codeTextStyle={styles.phoneCode}
-                flagButtonStyle={styles.phoneFlagButton}
-                countryPickerButtonStyle={styles.phoneCountryButton}
-                countryPickerProps={{
-                  withEmoji: Platform.OS === 'ios',
-                  withFilter: true,
-                  withFlag: true,
-                }}
+                modalStyles={isDark ? {
+                  content: { backgroundColor: colors.card },
+                  searchInput: { backgroundColor: colors.background, borderColor: colors.border, color: colors.text },
+                  countryItem: { backgroundColor: colors.background, borderColor: colors.border },
+                  closeButton: { backgroundColor: colors.background, borderColor: colors.border },
+                } : undefined}
               />
             </View>
 
@@ -511,13 +506,11 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       borderRadius: 12,
       borderWidth: 1,
       borderColor: isDark ? '#1d1d1f' : 'rgba(0,0,0,0.08)',
-      width: '100%',
     },
-    phoneTextContainer: {
-      backgroundColor: 'transparent',
-      borderRadius: 12,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+    phoneFlagContainer: {
+      backgroundColor: isDark ? '#181819' : '#F3F4F6',
+      borderTopLeftRadius: 11,
+      borderBottomLeftRadius: 11,
     },
     phoneInput: {
       fontSize: 16,
@@ -530,11 +523,11 @@ const createStyles = (colors: any, glassColors: typeof glass.dark, isDark: boole
       fontFamily: fonts.regular,
       color: colors.text,
     },
-    phoneFlagButton: {
-      marginLeft: 8,
+    phoneDivider: {
+      backgroundColor: isDark ? '#555' : 'rgba(0,0,0,0.12)',
     },
-    phoneCountryButton: {
-      backgroundColor: 'transparent',
+    phoneCaret: {
+      color: colors.textSecondary,
     },
   });
 };

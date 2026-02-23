@@ -23,6 +23,7 @@ try {
 }
 import { stripeTerminalApi } from '../lib/api';
 import { useAuth } from './AuthContext';
+import { useDevice } from './DeviceContext';
 import logger from '../lib/logger';
 
 // Check if running in Expo Go (which doesn't support native modules)
@@ -202,9 +203,17 @@ function checkDeviceCompatibilitySync(): DeviceCompatibility {
 
 // Inner component that uses the useStripeTerminal hook
 function StripeTerminalInner({ children }: { children: React.ReactNode }) {
-  // Get Stripe Connect status to check if payments are enabled
-  const { connectStatus, isPaymentReady } = useAuth();
+  // Get Stripe Connect status and user data to check payment readiness and device registration
+  const { connectStatus, isPaymentReady, user } = useAuth();
+  const { deviceId } = useDevice();
   const chargesEnabled = connectStatus?.chargesEnabled ?? false;
+
+  // Check if this device has completed TTP education (registered for Tap to Pay)
+  const deviceRegisteredForTTP = !!(
+    deviceId &&
+    user?.tapToPayDeviceIds &&
+    user.tapToPayDeviceIds.includes(deviceId)
+  );
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -228,6 +237,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   const hasWarmedRef = useRef(false);
   const warmPromiseRef = useRef<Promise<void> | null>(null);
   const appStateRef = useRef(AppState.currentState);
+  const connectingPromiseRef = useRef<Promise<boolean> | null>(null);
 
   // Use ref to store discovered readers (avoids closure issues with state)
   const discoveredReadersRef = useRef<any[]>([]);
@@ -404,17 +414,25 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
 
     // Initial warm on mount — initialize SDK, fetch location, then pre-connect reader
+    // Only pre-connect if device is already registered for TTP (or on Android).
+    // New iOS users must go through TapToPayEducation first — pre-connecting would
+    // trigger Apple T&C in the background before the user is ready for it.
     if (!hasWarmedRef.current && deviceCompatibility.isCompatible) {
       logger.log('[StripeTerminal] Auto-warming on mount...');
       hasWarmedRef.current = true;
+      const shouldPreConnect = Platform.OS === 'android' || deviceRegisteredForTTP;
       const warmPromise = warmTerminal().then(async () => {
-        // Pre-connect reader after warm completes (non-fatal if it fails)
-        try {
-          logger.log('[StripeTerminal] Pre-connecting reader after warm...');
-          await connectReader();
-          logger.log('[StripeTerminal] Reader pre-connected successfully');
-        } catch (readerErr: any) {
-          logger.warn('[StripeTerminal] Reader pre-connect failed (non-fatal):', readerErr.message);
+        if (shouldPreConnect) {
+          // Pre-connect reader after warm completes (non-fatal if it fails)
+          try {
+            logger.log('[StripeTerminal] Pre-connecting reader after warm...');
+            await connectReader();
+            logger.log('[StripeTerminal] Reader pre-connected successfully');
+          } catch (readerErr: any) {
+            logger.warn('[StripeTerminal] Reader pre-connect failed (non-fatal):', readerErr.message);
+          }
+        } else {
+          logger.log('[StripeTerminal] Skipping pre-connect — device not registered for TTP yet');
         }
       }).catch(err => {
         logger.error('[StripeTerminal] Auto-warm failed:', err);
@@ -503,6 +521,13 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   }, [initialize, isInitialized]);
 
   const connectReader = useCallback(async (): Promise<boolean> => {
+    // Prevent concurrent discovery — if already connecting, wait on the existing attempt
+    if (connectingPromiseRef.current) {
+      logger.log('[StripeTerminal] Connect already in progress, waiting on existing attempt...');
+      return connectingPromiseRef.current;
+    }
+
+    const doConnect = async (): Promise<boolean> => {
     logger.log('[StripeTerminal] ========== CONNECT READER START ==========');
     logger.log('[StripeTerminal] Platform:', Platform.OS);
     logger.log('[StripeTerminal] Already connected:', isConnected);
@@ -704,6 +729,13 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
     // This should never be reached, but TypeScript needs it
     throw new Error('Failed to connect after all retries');
+    }; // end doConnect
+
+    const promise = doConnect().finally(() => {
+      connectingPromiseRef.current = null;
+    });
+    connectingPromiseRef.current = promise;
+    return promise;
   }, [discoverReaders, sdkConnectReader, locationId, hookDiscoveredReaders, isConnected]);
 
   // Android: Auto-connect reader after terminal is initialized

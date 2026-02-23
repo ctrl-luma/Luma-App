@@ -345,7 +345,7 @@ export function TapToPayEducationScreen() {
     if (isEnabling) return 'Enabling...';
     // If there's an error, show retry regardless of connection state
     if (enableError) return 'Try Again';
-    if (isConnected) return 'Continue';
+    if (isConnected && deviceAlreadyRegistered) return 'Continue';
     return `Enable ${TAP_TO_PAY_NAME}`;
   };
 
@@ -353,10 +353,11 @@ export function TapToPayEducationScreen() {
     if (enableError) {
       // Retry — clear error and re-enable
       handleEnable();
-    } else if (isConnected) {
-      // Already enabled, show Apple education
+    } else if (isConnected && deviceAlreadyRegistered) {
+      // Returning user — device already registered, just show Apple education
       showAppleNativeEducation();
     } else {
+      // New user or not connected — go through full enable flow (T&C, progress, etc.)
       handleEnable();
     }
   };

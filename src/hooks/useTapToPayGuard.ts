@@ -5,6 +5,7 @@
  */
 
 import { useCallback } from 'react';
+import { Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useDevice } from '../context/DeviceContext';
@@ -32,7 +33,12 @@ export function useTapToPayGuard() {
       return true;
     }
 
-    // Connect is set up but device hasn't completed TTP education
+    // Android: skip education screen — TTP setup is handled silently via auto-warm
+    if (Platform.OS === 'android') {
+      return true;
+    }
+
+    // iOS: Connect is set up but device hasn't completed TTP education
     if (!deviceRegistered) {
       navigation.navigate('TapToPayEducation');
       return false;
