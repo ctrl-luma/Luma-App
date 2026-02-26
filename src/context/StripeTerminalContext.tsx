@@ -12,6 +12,7 @@
 
 import React, { createContext, useContext, useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import { Platform, Alert, AppState, AppStateStatus } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
 // Conditionally import expo-device (safe for Expo Go)
@@ -131,6 +132,34 @@ export interface TermsAcceptanceStatus {
   message: string | null;
 }
 
+export type DiscoveryMethodType = 'tapToPay' | 'bluetoothScan';
+
+// Preferred reader — persisted in AsyncStorage so the user's selection survives app restarts
+const PREFERRED_READER_KEY = 'luma_preferred_reader';
+
+export interface PreferredReader {
+  id: string;           // Stripe reader ID (registered readers) or serialNumber (Bluetooth)
+  label: string | null;
+  deviceType: string;   // e.g. 'stripe_m2', 'bbpos_wisepos_e', 'stripe_s700'
+  readerType: 'bluetooth' | 'internet';
+}
+
+// Smart/internet readers use server-driven payments; Bluetooth readers use SDK
+const INTERNET_READER_TYPES = ['bbpos_wisepos_e', 'stripe_s700', 'stripe_s710', 'verifone_p400', 'verifone_v660p', 'verifone_ux700', 'verifone_p630', 'verifone_m425', 'simulated_wisepos_e', 'simulated_stripe_s700'];
+const BLUETOOTH_READER_TYPES = ['stripe_m2', 'bbpos_wisepad3', 'bbpos_chipper2x'];
+
+export function classifyReaderType(deviceType: string): 'bluetooth' | 'internet' {
+  if (BLUETOOTH_READER_TYPES.includes(deviceType)) return 'bluetooth';
+  return 'internet';
+}
+
+// Terminal payment result from Socket.IO (for server-driven payments)
+export interface TerminalPaymentResult {
+  status: 'succeeded' | 'failed';
+  paymentIntentId: string;
+  error?: string;
+}
+
 interface StripeTerminalContextValue {
   isInitialized: boolean;
   isConnected: boolean;
@@ -142,16 +171,29 @@ interface StripeTerminalContextValue {
   configurationProgress: number; // 0-100
   readerUpdateProgress: number | null; // 0-100 when updating, null otherwise
   termsAcceptance: TermsAcceptanceStatus;
+  connectedReaderType: DiscoveryMethodType | null;
+  connectedReaderLabel: string | null;
+  bluetoothReaders: any[]; // Discovered Bluetooth readers during scan
+  isScanning: boolean; // Whether a Bluetooth scan is in progress
+  preferredReader: PreferredReader | null;
+  terminalPaymentResult: TerminalPaymentResult | null;
   initializeTerminal: () => Promise<void>;
-  connectReader: () => Promise<boolean>;
+  connectReader: (discoveryMethod?: DiscoveryMethodType, selectedReader?: any) => Promise<boolean>;
+  disconnectReader: () => Promise<void>;
+  scanForBluetoothReaders: () => Promise<any[]>;
   processPayment: (clientSecret: string) => Promise<{ status: string; paymentIntent: any }>;
+  processServerDrivenPayment: (readerId: string, paymentIntentId: string) => Promise<void>;
   cancelPayment: () => Promise<void>;
   warmTerminal: () => Promise<void>;
   waitForWarm: () => Promise<void>;
   checkDeviceCompatibility: () => DeviceCompatibility;
+  setPreferredReader: (reader: PreferredReader) => Promise<void>;
+  clearPreferredReader: () => Promise<void>;
+  clearTerminalPaymentResult: () => void;
+  setTerminalPaymentResult: (result: TerminalPaymentResult) => void;
 }
 
-const StripeTerminalContext = createContext<StripeTerminalContextValue | undefined>(undefined);
+export const StripeTerminalContext = createContext<StripeTerminalContextValue | undefined>(undefined);
 
 // Helper function to check device compatibility
 function checkDeviceCompatibilitySync(): DeviceCompatibility {
@@ -225,6 +267,12 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
   const [configurationStage, setConfigurationStage] = useState<ConfigurationStage>('idle');
   const [configurationProgress, setConfigurationProgress] = useState(0);
   const [readerUpdateProgress, setReaderUpdateProgress] = useState<number | null>(null);
+  const [connectedReaderType, setConnectedReaderType] = useState<DiscoveryMethodType | null>(null);
+  const [connectedReaderLabel, setConnectedReaderLabel] = useState<string | null>(null);
+  const [bluetoothReaders, setBluetoothReaders] = useState<any[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [preferredReader, setPreferredReaderState] = useState<PreferredReader | null>(null);
+  const [terminalPaymentResult, setTerminalPaymentResult] = useState<TerminalPaymentResult | null>(null);
   // Terms & Conditions acceptance status - retrieved from Apple via SDK (not stored locally)
   // Apple TTPOi Requirement: Always check T&C status from SDK, never cache locally
   const [termsAcceptance, setTermsAcceptance] = useState<TermsAcceptanceStatus>({
@@ -248,6 +296,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     discoverReaders,
     discoveredReaders: hookDiscoveredReaders,
     connectReader: sdkConnectReader,
+    disconnectReader: sdkDisconnectReader,
     retrievePaymentIntent,
     collectPaymentMethod,
     confirmPaymentIntent,
@@ -401,69 +450,6 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
   }, [initialize, isInitialized]);
 
-  // Track if we've already attempted auto-connect on Android
-  const hasAutoConnectedRef = useRef(false);
-
-  // Auto-warm terminal on mount and when app comes to foreground (Apple TTPOi 1.4)
-  // Only warm if Stripe Connect is set up (chargesEnabled)
-  useEffect(() => {
-    // Skip warming if Stripe Connect isn't set up yet
-    if (!chargesEnabled) {
-      logger.log('[StripeTerminal] Skipping auto-warm - Stripe Connect not set up (chargesEnabled=false)');
-      return;
-    }
-
-    // Initial warm on mount — initialize SDK, fetch location, then pre-connect reader
-    // Only pre-connect if device is already registered for TTP (or on Android).
-    // New iOS users must go through TapToPayEducation first — pre-connecting would
-    // trigger Apple T&C in the background before the user is ready for it.
-    if (!hasWarmedRef.current && deviceCompatibility.isCompatible) {
-      logger.log('[StripeTerminal] Auto-warming on mount...');
-      hasWarmedRef.current = true;
-      const shouldPreConnect = Platform.OS === 'android' || deviceRegisteredForTTP;
-      const warmPromise = warmTerminal().then(async () => {
-        if (shouldPreConnect) {
-          // Pre-connect reader after warm completes (non-fatal if it fails)
-          try {
-            logger.log('[StripeTerminal] Pre-connecting reader after warm...');
-            await connectReader();
-            logger.log('[StripeTerminal] Reader pre-connected successfully');
-          } catch (readerErr: any) {
-            logger.warn('[StripeTerminal] Reader pre-connect failed (non-fatal):', readerErr.message);
-          }
-        } else {
-          logger.log('[StripeTerminal] Skipping pre-connect — device not registered for TTP yet');
-        }
-      }).catch(err => {
-        logger.error('[StripeTerminal] Auto-warm failed:', err);
-        // Reset so warm can retry (e.g. new account where Stripe isn't ready yet)
-        hasWarmedRef.current = false;
-      });
-      warmPromiseRef.current = warmPromise;
-    }
-
-    // Listen for app state changes to re-warm when coming to foreground
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (
-        appStateRef.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        logger.log('[StripeTerminal] App came to foreground, checking terminal state...');
-        // Re-warm if not initialized (connection may have been lost)
-        if (!isInitialized && chargesEnabled) {
-          warmTerminal().catch(err => {
-            logger.error('[StripeTerminal] Re-warm on foreground failed:', err);
-          });
-        }
-      }
-      appStateRef.current = nextAppState;
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [warmTerminal, connectReader, deviceCompatibility.isCompatible, isInitialized, chargesEnabled]);
-
   // Fetch terminal location on mount (only if Stripe Connect is set up)
   useEffect(() => {
     // Skip if Stripe Connect isn't set up
@@ -520,7 +506,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     }
   }, [initialize, isInitialized]);
 
-  const connectReader = useCallback(async (): Promise<boolean> => {
+  const connectReader = useCallback(async (discoveryMethod: DiscoveryMethodType = 'tapToPay', selectedReader?: any): Promise<boolean> => {
     // Prevent concurrent discovery — if already connecting, wait on the existing attempt
     if (connectingPromiseRef.current) {
       logger.log('[StripeTerminal] Connect already in progress, waiting on existing attempt...');
@@ -530,7 +516,9 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     const doConnect = async (): Promise<boolean> => {
     logger.log('[StripeTerminal] ========== CONNECT READER START ==========');
     logger.log('[StripeTerminal] Platform:', Platform.OS);
+    logger.log('[StripeTerminal] Discovery method:', discoveryMethod);
     logger.log('[StripeTerminal] Already connected:', isConnected);
+    logger.log('[StripeTerminal] Selected reader:', selectedReader ? 'provided' : 'auto');
     setError(null);
 
     // If already connected, skip discovery and connection
@@ -545,7 +533,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     setConfigurationProgress(0);
     setConfigurationStage('fetching_location');
 
-    // Ensure we have a location ID (required for Tap to Pay)
+    // Ensure we have a location ID (required for both Tap to Pay and Bluetooth)
     let currentLocationId = locationId;
     logger.log('[StripeTerminal] Cached locationId:', currentLocationId);
 
@@ -559,120 +547,103 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
         logger.log('[StripeTerminal] Got location:', currentLocationId);
       } catch (locErr: any) {
         logger.error('[StripeTerminal] Location fetch error:', locErr);
-        logger.error('[StripeTerminal] Location error details:', JSON.stringify(locErr, null, 2));
         const errMsg = `Location error: ${locErr.message || locErr.error || 'Unknown error'}`;
         setError(errMsg);
         throw new Error(errMsg);
       }
     }
 
-    // Discover Tap to Pay readers
+    // Discover readers
     setConfigurationProgress(30);
     setConfigurationStage('discovering_reader');
-    const useSimulator = false; // Set to true to test without real NFC hardware
-    logger.log('[StripeTerminal] Discovering Tap to Pay reader...');
-    logger.log('[StripeTerminal] Discovery params: { discoveryMethod: "tapToPay", simulated:', useSimulator, '}');
+    const useSimulator = __DEV__;
+    logger.log(`[StripeTerminal] Discovering ${discoveryMethod} reader...`);
 
-    // Clear previous discovered readers
-    logger.log('[StripeTerminal] Clearing previous discovered readers...');
-    discoveredReadersRef.current = [];
+    let readerToConnect: any;
 
-    // Start discovery - readers come via onUpdateDiscoveredReaders callback
-    logger.log('[StripeTerminal] Calling discoverReaders()...');
-    const discoverResult = await discoverReaders({
-      discoveryMethod: 'tapToPay',
-      simulated: useSimulator,
-    });
+    if (selectedReader) {
+      // A specific reader was pre-selected (from Bluetooth scan results)
+      readerToConnect = selectedReader;
+      logger.log('[StripeTerminal] Using pre-selected reader:', selectedReader.serialNumber || selectedReader.id);
+    } else {
+      // Clear previous discovered readers
+      discoveredReadersRef.current = [];
 
-    logger.log('[StripeTerminal] discoverReaders() returned');
-    logger.log('[StripeTerminal] Discovery result:', JSON.stringify(discoverResult, null, 2));
-    logger.log('[StripeTerminal] discoveredReadersRef.current:', discoveredReadersRef.current.length);
-    logger.log('[StripeTerminal] hookDiscoveredReaders:', hookDiscoveredReaders?.length || 0);
+      // Start discovery
+      const discoverResult = await discoverReaders({
+        discoveryMethod,
+        simulated: useSimulator,
+      });
 
-    if (discoverResult.error) {
-      logger.error('[StripeTerminal] Discovery error:', discoverResult.error);
-      const errMsg = `Discovery: ${discoverResult.error.message || discoverResult.error.code || 'Unknown error'}`;
-      setError(errMsg);
-      setIsConnected(false);
-      throw new Error(errMsg);
-    }
+      logger.log('[StripeTerminal] Discovery result:', JSON.stringify(discoverResult, null, 2));
 
-    // Check if readers are already available from ref (callback may have fired during await)
-    if (discoveredReadersRef.current.length > 0) {
-      logger.log('[StripeTerminal] Readers already available in ref:', discoveredReadersRef.current.length);
-    }
+      if (discoverResult.error) {
+        logger.error('[StripeTerminal] Discovery error:', discoverResult.error);
+        const errMsg = `Discovery: ${discoverResult.error.message || discoverResult.error.code || 'Unknown error'}`;
+        setError(errMsg);
+        setIsConnected(false);
+        throw new Error(errMsg);
+      }
 
-    // Wait for readers to be discovered via callback
-    // Poll for up to 3 seconds for readers to appear (200ms x 15)
-    let readers: any[] = discoveredReadersRef.current;
-    if (readers.length === 0) {
-      logger.log('[StripeTerminal] No readers in ref yet, polling...');
-      for (let i = 0; i < 15; i++) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        // Check ref first (updated by callback), then hook state
-        readers = discoveredReadersRef.current.length > 0
-          ? discoveredReadersRef.current
-          : (hookDiscoveredReaders || []);
-        logger.log('[StripeTerminal] Poll attempt', i + 1, '- ref:', discoveredReadersRef.current.length, '- hook:', hookDiscoveredReaders?.length || 0);
-        if (readers.length > 0) {
-          logger.log('[StripeTerminal] Found readers after polling!');
-          break;
+      // Wait for readers to be discovered via callback
+      let readers: any[] = discoveredReadersRef.current;
+      if (readers.length === 0) {
+        logger.log('[StripeTerminal] No readers in ref yet, polling...');
+        const maxPolls = discoveryMethod === 'bluetoothScan' ? 25 : 15; // Bluetooth takes longer
+        for (let i = 0; i < maxPolls; i++) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          readers = discoveredReadersRef.current.length > 0
+            ? discoveredReadersRef.current
+            : (hookDiscoveredReaders || []);
+          if (readers.length > 0) {
+            logger.log('[StripeTerminal] Found readers after polling!');
+            break;
+          }
         }
       }
+
+      if (readers.length === 0) {
+        logger.error('[StripeTerminal] No readers found after polling');
+        const errMsg = discoveryMethod === 'bluetoothScan'
+          ? 'No Bluetooth readers found nearby. Make sure your reader is powered on and in pairing mode.'
+          : 'No readers found. Ensure NFC is enabled and device supports Tap to Pay.';
+        setError(errMsg);
+        setIsConnected(false);
+        throw new Error(errMsg);
+      }
+
+      readerToConnect = readers[0];
+      logger.log('[StripeTerminal] Reader to connect:', JSON.stringify(readerToConnect, null, 2));
     }
 
-    logger.log('[StripeTerminal] Final readers found:', readers.length);
-
-    if (readers.length > 0) {
-      logger.log('[StripeTerminal] Reader to connect:', JSON.stringify(readers[0], null, 2));
-    }
-
-    if (readers.length === 0) {
-      logger.error('[StripeTerminal] No readers found after polling');
-      const errMsg = 'No readers found. Ensure NFC is enabled and device supports Tap to Pay.';
-      setError(errMsg);
-      setIsConnected(false);
-      throw new Error(errMsg);
-    }
-
-    // Connect to the Tap to Pay reader with the location ID
+    // Connect to the reader
     setConfigurationProgress(60);
     setConfigurationStage('connecting_reader');
-    // Retry logic for "No such location" error (can happen with newly created locations)
     const MAX_CONNECT_RETRIES = 3;
     const RETRY_DELAY_MS = 2000;
 
     for (let attempt = 1; attempt <= MAX_CONNECT_RETRIES; attempt++) {
       logger.log('[StripeTerminal] ========== CONNECTING TO READER ==========');
-      logger.log('[StripeTerminal] Reader:', readers[0].serialNumber || readers[0].id || 'unknown');
+      logger.log('[StripeTerminal] Reader:', readerToConnect.serialNumber || readerToConnect.id || 'unknown');
       logger.log('[StripeTerminal] Location ID:', currentLocationId);
+      logger.log('[StripeTerminal] Discovery method:', discoveryMethod);
       logger.log('[StripeTerminal] Attempt:', attempt, 'of', MAX_CONNECT_RETRIES);
 
       try {
-        logger.log('[StripeTerminal] Calling sdkConnectReader()...');
         const connectResult = await sdkConnectReader({
-          reader: readers[0],
+          reader: readerToConnect,
           locationId: currentLocationId,
-        }, 'tapToPay');
-
-        logger.log('[StripeTerminal] sdkConnectReader() returned');
-        logger.log('[StripeTerminal] Connect result:', JSON.stringify(connectResult, null, 2));
+        }, discoveryMethod === 'bluetoothScan' ? 'bluetoothScan' : 'tapToPay');
 
         if (connectResult.error) {
-          logger.error('[StripeTerminal] Connect error:', connectResult.error);
-          logger.error('[StripeTerminal] Error code:', connectResult.error.code);
-          logger.error('[StripeTerminal] Error message:', connectResult.error.message);
-
-          // Check if this is a "No such location" error - can happen with newly created locations
           const isLocationNotFoundError = connectResult.error.message?.includes('No such location');
 
           if (isLocationNotFoundError && attempt < MAX_CONNECT_RETRIES) {
             logger.log(`[StripeTerminal] Location not found, retrying in ${RETRY_DELAY_MS}ms...`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-            continue; // Retry
+            continue;
           }
 
-          // User-friendly error messages for known error codes
           const isMerchantBlocked = connectResult.error.code === 'TapToPayReaderMerchantBlocked';
           const errMsg = isMerchantBlocked
             ? 'Your account has been blocked from Tap to Pay. Please contact support.'
@@ -683,19 +654,15 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
         }
 
         logger.log('[StripeTerminal] ========== CONNECTED SUCCESSFULLY ==========');
-        logger.log('[StripeTerminal] Connected reader:', connectResult.reader?.serialNumber || 'tap-to-pay');
+        const connectedReader = connectResult.reader;
+        logger.log('[StripeTerminal] Connected reader:', connectedReader?.serialNumber || connectedReader?.label || discoveryMethod);
         setConfigurationProgress(100);
         setConfigurationStage('ready');
+        setConnectedReaderType(discoveryMethod);
+        setConnectedReaderLabel(connectedReader?.label || connectedReader?.serialNumber || null);
 
-        // Apple TTPOi Requirement: Check T&C acceptance status from the reader (not cached locally)
-        // The SDK retrieves this status from Apple each time
-        const connectedReader = connectResult.reader;
-        logger.log('[StripeTerminal] Reader accountOnboarded:', connectedReader?.accountOnboarded);
-        logger.log('[StripeTerminal] Full reader object:', JSON.stringify(connectedReader, null, 2));
-
-        // Update T&C acceptance status based on reader's accountOnboarded property
-        // accountOnboarded is true when the merchant has accepted Apple's Tap to Pay T&C
-        if (connectedReader) {
+        // Apple TTPOi: Check T&C acceptance (only relevant for tapToPay)
+        if (connectedReader && discoveryMethod === 'tapToPay') {
           const isOnboarded = connectedReader.accountOnboarded === true;
           setTermsAcceptance({
             accepted: isOnboarded,
@@ -710,24 +677,19 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
         setIsConnected(true);
         return true;
       } catch (connectErr: any) {
-        logger.error('[StripeTerminal] ========== CONNECTION EXCEPTION ==========');
-        logger.error('[StripeTerminal] Exception:', connectErr);
-        logger.error('[StripeTerminal] Message:', connectErr.message);
-        logger.error('[StripeTerminal] Code:', connectErr.code);
+        logger.error('[StripeTerminal] Connection exception:', connectErr.message);
 
-        // Check if this is a "No such location" error - retry if we haven't exhausted attempts
         const isLocationNotFoundError = connectErr.message?.includes('No such location');
         if (isLocationNotFoundError && attempt < MAX_CONNECT_RETRIES) {
           logger.log(`[StripeTerminal] Location not found (exception), retrying in ${RETRY_DELAY_MS}ms...`);
           await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-          continue; // Retry
+          continue;
         }
 
         throw connectErr;
       }
     }
 
-    // This should never be reached, but TypeScript needs it
     throw new Error('Failed to connect after all retries');
     }; // end doConnect
 
@@ -737,6 +699,92 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     connectingPromiseRef.current = promise;
     return promise;
   }, [discoverReaders, sdkConnectReader, locationId, hookDiscoveredReaders, isConnected]);
+
+  // Track if we've already attempted auto-connect on Android
+  const hasAutoConnectedRef = useRef(false);
+
+  // Auto-warm terminal on mount and when app comes to foreground (Apple TTPOi 1.4)
+  // Only warm if Stripe Connect is set up (chargesEnabled)
+  // Respects preferred reader: Bluetooth → connect to it; Internet → skip SDK connect; None → Tap to Pay
+  useEffect(() => {
+    // Skip warming if Stripe Connect isn't set up yet
+    if (!chargesEnabled) {
+      logger.log('[StripeTerminal] Skipping auto-warm - Stripe Connect not set up (chargesEnabled=false)');
+      return;
+    }
+
+    // Initial warm on mount — initialize SDK, fetch location, then pre-connect reader
+    if (!hasWarmedRef.current && deviceCompatibility.isCompatible) {
+      logger.log('[StripeTerminal] Auto-warming on mount...');
+      hasWarmedRef.current = true;
+
+      const warmPromise = warmTerminal().then(async () => {
+        // Determine pre-connect strategy based on preferred reader
+        if (preferredReader?.readerType === 'internet') {
+          // Internet/smart reader: no SDK connection needed (server-driven payments)
+          logger.log('[StripeTerminal] Preferred reader is internet-connected — skipping SDK pre-connect');
+          setConfigurationStage('ready');
+          setConfigurationProgress(100);
+          return;
+        }
+
+        if (preferredReader?.readerType === 'bluetooth') {
+          // Bluetooth reader: try to discover and connect to the preferred reader
+          logger.log('[StripeTerminal] Preferred reader is Bluetooth — attempting auto-connect:', preferredReader.label || preferredReader.id);
+          try {
+            await connectReader('bluetoothScan');
+            logger.log('[StripeTerminal] Bluetooth reader pre-connected successfully');
+            return;
+          } catch (btErr: any) {
+            logger.warn('[StripeTerminal] Bluetooth auto-connect failed, falling back to Tap to Pay:', btErr.message);
+            // Fall through to Tap to Pay
+          }
+        }
+
+        // Default: Tap to Pay pre-connect
+        // Only pre-connect if device is already registered for TTP (or on Android).
+        // New iOS users must go through TapToPayEducation first.
+        const shouldPreConnect = Platform.OS === 'android' || deviceRegisteredForTTP;
+        if (shouldPreConnect) {
+          try {
+            logger.log('[StripeTerminal] Pre-connecting reader after warm (Tap to Pay)...');
+            await connectReader();
+            logger.log('[StripeTerminal] Reader pre-connected successfully');
+          } catch (readerErr: any) {
+            logger.warn('[StripeTerminal] Reader pre-connect failed (non-fatal):', readerErr.message);
+          }
+        } else {
+          logger.log('[StripeTerminal] Skipping pre-connect — device not registered for TTP yet');
+        }
+      }).catch(err => {
+        logger.error('[StripeTerminal] Auto-warm failed:', err);
+        // Reset so warm can retry (e.g. new account where Stripe isn't ready yet)
+        hasWarmedRef.current = false;
+      });
+      warmPromiseRef.current = warmPromise;
+    }
+
+    // Listen for app state changes to re-warm when coming to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        logger.log('[StripeTerminal] App came to foreground, checking terminal state...');
+        // Re-warm if not initialized (connection may have been lost)
+        if (!isInitialized && chargesEnabled) {
+          warmTerminal().catch(err => {
+            logger.error('[StripeTerminal] Re-warm on foreground failed:', err);
+          });
+        }
+      }
+      appStateRef.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [warmTerminal, connectReader, deviceCompatibility.isCompatible, isInitialized, chargesEnabled, preferredReader]);
 
   // Android: Auto-connect reader after terminal is initialized
   useEffect(() => {
@@ -755,6 +803,134 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       });
     }
   }, [isInitialized, isConnected, chargesEnabled, connectReader]);
+
+  // Disconnect from the currently connected reader
+  const disconnectReader = useCallback(async () => {
+    logger.log('[StripeTerminal] Disconnecting reader...');
+    try {
+      await sdkDisconnectReader();
+      setIsConnected(false);
+      setConnectedReaderType(null);
+      setConnectedReaderLabel(null);
+      setConfigurationStage('idle');
+      setConfigurationProgress(0);
+      logger.log('[StripeTerminal] Reader disconnected');
+    } catch (err: any) {
+      logger.warn('[StripeTerminal] Disconnect failed:', err.message);
+      // Force state reset even if SDK call fails
+      setIsConnected(false);
+      setConnectedReaderType(null);
+      setConnectedReaderLabel(null);
+    }
+  }, [sdkDisconnectReader]);
+
+  // Load preferred reader from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem(PREFERRED_READER_KEY).then(json => {
+      if (json) {
+        try {
+          const reader = JSON.parse(json) as PreferredReader;
+          setPreferredReaderState(reader);
+          logger.log('[StripeTerminal] Loaded preferred reader:', reader.label || reader.id, '(' + reader.readerType + ')');
+        } catch {
+          logger.warn('[StripeTerminal] Failed to parse preferred reader from storage');
+        }
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Save preferred reader to state + AsyncStorage
+  const setPreferredReader = useCallback(async (reader: PreferredReader) => {
+    setPreferredReaderState(reader);
+    try {
+      await AsyncStorage.setItem(PREFERRED_READER_KEY, JSON.stringify(reader));
+      logger.log('[StripeTerminal] Saved preferred reader:', reader.label || reader.id);
+    } catch (err: any) {
+      logger.error('[StripeTerminal] Failed to save preferred reader:', err.message);
+    }
+  }, []);
+
+  // Clear preferred reader from state + AsyncStorage
+  const clearPreferredReader = useCallback(async () => {
+    setPreferredReaderState(null);
+    try {
+      await AsyncStorage.removeItem(PREFERRED_READER_KEY);
+      logger.log('[StripeTerminal] Cleared preferred reader');
+    } catch (err: any) {
+      logger.error('[StripeTerminal] Failed to clear preferred reader:', err.message);
+    }
+  }, []);
+
+  // Clear terminal payment result (called after PaymentProcessingScreen handles it)
+  const clearTerminalPaymentResult = useCallback(() => {
+    setTerminalPaymentResult(null);
+  }, []);
+
+  // Process a server-driven payment through a smart/internet reader
+  const processServerDrivenPayment = useCallback(async (readerId: string, paymentIntentId: string) => {
+    logger.log('[StripeTerminal] ========== SERVER-DRIVEN PAYMENT START ==========');
+    logger.log('[StripeTerminal] Reader ID:', readerId);
+    logger.log('[StripeTerminal] PaymentIntent ID:', paymentIntentId);
+
+    // Clear any previous result
+    setTerminalPaymentResult(null);
+
+    // Send the existing PaymentIntent to the reader via API
+    const result = await stripeTerminalApi.processPayment(readerId, { paymentIntentId });
+    logger.log('[StripeTerminal] Payment sent to reader, action status:', result.actionStatus);
+
+    // The actual payment completion comes via Socket.IO events
+    // PaymentProcessingScreen will watch terminalPaymentResult for the outcome
+  }, []);
+
+  // Scan for nearby Bluetooth readers (returns discovered readers list)
+  const scanForBluetoothReaders = useCallback(async (): Promise<any[]> => {
+    logger.log('[StripeTerminal] ========== BLUETOOTH SCAN START ==========');
+    setIsScanning(true);
+    setBluetoothReaders([]);
+    discoveredReadersRef.current = [];
+
+    try {
+      // Ensure SDK is initialized
+      if (!isInitialized) {
+        logger.log('[StripeTerminal] SDK not initialized, initializing for BT scan...');
+        const initResult = await initialize();
+        if (initResult.error) {
+          throw new Error(initResult.error.message || 'Failed to initialize');
+        }
+        setIsInitialized(true);
+      }
+
+      const discoverResult = await discoverReaders({
+        discoveryMethod: 'bluetoothScan',
+        simulated: __DEV__,
+      });
+
+      if (discoverResult.error) {
+        throw new Error(discoverResult.error.message || 'Discovery failed');
+      }
+
+      // Wait for readers to appear via callback (Bluetooth takes longer)
+      let readers: any[] = [];
+      for (let i = 0; i < 25; i++) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        readers = discoveredReadersRef.current.length > 0
+          ? discoveredReadersRef.current
+          : (hookDiscoveredReaders || []);
+        if (readers.length > 0) break;
+      }
+
+      logger.log('[StripeTerminal] Bluetooth scan found:', readers.length, 'readers');
+      setBluetoothReaders(readers);
+      return readers;
+    } catch (err: any) {
+      logger.error('[StripeTerminal] Bluetooth scan failed:', err.message);
+      setError(err.message);
+      return [];
+    } finally {
+      setIsScanning(false);
+    }
+  }, [discoverReaders, hookDiscoveredReaders, isInitialized, initialize]);
 
   const processPayment = useCallback(async (clientSecret: string) => {
     logger.log('[StripeTerminal] ========== PROCESS PAYMENT START ==========');
@@ -848,14 +1024,27 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     configurationProgress,
     readerUpdateProgress,
     termsAcceptance,
+    connectedReaderType,
+    connectedReaderLabel,
+    bluetoothReaders,
+    isScanning,
+    preferredReader,
+    terminalPaymentResult,
     initializeTerminal,
     connectReader,
+    disconnectReader,
+    scanForBluetoothReaders,
     processPayment,
+    processServerDrivenPayment,
     cancelPayment,
     warmTerminal,
     waitForWarm,
     checkDeviceCompatibility,
-  }), [isInitialized, isConnected, isProcessing, isWarming, error, deviceCompatibility, configurationStage, configurationProgress, readerUpdateProgress, termsAcceptance, initializeTerminal, connectReader, processPayment, cancelPayment, warmTerminal, waitForWarm, checkDeviceCompatibility]);
+    setPreferredReader,
+    clearPreferredReader,
+    clearTerminalPaymentResult,
+    setTerminalPaymentResult,
+  }), [isInitialized, isConnected, isProcessing, isWarming, error, deviceCompatibility, configurationStage, configurationProgress, readerUpdateProgress, termsAcceptance, connectedReaderType, connectedReaderLabel, bluetoothReaders, isScanning, preferredReader, terminalPaymentResult, initializeTerminal, connectReader, disconnectReader, scanForBluetoothReaders, processPayment, processServerDrivenPayment, cancelPayment, warmTerminal, waitForWarm, checkDeviceCompatibility, setPreferredReader, clearPreferredReader, clearTerminalPaymentResult]);
 
   return (
     <StripeTerminalContext.Provider value={value}>
@@ -930,13 +1119,22 @@ export function StripeTerminalContextProvider({ children }: { children: React.Re
         checked: false,
         message: errorMessage,
       },
+      connectedReaderType: null,
+      connectedReaderLabel: null,
+      bluetoothReaders: [],
+      isScanning: false,
+      preferredReader: null,
+      terminalPaymentResult: null,
       initializeTerminal: async () => {
         throw new Error(errorMessage);
       },
       connectReader: async () => false,
+      disconnectReader: async () => {},
+      scanForBluetoothReaders: async () => [],
       processPayment: async () => {
         throw new Error(errorMessage);
       },
+      processServerDrivenPayment: async () => {},
       cancelPayment: async () => {},
       warmTerminal: async () => {
         throw new Error(errorMessage);
@@ -950,6 +1148,10 @@ export function StripeTerminalContextProvider({ children }: { children: React.Re
         deviceModel: null,
         errorMessage,
       }),
+      setPreferredReader: async () => {},
+      clearPreferredReader: async () => {},
+      clearTerminalPaymentResult: () => {},
+      setTerminalPaymentResult: () => {},
     };
 
     return (

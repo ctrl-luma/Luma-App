@@ -18,11 +18,13 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useCatalog } from '../context/CatalogContext';
 import { useDevice } from '../context/DeviceContext';
 import { useSocketEvent, useSocket, SocketEvents } from '../context/SocketContext';
 import { transactionsApi, Transaction, ordersApi, Order } from '../lib/api';
 import { getDeviceId } from '../lib/device';
+import { formatCents } from '../utils/currency';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -233,6 +235,7 @@ const AnimatedTransactionItem = memo(function AnimatedTransactionItem({
   getStatusColor,
   getStatusLabel,
   formatDate,
+  currency,
 }: {
   item: Transaction;
   onPress: () => void;
@@ -241,6 +244,7 @@ const AnimatedTransactionItem = memo(function AnimatedTransactionItem({
   getStatusColor: (status: string) => string;
   getStatusLabel: (status: string) => string;
   formatDate: (timestamp: number) => string;
+  currency: string;
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -294,7 +298,7 @@ const AnimatedTransactionItem = memo(function AnimatedTransactionItem({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       accessibilityRole="button"
-      accessibilityLabel={`Transaction $${(item.amount / 100).toFixed(2)}, ${getStatusLabel(item.status)}, ${formatDate(item.created)}${item.sourceType === 'preorder' ? ', preorder' : ''}`}
+      accessibilityLabel={`Transaction ${formatCents(item.amount, currency)}, ${getStatusLabel(item.status)}, ${formatDate(item.created)}${item.sourceType === 'preorder' ? ', preorder' : ''}`}
       accessibilityHint="View transaction details"
     >
       <Animated.View style={[styles.transactionItem, { transform: [{ scale: scaleAnim }] }]}>
@@ -308,7 +312,7 @@ const AnimatedTransactionItem = memo(function AnimatedTransactionItem({
           <View style={styles.transactionInfo}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text maxFontSizeMultiplier={1.3} style={styles.transactionAmount}>
-                ${(item.amount / 100).toFixed(2)}
+                {formatCents(item.amount, currency)}
               </Text>
               {sourceBadge && (
                 <View style={{
@@ -346,6 +350,7 @@ const AnimatedTransactionItem = memo(function AnimatedTransactionItem({
 
 export function TransactionsScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const { selectedCatalog } = useCatalog();
   const { deviceId } = useDevice();
   const { isConnected } = useSocket();
@@ -673,7 +678,7 @@ export function TransactionsScreen() {
           onPress={() => handleResumeOrder(item)}
           activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel={`${item.holdName || `Order ${item.orderNumber}`}, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}, $${(item.totalAmount / 100).toFixed(2)}`}
+          accessibilityLabel={`${item.holdName || `Order ${item.orderNumber}`}, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}, ${formatCents(item.totalAmount, currency)}`}
           accessibilityHint="Tap to resume this order"
         >
           <View style={styles.heldOrderLeft}>
@@ -689,7 +694,7 @@ export function TransactionsScreen() {
           </View>
           <View style={styles.heldOrderRight}>
             <Text maxFontSizeMultiplier={1.3} style={styles.heldOrderTotal}>
-              ${(item.totalAmount / 100).toFixed(2)}
+              {formatCents(item.totalAmount, currency)}
             </Text>
             <Text maxFontSizeMultiplier={1.5} style={styles.heldOrderTapText}>Tap to resume</Text>
           </View>

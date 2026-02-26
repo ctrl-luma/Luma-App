@@ -36,6 +36,7 @@ import { SetupRequiredBanner } from '../components/SetupRequiredBanner';
 import { StarBackground } from '../components/StarBackground';
 import logger from '../lib/logger';
 import { isValidEmailOrEmpty } from '../lib/validation';
+import { formatCents } from '../utils/currency';
 
 
 // Apple TTPOi 5.4: Use region-correct copy
@@ -65,7 +66,7 @@ export function CheckoutScreen() {
   const glassColors = isDark ? glass.dark : glass.light;
   const { items, itemCount, clearCart, incrementItem, decrementItem, removeItem, subtotal: cartSubtotal, orderNotes, setOrderNotes, customerEmail, setCustomerEmail, paymentMethod, setPaymentMethod, selectedTipIndex, setSelectedTipIndex, customTipAmount, setCustomTipAmount, showCustomTipInput, setShowCustomTipInput } = useCart();
   const { selectedCatalog } = useCatalog();
-  const { isPaymentReady, connectLoading, connectStatus } = useAuth();
+  const { isPaymentReady, connectLoading, connectStatus, currency } = useAuth();
   const { deviceCompatibility, isInitialized: isTerminalInitialized, isWarming } = useTerminal();
 
   // Catalog data is automatically updated via socket events in CatalogContext
@@ -508,10 +509,10 @@ export function CheckoutScreen() {
 
       // Build description based on checkout type
       const description = isQuickCharge
-        ? `${quickChargeDescription || 'Quick Charge'}${tipAmount > 0 ? ` (includes $${(tipAmount / 100).toFixed(2)} tip)` : ''}`
+        ? `${quickChargeDescription || 'Quick Charge'}${tipAmount > 0 ? ` (includes ${formatCents(tipAmount, currency)} tip)` : ''}`
         : resumedOrder
-          ? `${resumedOrder.holdName || 'Resumed Order'} - ${resumedOrder.items?.length || 0} items${tipAmount > 0 ? ` (includes $${(tipAmount / 100).toFixed(2)} tip)` : ''}`
-          : `Order - ${items.length} items${tipAmount > 0 ? ` (includes $${(tipAmount / 100).toFixed(2)} tip)` : ''}`;
+          ? `${resumedOrder.holdName || 'Resumed Order'} - ${resumedOrder.items?.length || 0} items${tipAmount > 0 ? ` (includes ${formatCents(tipAmount, currency)} tip)` : ''}`
+          : `Order - ${items.length} items${tipAmount > 0 ? ` (includes ${formatCents(tipAmount, currency)} tip)` : ''}`;
 
       // 1. Get or create order in database
       let order;
@@ -720,7 +721,7 @@ export function CheckoutScreen() {
                       ]}
                       onPress={() => handleTipSelect(index)}
                       accessibilityRole="button"
-                      accessibilityLabel={option.isCustom ? 'Custom tip' : option.value === 0 ? 'No tip' : `${option.label} tip${calculatedTip > 0 ? `, $${(calculatedTip / 100).toFixed(2)}` : ''}`}
+                      accessibilityLabel={option.isCustom ? 'Custom tip' : option.value === 0 ? 'No tip' : `${option.label} tip${calculatedTip > 0 ? `, ${formatCents(calculatedTip, currency)}` : ''}`}
                       accessibilityState={{ selected: isSelected }}
                     >
                       <Text
@@ -740,7 +741,7 @@ export function CheckoutScreen() {
                           ]}
                           maxFontSizeMultiplier={1.3}
                         >
-                          ${(calculatedTip / 100).toFixed(2)}
+                          {formatCents(calculatedTip, currency)}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -763,7 +764,7 @@ export function CheckoutScreen() {
                     onChangeText={setCustomTipAmount}
                     keyboardType="number-pad"
                     autoFocus
-                    accessibilityLabel="Custom tip amount in dollars"
+                    accessibilityLabel={`Custom tip amount in ${currency.toUpperCase()}`}
                   />
                 </View>
               </View>
@@ -919,23 +920,23 @@ export function CheckoutScreen() {
               <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
                   <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Quick Charge</Text>
-                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(subtotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(subtotal, currency)}</Text>
                 </View>
                 {taxAmount > 0 && (
                   <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tax ({taxRate}%)</Text>
-                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(taxAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(taxAmount, currency)}</Text>
                   </View>
                 )}
                 {tipAmount > 0 && (
                   <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tip ({tipPercentage}%)</Text>
-                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(tipAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(tipAmount, currency)}</Text>
                   </View>
                 )}
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
-                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total $${(grandTotal / 100).toFixed(2)}`}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total ${formatCents(grandTotal, currency)}`}>{formatCents(grandTotal, currency)}</Text>
                 </View>
               </View>
             </>
@@ -958,14 +959,14 @@ export function CheckoutScreen() {
                     {item.notes ? (
                       <Text style={styles.itemNotes} maxFontSizeMultiplier={1.5} numberOfLines={1}>{item.notes}</Text>
                     ) : (
-                      <Text style={styles.itemUnitPrice} maxFontSizeMultiplier={1.5}>${(item.unitPrice / 100).toFixed(2)} each</Text>
+                      <Text style={styles.itemUnitPrice} maxFontSizeMultiplier={1.5}>{formatCents(item.unitPrice, currency)} each</Text>
                     )}
                   </View>
                   <View style={styles.quantityControls}>
                     <Text style={styles.quantityText} maxFontSizeMultiplier={1.5}>x{item.quantity}</Text>
                   </View>
                   <Text style={styles.itemPrice} maxFontSizeMultiplier={1.5} numberOfLines={1} adjustsFontSizeToFit>
-                    ${((item.unitPrice * item.quantity) / 100).toFixed(2)}
+                    {formatCents(item.unitPrice * item.quantity, currency)}
                   </Text>
                 </View>
               ))}
@@ -973,23 +974,23 @@ export function CheckoutScreen() {
               <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
                   <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Subtotal</Text>
-                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(subtotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(subtotal, currency)}</Text>
                 </View>
                 {taxAmount > 0 && (
                   <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tax ({taxRate}%)</Text>
-                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(taxAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(taxAmount, currency)}</Text>
                   </View>
                 )}
                 {tipAmount > 0 && (
                   <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tip ({tipPercentage}%)</Text>
-                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(tipAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(tipAmount, currency)}</Text>
                   </View>
                 )}
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
-                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total $${(grandTotal / 100).toFixed(2)}`}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total ${formatCents(grandTotal, currency)}`}>{formatCents(grandTotal, currency)}</Text>
                 </View>
               </View>
             </>
@@ -1050,7 +1051,7 @@ export function CheckoutScreen() {
                         {item.notes ? (
                           <Text style={styles.itemNotes} maxFontSizeMultiplier={1.5} numberOfLines={1}>{item.notes}</Text>
                         ) : (
-                          <Text style={styles.itemUnitPrice} maxFontSizeMultiplier={1.5}>${(item.product.price / 100).toFixed(2)} each</Text>
+                          <Text style={styles.itemUnitPrice} maxFontSizeMultiplier={1.5}>{formatCents(item.product.price, currency)} each</Text>
                         )}
                       </View>
                       <View style={styles.quantityControls}>
@@ -1077,7 +1078,7 @@ export function CheckoutScreen() {
                         </TouchableOpacity>
                       </View>
                       <Text style={styles.itemPrice} maxFontSizeMultiplier={1.5} numberOfLines={1} adjustsFontSizeToFit>
-                        ${((item.product.price * item.quantity) / 100).toFixed(2)}
+                        {formatCents(item.product.price * item.quantity, currency)}
                       </Text>
                     </View>
                   </Swipeable>
@@ -1087,23 +1088,23 @@ export function CheckoutScreen() {
               <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
                   <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Subtotal ({itemCount} items)</Text>
-                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(subtotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(subtotal, currency)}</Text>
                 </View>
                 {taxAmount > 0 && (
                   <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tax ({taxRate}%)</Text>
-                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(taxAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(taxAmount, currency)}</Text>
                   </View>
                 )}
                 {tipAmount > 0 && (
                   <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel} maxFontSizeMultiplier={1.5}>Tip ({tipPercentage}%)</Text>
-                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>${(tipAmount / 100).toFixed(2)}</Text>
+                    <Text style={styles.totalsValue} maxFontSizeMultiplier={1.5}>{formatCents(tipAmount, currency)}</Text>
                   </View>
                 )}
                 <View style={styles.totalRow}>
                   <Text style={styles.totalLabel} maxFontSizeMultiplier={1.3}>Total</Text>
-                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total $${(grandTotal / 100).toFixed(2)}`}>${(grandTotal / 100).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total ${formatCents(grandTotal, currency)}`}>{formatCents(grandTotal, currency)}</Text>
                 </View>
               </View>
             </>
@@ -1125,7 +1126,7 @@ export function CheckoutScreen() {
             isProcessing && styles.payButtonDisabled,
           ]}
           accessibilityRole="button"
-          accessibilityLabel={isProcessing ? 'Processing payment' : paymentMethod === 'tap_to_pay' ? `${TAP_TO_PAY_LABEL}, $${(grandTotal / 100).toFixed(2)}` : paymentMethod === 'cash' ? `Pay with cash, $${(grandTotal / 100).toFixed(2)}` : `Split payment, $${(grandTotal / 100).toFixed(2)}`}
+          accessibilityLabel={isProcessing ? 'Processing payment' : paymentMethod === 'tap_to_pay' ? `${TAP_TO_PAY_LABEL}, ${formatCents(grandTotal, currency)}` : paymentMethod === 'cash' ? `Pay with cash, ${formatCents(grandTotal, currency)}` : `Split payment, ${formatCents(grandTotal, currency)}`}
           accessibilityState={{ disabled: isProcessing }}
         >
           {isProcessing ? (

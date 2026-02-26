@@ -21,6 +21,7 @@ export interface User {
   weeklyReports?: boolean;
   onboardingCompleted?: boolean;
   tapToPayDeviceIds?: string[];
+  currency?: string;
 }
 
 export interface Organization {

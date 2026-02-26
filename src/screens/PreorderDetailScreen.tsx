@@ -13,10 +13,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useSocketEvent, useSocket, SocketEvents } from '../context/SocketContext';
 import { preordersApi, Preorder, PreorderStatus } from '../lib/api/preorders';
 import { stripeTerminalApi } from '../lib/api/stripe-terminal';
 import { usePreorders } from '../context/PreordersContext';
+import { formatCurrency } from '../utils/currency';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -88,6 +90,7 @@ function formatDate(dateString: string): string {
 
 export function PreorderDetailScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { preorderId } = route.params as RouteParams;
@@ -162,7 +165,7 @@ export function PreorderDetailScreen() {
     if (preorder.paymentType === 'pay_at_pickup') {
       Alert.alert(
         'Process Payment',
-        `The customer needs to pay $${(preorder.totalAmount || 0).toFixed(2)}. Proceed with Tap to Pay?`,
+        `The customer needs to pay ${formatCurrency(preorder.totalAmount || 0, currency)}. Proceed with Tap to Pay?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -225,11 +228,11 @@ export function PreorderDetailScreen() {
     if (!preorder || isCancelling) return;
 
     const isPaid = preorder.paymentType === 'pay_now' && preorder.stripePaymentIntentId;
-    const amount = (preorder.totalAmount || 0).toFixed(2);
+    const formattedTotal = formatCurrency(preorder.totalAmount || 0, currency);
     Alert.alert(
       isPaid ? 'Cancel & Refund Order' : 'Cancel Order',
       isPaid
-        ? `A refund of $${amount} will be issued to the customer's original payment method. This cannot be undone.`
+        ? `A refund of ${formattedTotal} will be issued to the customer's original payment method. This cannot be undone.`
         : 'Are you sure you want to cancel this order? No payment was collected.',
       [
         { text: 'Keep Order', style: 'cancel' },
@@ -244,7 +247,7 @@ export function PreorderDetailScreen() {
               Alert.alert(
                 isPaid ? 'Cancelled & Refunded' : 'Cancelled',
                 isPaid
-                  ? `Order cancelled. $${amount} refund issued to the customer.`
+                  ? `Order cancelled. ${formattedTotal} refund issued to the customer.`
                   : 'Order has been cancelled.'
               );
               navigation.goBack();
@@ -392,7 +395,7 @@ export function PreorderDetailScreen() {
                 )}
               </View>
               <Text style={styles.itemPrice} maxFontSizeMultiplier={1.5}>
-                ${((item.unitPrice || 0) * (item.quantity || 0)).toFixed(2)}
+                {formatCurrency((item.unitPrice || 0) * (item.quantity || 0), currency)}
               </Text>
             </View>
           ))}
@@ -410,23 +413,23 @@ export function PreorderDetailScreen() {
         <View style={styles.card}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Subtotal</Text>
-            <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>${(preorder.subtotal || 0).toFixed(2)}</Text>
+            <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>{formatCurrency(preorder.subtotal || 0, currency)}</Text>
           </View>
           {(preorder.taxAmount || 0) > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Tax</Text>
-              <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>${(preorder.taxAmount || 0).toFixed(2)}</Text>
+              <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>{formatCurrency(preorder.taxAmount || 0, currency)}</Text>
             </View>
           )}
           {(preorder.tipAmount || 0) > 0 && (
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Tip</Text>
-              <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>${(preorder.tipAmount || 0).toFixed(2)}</Text>
+              <Text style={styles.totalValue} maxFontSizeMultiplier={1.5}>{formatCurrency(preorder.tipAmount || 0, currency)}</Text>
             </View>
           )}
           <View style={[styles.totalRow, styles.totalRowFinal]}>
             <Text style={styles.totalLabelFinal} maxFontSizeMultiplier={1.3}>Total</Text>
-            <Text style={styles.totalValueFinal} maxFontSizeMultiplier={1.3}>${(preorder.totalAmount || 0).toFixed(2)}</Text>
+            <Text style={styles.totalValueFinal} maxFontSizeMultiplier={1.3}>{formatCurrency(preorder.totalAmount || 0, currency)}</Text>
           </View>
         </View>
 
@@ -476,7 +479,7 @@ export function PreorderDetailScreen() {
                 <Text style={styles.actionButtonText} maxFontSizeMultiplier={1.3}>{nextAction.label}</Text>
                 {preorder.status === 'ready' && preorder.paymentType === 'pay_at_pickup' && (
                   <Text style={styles.actionButtonSubtext} maxFontSizeMultiplier={1.3}>
-                    Collect ${(preorder.totalAmount || 0).toFixed(2)} via Tap to Pay
+                    Collect {formatCurrency(preorder.totalAmount || 0, currency)} via Tap to Pay
                   </Text>
                 )}
               </>

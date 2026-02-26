@@ -21,6 +21,7 @@ interface AuthState {
   connectLoading: boolean;
   biometricCapabilities: BiometricCapabilities | null;
   biometricEnabled: boolean;
+  currency: string;
 }
 
 interface AuthContextType extends AuthState {
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     connectLoading: true,
     biometricCapabilities: null,
     biometricEnabled: false,
+    currency: 'usd',
   });
 
   // Track if we're already showing a session kicked alert
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       connectLoading: false,
       biometricCapabilities: null,
       biometricEnabled: false,
+      currency: 'usd',
     });
 
     // Show alert to user
@@ -126,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           subscription,
           isLoading: false,
           isAuthenticated: true,
+          currency: user.currency || 'usd',
         }));
         return true;
       }
@@ -166,6 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           organization: profile.organization,
           isLoading: false,
           isAuthenticated: true,
+          currency: profile.user.currency || 'usd',
         }));
       } catch (error: any) {
         logger.error('Failed to fetch profile:', error);
@@ -184,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             connectLoading: false,
             biometricCapabilities: null,
             biometricEnabled: false,
+            currency: 'usd',
           });
         } else {
           // For other errors (network, 404, 500, etc.), keep the user logged in with cached data
@@ -222,6 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading: false,
       isAuthenticated: true,
       connectLoading: true, // Reset to loading state for connect status
+      currency: response.user.currency || 'usd',
     }));
   };
 
@@ -238,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       connectLoading: false,
       biometricCapabilities: null,
       biometricEnabled: false,
+      currency: 'usd',
     });
     // Clear local tokens + invalidate on server in background
     authService.logout().catch((error) => {

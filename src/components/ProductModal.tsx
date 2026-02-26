@@ -21,6 +21,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { getCurrencySymbol } from '../utils/currency';
 import { glass } from '../lib/colors';
 import type { Product, Category } from '../lib/api';
 import { Toggle } from './Toggle';
@@ -57,6 +59,7 @@ export function ProductModal({
   onOpenCategoryManager,
 }: ProductModalProps) {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const glassColors = isDark ? glass.dark : glass.light;
 
   const isEditing = !!product;
@@ -302,7 +305,7 @@ export function ProductModal({
             <View style={styles.section}>
               <Text style={styles.label} maxFontSizeMultiplier={1.5}>Price *</Text>
               <View style={styles.priceInputContainer}>
-                <Text style={styles.currencySymbol} maxFontSizeMultiplier={1.3}>$</Text>
+                <Text style={styles.currencySymbol} maxFontSizeMultiplier={1.3}>{getCurrencySymbol(currency)}</Text>
                 <TextInput
                   style={styles.priceInput}
                   value={priceString}
@@ -310,7 +313,7 @@ export function ProductModal({
                   placeholder="0.00"
                   placeholderTextColor={colors.textMuted}
                   keyboardType="decimal-pad"
-                  accessibilityLabel="Product price in dollars"
+                  accessibilityLabel={`Product price in ${currency.toUpperCase()}`}
                 />
               </View>
             </View>

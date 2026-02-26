@@ -15,10 +15,12 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useSocketEvent, useSocket, SocketEvents } from '../context/SocketContext';
 import { usePreorders } from '../context/PreordersContext';
 import { useCatalog } from '../context/CatalogContext';
 import { preordersApi, Preorder, PreorderStatus } from '../lib/api/preorders';
+import { formatCurrency } from '../utils/currency';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -202,6 +204,7 @@ const loadingStyles = StyleSheet.create({
 
 export function PreordersScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const navigation = useNavigation<any>();
   const { isConnected } = useSocket();
   const { counts, refreshCounts } = usePreorders();
@@ -330,7 +333,7 @@ export function PreordersScreen() {
         onPress={() => handlePreorderPress(item)}
         activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel={`Order ${item.dailyNumber}, ${item.customerName || 'Customer'}, ${getStatusLabel(item.status)}, $${(item.totalAmount || 0).toFixed(2)}`}
+        accessibilityLabel={`Order ${item.dailyNumber}, ${item.customerName || 'Customer'}, ${getStatusLabel(item.status)}, ${formatCurrency(item.totalAmount || 0, currency)}`}
         accessibilityHint="Double tap to view order details"
       >
         <View style={styles.orderHeader}>
@@ -381,7 +384,7 @@ export function PreordersScreen() {
             )}
           </View>
           <Text style={styles.orderTotal} maxFontSizeMultiplier={1.3}>
-            ${(item.totalAmount || 0).toFixed(2)}
+            {formatCurrency(item.totalAmount || 0, currency)}
           </Text>
         </View>
 

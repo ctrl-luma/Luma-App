@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { formatCents, getCurrencySymbol } from '../utils/currency';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
@@ -126,6 +128,7 @@ interface QuickChargeBottomSheetProps {
 
 export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSheetProps) {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const navigation = useNavigation<any>();
   const { guardCheckout } = useTapToPayGuard();
   const insets = useSafeAreaInsets();
@@ -145,11 +148,12 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
 
   const formatAmount = (value: string) => {
     const digits = value.replace(/\D/g, '');
-    const cents = parseInt(digits || '0', 10);
-    return (cents / 100).toFixed(2);
+    const rawCents = parseInt(digits || '0', 10);
+    return (rawCents / 100).toFixed(2);
   };
 
   const displayAmount = formatAmount(amount);
+  const formattedAmount = formatCents(parseInt(amount || '0', 10), currency);
   const cents = parseInt(amount || '0', 10);
 
   const handleKeypadPress = useCallback((key: string) => {
@@ -166,7 +170,7 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
 
   const handleCharge = useCallback(() => {
     if (cents < 50) {
-      Alert.alert('Invalid Amount', 'Minimum charge is $0.50');
+      Alert.alert('Invalid Amount', `Minimum charge is ${formatCents(50, currency)}`);
       return;
     }
 
@@ -179,7 +183,7 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
     navigation.navigate('Checkout', {
       total: cents,
       isQuickCharge: true,
-      quickChargeDescription: `Quick Charge - $${displayAmount}`,
+      quickChargeDescription: `Quick Charge - ${formattedAmount}`,
     });
 
     // Reset form
@@ -234,7 +238,7 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
 
             {/* Amount Display */}
             <View style={styles.amountContainer}>
-              <Text style={[styles.currencySymbol, { color: colors.textMuted }]} maxFontSizeMultiplier={1.2}>$</Text>
+              <Text style={[styles.currencySymbol, { color: colors.textMuted }]} maxFontSizeMultiplier={1.2}>{getCurrencySymbol(currency)}</Text>
               <Text style={[styles.amount, { color: colors.text }]} maxFontSizeMultiplier={1.2}>{displayAmount}</Text>
             </View>
 
@@ -288,12 +292,12 @@ export function QuickChargeBottomSheet({ visible, onClose }: QuickChargeBottomSh
                   ]}
                   maxFontSizeMultiplier={1.3}
                 >
-                  {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
+                  {cents < 50 ? 'Enter Amount' : `Charge ${formattedAmount}`}
                 </Text>
               </Pressable>
 
               <Text style={[styles.minimumHint, { color: colors.textMuted, opacity: cents > 0 && cents < 50 ? 1 : 0 }]} maxFontSizeMultiplier={1.5}>
-                Minimum charge is $0.50
+                {`Minimum charge is ${formatCents(50, currency)}`}
               </Text>
             </View>
           </Pressable>

@@ -61,6 +61,7 @@ import {
   UpdateCatalogData,
   LibraryProduct,
 } from '../lib/api';
+import { formatCents } from '../utils/currency';
 import { openVendorDashboard } from '../lib/auth-handoff';
 import { SetupRequired } from '../components/SetupRequired';
 import { ProductModal } from '../components/ProductModal';
@@ -527,7 +528,7 @@ export function MenuScreen() {
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { isLoading: authLoading, user, completeOnboarding, subscription } = useAuth();
+  const { isLoading: authLoading, user, completeOnboarding, subscription, currency } = useAuth();
   const { selectedCatalog, catalogs, isLoading: catalogsLoading, refreshCatalogs, setSelectedCatalog } = useCatalog();
   const { addItem, getItemQuantity, decrementItem, itemCount, subtotal } = useCart();
   const { guardCheckout } = useTapToPayGuard();
@@ -1265,7 +1266,7 @@ export function MenuScreen() {
           ]}
           onPress={handlePress}
           onLongPress={supportsDragAndDrop ? undefined : () => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
-          accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+          accessibilityLabel={`${item.name}, ${formatCents(item.price, currency)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
           accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
         >
           {dragHandle}
@@ -1328,7 +1329,7 @@ export function MenuScreen() {
               </Text>
             ) : null}
             <Text maxFontSizeMultiplier={1.3} style={styles.listPrice}>
-              ${(item.price / 100).toFixed(2)}
+              {formatCents(item.price, currency)}
             </Text>
           </View>
           {isSelectionMode ? null : isEditMode ? editOverlay : null}
@@ -1351,7 +1352,7 @@ export function MenuScreen() {
           ]}
           onPress={handlePress}
           onLongPress={supportsDragAndDrop ? undefined : () => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
-          accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+          accessibilityLabel={`${item.name}, ${formatCents(item.price, currency)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
           accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
         >
           {dragHandle}
@@ -1380,7 +1381,7 @@ export function MenuScreen() {
             </View>
             <View style={styles.largePriceRow}>
               <Text maxFontSizeMultiplier={1.2} style={styles.largePrice}>
-                ${(item.price / 100).toFixed(2)}
+                {formatCents(item.price, currency)}
               </Text>
               {!isEditMode && !isSelectionMode && (
                 <View style={styles.largeQuantityControls}>
@@ -1439,7 +1440,7 @@ export function MenuScreen() {
           ]}
           onPress={handlePress}
           onLongPress={supportsDragAndDrop ? undefined : () => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
-          accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+          accessibilityLabel={`${item.name}, ${formatCents(item.price, currency)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
           accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
         >
           {supportsDragAndDrop && (
@@ -1471,7 +1472,7 @@ export function MenuScreen() {
             )}
           </View>
           <Text maxFontSizeMultiplier={1.3} style={styles.compactPrice}>
-            ${(item.price / 100).toFixed(2)}
+            {formatCents(item.price, currency)}
           </Text>
           {isSelectionMode ? null : isEditMode ? (
             <View style={styles.compactEditActions}>
@@ -1545,7 +1546,7 @@ export function MenuScreen() {
         ]}
         onPress={handlePress}
         onLongPress={() => undefined /* handleProductLongPress(item) - COMMENTED FOR DEBUGGING */}
-        accessibilityLabel={`${item.name}, $${(item.price / 100).toFixed(2)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
+        accessibilityLabel={`${item.name}, ${formatCents(item.price, currency)}${quantity > 0 ? `, ${quantity} in cart` : ''}${isInactive && isEditMode ? ', hidden' : ''}`}
         accessibilityHint={isEditMode ? 'Tap to edit product' : 'Tap to add to cart'}
       >
         {selectionCheckbox}
@@ -1566,7 +1567,7 @@ export function MenuScreen() {
           </Text>
           <View style={styles.productPriceRow}>
             <Text maxFontSizeMultiplier={1.3} style={styles.productPrice}>
-              ${(item.price / 100).toFixed(2)}
+              {formatCents(item.price, currency)}
             </Text>
             {!isEditMode && !isSelectionMode && (
               <View style={styles.quantityControls}>

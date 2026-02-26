@@ -82,6 +82,9 @@ import { PreorderDetailScreen } from './src/screens/PreorderDetailScreen';
 // Education screens
 import { TapToPayEducationScreen } from './src/screens/TapToPayEducationScreen';
 
+// Reader management
+import { ReaderManagementScreen } from './src/screens/ReaderManagementScreen';
+
 // Onboarding components
 import { SetupPaymentsModal } from './src/components/SetupPaymentsModal';
 
@@ -647,6 +650,11 @@ function AuthenticatedNavigator() {
         name="TapToPayEducation"
         component={TapToPayEducationScreen}
         options={{ presentation: 'fullScreenModal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="ReaderManagement"
+        component={ReaderManagementScreen}
+        options={{ presentation: 'card' }}
       />
       <Stack.Screen
         name="Upgrade"

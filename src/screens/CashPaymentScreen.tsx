@@ -12,7 +12,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { ordersApi } from '../lib/api';
+import { formatCents, getCurrencySymbol } from '../utils/currency';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -28,6 +30,7 @@ type RouteParams = {
 
 export function CashPaymentScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'CashPayment'>>();
@@ -126,15 +129,15 @@ export function CashPaymentScreen() {
       {/* Total Amount Display */}
       <View style={styles.totalSection}>
         <Text style={styles.totalLabel} maxFontSizeMultiplier={1.5}>Total Due</Text>
-        <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total due $${(totalAmount / 100).toFixed(2)}`}>${(totalAmount / 100).toFixed(2)}</Text>
+        <Text style={styles.totalAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Total due ${formatCents(totalAmount, currency)}`}>{formatCents(totalAmount, currency)}</Text>
       </View>
 
       {/* Cash Tendered Display */}
       <View style={styles.tenderedSection}>
         <Text style={styles.tenderedLabel} maxFontSizeMultiplier={1.5}>Cash Tendered</Text>
         <View style={styles.tenderedDisplay}>
-          <Text style={styles.dollarSign} maxFontSizeMultiplier={1.2}>$</Text>
-          <Text style={[styles.tenderedAmount, !cashTendered && styles.tenderedPlaceholder]} maxFontSizeMultiplier={1.2} accessibilityRole="text" accessibilityLabel={`Cash tendered $${cashTendered || '0.00'}`}>
+          <Text style={styles.dollarSign} maxFontSizeMultiplier={1.2}>{getCurrencySymbol(currency)}</Text>
+          <Text style={[styles.tenderedAmount, !cashTendered && styles.tenderedPlaceholder]} maxFontSizeMultiplier={1.2} accessibilityRole="text" accessibilityLabel={`Cash tendered ${getCurrencySymbol(currency)}${cashTendered || '0.00'}`}>
             {cashTendered || '0.00'}
           </Text>
         </View>
@@ -142,9 +145,9 @@ export function CashPaymentScreen() {
 
       {/* Change Display */}
       {isEnoughCash && changeAmount > 0 && (
-        <View style={styles.changeSection} accessibilityRole="summary" accessibilityLabel={`Change due $${(changeAmount / 100).toFixed(2)}`}>
+        <View style={styles.changeSection} accessibilityRole="summary" accessibilityLabel={`Change due ${formatCents(changeAmount, currency)}`}>
           <Text style={styles.changeLabel} maxFontSizeMultiplier={1.5}>Change Due</Text>
-          <Text style={styles.changeAmount} maxFontSizeMultiplier={1.2}>${(changeAmount / 100).toFixed(2)}</Text>
+          <Text style={styles.changeAmount} maxFontSizeMultiplier={1.2}>{formatCents(changeAmount, currency)}</Text>
         </View>
       )}
 
@@ -153,14 +156,14 @@ export function CashPaymentScreen() {
         <View style={styles.insufficientSection} accessibilityRole="alert">
           <Ionicons name="warning-outline" size={18} color={colors.error} />
           <Text style={styles.insufficientText} maxFontSizeMultiplier={1.5}>
-            Insufficient — ${((totalAmount - cashTenderedCents) / 100).toFixed(2)} more needed
+            Insufficient — {formatCents(totalAmount - cashTenderedCents, currency)} more needed
           </Text>
         </View>
       )}
 
       {/* Exact Amount Button */}
       <View style={styles.exactRow}>
-        <TouchableOpacity style={styles.exactButton} onPress={handleExactAmount} accessibilityRole="button" accessibilityLabel={`Exact amount $${(totalAmount / 100).toFixed(2)}`}>
+        <TouchableOpacity style={styles.exactButton} onPress={handleExactAmount} accessibilityRole="button" accessibilityLabel={`Exact amount ${formatCents(totalAmount, currency)}`}>
           <Text style={styles.exactButtonText} maxFontSizeMultiplier={1.3}>Exact Amount</Text>
         </TouchableOpacity>
       </View>

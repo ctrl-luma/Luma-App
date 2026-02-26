@@ -19,8 +19,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { StarBackground } from '../components/StarBackground';
 import { transactionsApi, preordersApi } from '../lib/api';
+import { formatCents, formatCurrency } from '../utils/currency';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 
@@ -264,6 +266,7 @@ type RouteParams = {
 
 export function TransactionDetailScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RouteParams, 'TransactionDetail'>>();
@@ -412,7 +415,7 @@ export function TransactionDetailScreen() {
         <ScrollView style={styles.content}>
           <View style={styles.amountCard}>
             <Text maxFontSizeMultiplier={1.5} style={styles.amountLabel}>Total</Text>
-            <Text maxFontSizeMultiplier={1.2} style={styles.amount}>${preorder.totalAmount.toFixed(2)}</Text>
+            <Text maxFontSizeMultiplier={1.2} style={styles.amount}>{formatCurrency(preorder.totalAmount, currency)}</Text>
             <View style={[styles.statusBadge, { backgroundColor: preorderStatusColor + '20' }]}>
               <View style={[styles.statusDot, { backgroundColor: preorderStatusColor }]} />
               <Text maxFontSizeMultiplier={1.5} style={[styles.statusText, { color: preorderStatusColor }]}>{preorderStatusLabel}</Text>
@@ -470,7 +473,7 @@ export function TransactionDetailScreen() {
               {preorder.items.map((item) => (
                 <View key={item.id} style={styles.detailRow}>
                   <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>{item.quantity}x {item.name}</Text>
-                  <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${(item.unitPrice * item.quantity).toFixed(2)}</Text>
+                  <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{formatCurrency(item.unitPrice * item.quantity, currency)}</Text>
                 </View>
               ))}
             </View>
@@ -479,18 +482,18 @@ export function TransactionDetailScreen() {
             <Text maxFontSizeMultiplier={1.5} style={styles.sectionTitle}>Totals</Text>
             <View style={styles.detailRow}>
               <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Subtotal</Text>
-              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${preorder.subtotal.toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{formatCurrency(preorder.subtotal, currency)}</Text>
             </View>
             {preorder.taxAmount > 0 && (
               <View style={styles.detailRow}>
                 <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Tax</Text>
-                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${preorder.taxAmount.toFixed(2)}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{formatCurrency(preorder.taxAmount, currency)}</Text>
               </View>
             )}
             {preorder.tipAmount > 0 && (
               <View style={styles.detailRow}>
                 <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Tip</Text>
-                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${preorder.tipAmount.toFixed(2)}</Text>
+                <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{formatCurrency(preorder.tipAmount, currency)}</Text>
               </View>
             )}
           </View>
@@ -508,7 +511,7 @@ export function TransactionDetailScreen() {
                 onPress={handleRefund}
                 disabled={refundMutation.isPending}
                 accessibilityRole="button"
-                accessibilityLabel={`Issue refund for $${preorder.totalAmount.toFixed(2)}`}
+                accessibilityLabel={`Issue refund for ${formatCurrency(preorder.totalAmount, currency)}`}
                 accessibilityState={{ disabled: refundMutation.isPending }}
               >
                 {refundMutation.isPending ? (
@@ -540,7 +543,7 @@ export function TransactionDetailScreen() {
               </View>
               <Text maxFontSizeMultiplier={1.3} style={styles.modalTitle}>Issue Refund</Text>
               <Text maxFontSizeMultiplier={1.5} style={styles.modalMessage}>
-                Are you sure you want to refund this preorder for ${preorder.totalAmount.toFixed(2)}? This action cannot be undone.
+                Are you sure you want to refund this preorder for {formatCurrency(preorder.totalAmount, currency)}? This action cannot be undone.
               </Text>
               <View style={styles.modalButtons}>
                 <TouchableOpacity
@@ -640,7 +643,7 @@ export function TransactionDetailScreen() {
         <View style={styles.amountCard}>
           <Text maxFontSizeMultiplier={1.5} style={styles.amountLabel}>Amount</Text>
           <Text maxFontSizeMultiplier={1.2} style={styles.amount}>
-            ${(transaction.amount / 100).toFixed(2)}
+            {formatCents(transaction.amount, currency)}
           </Text>
           <View
             style={[
@@ -707,14 +710,14 @@ export function TransactionDetailScreen() {
           {transaction.cashTendered != null && transaction.cashTendered > 0 && (
             <View style={styles.detailRow}>
               <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Cash Tendered</Text>
-              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${(transaction.cashTendered / 100).toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{formatCents(transaction.cashTendered, currency)}</Text>
             </View>
           )}
 
           {transaction.cashChange != null && transaction.cashChange > 0 && (
             <View style={styles.detailRow}>
               <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Change Given</Text>
-              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>${(transaction.cashChange / 100).toFixed(2)}</Text>
+              <Text maxFontSizeMultiplier={1.5} style={styles.detailValue}>{formatCents(transaction.cashChange, currency)}</Text>
             </View>
           )}
 
@@ -729,7 +732,7 @@ export function TransactionDetailScreen() {
             <View style={styles.detailRow}>
               <Text maxFontSizeMultiplier={1.5} style={styles.detailLabel}>Amount Refunded</Text>
               <Text maxFontSizeMultiplier={1.5} style={[styles.detailValue, { color: colors.warning }]}>
-                ${(transaction.amountRefunded / 100).toFixed(2)}
+                {formatCents(transaction.amountRefunded, currency)}
               </Text>
             </View>
           )}
@@ -762,7 +765,7 @@ export function TransactionDetailScreen() {
                   </Text>
                 </View>
                 <Text maxFontSizeMultiplier={1.5} style={styles.paymentBreakdownAmount}>
-                  ${(payment.amount / 100).toFixed(2)}
+                  {formatCents(payment.amount, currency)}
                 </Text>
               </View>
             ))}
@@ -777,7 +780,7 @@ export function TransactionDetailScreen() {
               <View key={refund.id} style={styles.refundItem}>
                 <View>
                   <Text maxFontSizeMultiplier={1.5} style={styles.refundAmount}>
-                    -${(refund.amount / 100).toFixed(2)}
+                    -{formatCents(refund.amount, currency)}
                   </Text>
                   <Text maxFontSizeMultiplier={1.5} style={styles.refundDate}>
                     {formatDate(refund.created)}
@@ -851,7 +854,7 @@ export function TransactionDetailScreen() {
               onPress={handleRefund}
               disabled={refundMutation.isPending}
               accessibilityRole="button"
-              accessibilityLabel={`Issue refund for $${(transaction.amount / 100).toFixed(2)}`}
+              accessibilityLabel={`Issue refund for ${formatCents(transaction.amount, currency)}`}
               accessibilityState={{ disabled: refundMutation.isPending }}
             >
               {refundMutation.isPending ? (

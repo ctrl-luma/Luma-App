@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useContext, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useSocket, useSocketEvent, SocketEvents } from '../context/SocketContext';
+import { StripeTerminalContext } from '../context/StripeTerminalContext';
 import logger from '../lib/logger';
 
 // Component that listens for socket events and updates contexts
@@ -9,6 +10,9 @@ export function SocketEventHandlers() {
   const { refreshAuth } = useAuth();
   const queryClient = useQueryClient();
   const { isConnected } = useSocket();
+  // Use context directly (nullable) since this component lives outside StripeTerminalContextProvider
+  const terminalContext = useContext(StripeTerminalContext);
+  const setTerminalPaymentResult = terminalContext?.setTerminalPaymentResult;
   const wasConnectedRef = useRef(isConnected);
   const hasEverConnectedRef = useRef(false);
 
@@ -56,6 +60,28 @@ export function SocketEventHandlers() {
   useSocketEvent(SocketEvents.ORDER_REFUNDED, handleTransactionEvent);
   useSocketEvent(SocketEvents.PREORDER_COMPLETED, handleTransactionEvent);
   useSocketEvent(SocketEvents.PREORDER_CANCELLED, handleTransactionEvent);
+
+  // Terminal reader payment events (server-driven payments via smart readers)
+  const handleTerminalPaymentSucceeded = useCallback((data: any) => {
+    logger.log('[SocketEventHandlers] Terminal payment succeeded:', data?.paymentIntentId);
+    setTerminalPaymentResult?.({
+      status: 'succeeded',
+      paymentIntentId: data?.paymentIntentId || '',
+    });
+    queryClient.invalidateQueries({ queryKey: ['transactions'] });
+  }, [setTerminalPaymentResult, queryClient]);
+
+  const handleTerminalPaymentFailed = useCallback((data: any) => {
+    logger.log('[SocketEventHandlers] Terminal payment failed:', data?.paymentIntentId, data?.error);
+    setTerminalPaymentResult?.({
+      status: 'failed',
+      paymentIntentId: data?.paymentIntentId || '',
+      error: data?.error || 'Payment failed on reader',
+    });
+  }, [setTerminalPaymentResult]);
+
+  useSocketEvent(SocketEvents.TERMINAL_PAYMENT_SUCCEEDED, handleTerminalPaymentSucceeded);
+  useSocketEvent(SocketEvents.TERMINAL_PAYMENT_FAILED, handleTerminalPaymentFailed);
 
   // This component doesn't render anything
   return null;

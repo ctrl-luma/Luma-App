@@ -22,7 +22,9 @@ import { CardField, useConfirmPayment, CardFieldInput, initStripe } from '@strip
 import { config } from '../lib/config';
 
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { formatCents } from '../utils/currency';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
@@ -50,6 +52,7 @@ type RouteParams = {
 
 export function PaymentResultScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PaymentResult'>>();
   const glassColors = isDark ? glass.dark : glass.light;
@@ -61,7 +64,7 @@ export function PaymentResultScreen() {
   const { success, amount, paymentIntentId, orderId, orderNumber, customerEmail, errorMessage, skipToCardEntry, preorderId } = route.params;
 
   // Dynamic font sizes based on screen width (accounting for 24px padding on each side)
-  const amountText = `$${(amount / 100).toFixed(2)}`;
+  const amountText = formatCents(amount, currency);
   const availableWidth = screenWidth - 48;
   const amountFontSize = Math.min(56, availableWidth / (amountText.length * 0.55));
   const titleFontSize = Math.min(26, availableWidth / 11);
@@ -409,7 +412,7 @@ export function PaymentResultScreen() {
               {/* Amount Display */}
               <View style={styles.cardPageAmountContainer}>
                 <Text style={styles.cardPageAmountLabel} maxFontSizeMultiplier={1.5}>Amount to Pay</Text>
-                <Text style={styles.cardPageAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount to pay $${(amount / 100).toFixed(2)}`}>${(amount / 100).toFixed(2)}</Text>
+                <Text style={styles.cardPageAmount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount to pay ${formatCents(amount, currency)}`}>{formatCents(amount, currency)}</Text>
                 {orderNumber && (
                   <Text style={styles.cardPageOrderNumber} maxFontSizeMultiplier={1.5}>Order #{orderNumber}</Text>
                 )}
@@ -466,7 +469,7 @@ export function PaymentResultScreen() {
                   (!cardDetails?.complete || processingCard) && styles.cardPagePayButtonDisabled,
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={processingCard ? 'Processing card payment' : `Pay $${(amount / 100).toFixed(2)} with card`}
+                accessibilityLabel={processingCard ? 'Processing card payment' : `Pay ${formatCents(amount, currency)} with card`}
                 accessibilityState={{ disabled: !cardDetails?.complete || processingCard }}
               >
                 {processingCard ? (
@@ -475,7 +478,7 @@ export function PaymentResultScreen() {
                   <>
                     <Ionicons name="lock-closed" size={20} color={isDark ? '#09090b' : '#fff'} />
                     <Text style={[styles.cardPagePayButtonText, { color: isDark ? '#09090b' : '#fff' }]} maxFontSizeMultiplier={1.3}>
-                      Pay ${(amount / 100).toFixed(2)}
+                      Pay {formatCents(amount, currency)}
                     </Text>
                   </>
                 )}

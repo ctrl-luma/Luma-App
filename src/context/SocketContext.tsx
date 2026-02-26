@@ -55,6 +55,9 @@ export const SocketEvents = {
   PREORDER_READY: 'preorder:ready',
   PREORDER_COMPLETED: 'preorder:completed',
   PREORDER_CANCELLED: 'preorder:cancelled',
+  // Terminal reader events (server-driven payments)
+  TERMINAL_PAYMENT_SUCCEEDED: 'terminal:payment_succeeded',
+  TERMINAL_PAYMENT_FAILED: 'terminal:payment_failed',
 } as const;
 
 type SocketEventName = typeof SocketEvents[keyof typeof SocketEvents];

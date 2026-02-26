@@ -27,6 +27,7 @@ import { useTerminal } from '../context/StripeTerminalContext';
 import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { billingService, SubscriptionInfo } from '../lib/api/billing';
 import { Subscription } from '../lib/api';
+import { formatCents } from '../utils/currency';
 import {
   enableBiometricLogin,
   disableBiometricLogin,
@@ -58,7 +59,7 @@ export function SettingsScreen() {
       });
     }
   }, [isDark]);
-  const { user, organization, subscription, signOut, connectStatus, connectLoading, isPaymentReady, refreshAuth, biometricCapabilities, biometricEnabled, setBiometricEnabled, refreshBiometricStatus } = useAuth();
+  const { user, organization, subscription, signOut, connectStatus, connectLoading, isPaymentReady, refreshAuth, biometricCapabilities, biometricEnabled, setBiometricEnabled, refreshBiometricStatus, currency } = useAuth();
   const { selectedCatalog, catalogs, clearCatalog } = useCatalog();
   const {
     deviceCompatibility,
@@ -395,7 +396,7 @@ export function SettingsScreen() {
                     </Text>
                     {subscriptionInfo?.current_plan?.price ? (
                       <Text style={styles.sublabel} maxFontSizeMultiplier={1.5}>
-                        ${(subscriptionInfo.current_plan.price / 100).toFixed(2)}/month
+                        {formatCents(subscriptionInfo.current_plan.price, currency)}/month
                       </Text>
                     ) : null}
                   </View>
@@ -672,6 +673,28 @@ export function SettingsScreen() {
                 You must complete banking setup before you can enable {TAP_TO_PAY_NAME}. Go to Banking above to get started.
               </Text>
             )}
+
+            <View style={styles.divider} />
+
+            {/* Terminal Readers */}
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => navigation.navigate('ReaderManagement')}
+              accessibilityRole="button"
+              accessibilityLabel="Terminal Readers"
+              accessibilityHint="Manage physical card readers and Bluetooth devices"
+            >
+              <View style={styles.rowLeft}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
+                  <Ionicons name="hardware-chip-outline" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.label} maxFontSizeMultiplier={1.3}>Terminal Readers</Text>
+                  <Text style={styles.sublabel} maxFontSizeMultiplier={1.3}>Physical card readers & Bluetooth</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            </TouchableOpacity>
 
             <View style={styles.divider} />
 

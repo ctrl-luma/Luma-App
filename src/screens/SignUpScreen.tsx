@@ -45,6 +45,7 @@ interface FormData {
   lastName: string;
   businessName: string;
   businessType: string;
+  country: string;
   phone: string;
   selectedPlan: PlanType;
   acceptTerms: boolean;
@@ -63,6 +64,33 @@ const BUSINESS_TYPES = [
   'Pop-up Shop',
   'Restaurant',
   'Other',
+];
+
+// Countries where Stripe Terminal is generally available
+const SUPPORTED_COUNTRIES = [
+  { code: 'US', name: 'United States' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'LU', name: 'Luxembourg' },
+  { code: 'CZ', name: 'Czechia' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'MY', name: 'Malaysia' },
 ];
 
 // Static constants — hoisted out of component to avoid re-creation on every render
@@ -135,6 +163,7 @@ export function SignUpScreen() {
     lastName: '',
     businessName: '',
     businessType: '',
+    country: 'US',
     phone: '',
     selectedPlan: 'starter',
     acceptTerms: false,
@@ -147,6 +176,7 @@ export function SignUpScreen() {
   const [iapProduct, setIapProduct] = useState<SubscriptionProduct | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState<ICountry | null>(null);
 
   // Combined loading state for disabling form fields
@@ -408,6 +438,7 @@ export function SignUpScreen() {
       lastName: formData.lastName.trim(),
       organizationName: formData.businessName.trim(),
       phone: formData.phone.replace(/\D/g, ''),
+      country: formData.country,
       acceptTerms: formData.acceptTerms,
       acceptPrivacy: formData.acceptTerms,
       subscriptionTier: tier,
@@ -738,13 +769,38 @@ export function SignUpScreen() {
         </View>
 
         <View style={styles.inputGroup}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.label}>Country</Text>
+          <TouchableOpacity
+            style={[
+              styles.selectButton,
+              isFormDisabled && styles.selectButtonDisabled,
+            ]}
+            onPress={() => {
+              Keyboard.dismiss();
+              setShowCountryPicker(true);
+            }}
+            disabled={isFormDisabled}
+            accessibilityRole="button"
+            accessibilityLabel={`Country: ${SUPPORTED_COUNTRIES.find(c => c.code === formData.country)?.name || formData.country}`}
+            accessibilityHint="Opens a list of countries to choose from"
+            accessibilityState={{ disabled: isFormDisabled }}
+          >
+            <Ionicons name="globe-outline" size={20} color={appColors.gray400} />
+            <Text maxFontSizeMultiplier={1.3} style={styles.selectButtonText}>
+              {SUPPORTED_COUNTRIES.find(c => c.code === formData.country)?.name || 'Select country'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={appColors.gray400} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.inputGroup}>
           <Text maxFontSizeMultiplier={1.5} style={styles.label}>Phone Number (Optional)</Text>
           <PhoneInput
             value={phoneInputValue}
             onChangePhoneNumber={phoneOnChange}
             selectedCountry={selectedCountry}
             onChangeSelectedCountry={phoneOnChangeCountry}
-            defaultCountry="US"
+            defaultCountry={formData.country as any}
             placeholder="Phone Number"
             disabled={isFormDisabled}
             theme={isDark ? 'dark' : 'light'}
@@ -859,6 +915,54 @@ export function SignUpScreen() {
                     {type}
                   </Text>
                   {formData.businessType === type && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+      {/* Country Picker Modal */}
+      {showCountryPicker && (
+        <View style={styles.pickerOverlay}>
+          <TouchableOpacity
+            style={styles.pickerBackdrop}
+            onPress={() => setShowCountryPicker(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close country picker"
+          />
+          <View style={styles.pickerContent}>
+            <View style={styles.pickerHeader}>
+              <Text maxFontSizeMultiplier={1.3} style={styles.pickerTitle}>Select Country</Text>
+              <TouchableOpacity onPress={() => setShowCountryPicker(false)} accessibilityRole="button" accessibilityLabel="Close">
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.pickerList}>
+              {SUPPORTED_COUNTRIES.map((country) => (
+                <TouchableOpacity
+                  key={country.code}
+                  style={[
+                    styles.pickerOption,
+                    formData.country === country.code && styles.pickerOptionSelected,
+                  ]}
+                  onPress={() => {
+                    updateField('country', country.code);
+                    setShowCountryPicker(false);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityLabel={country.name}
+                  accessibilityState={{ selected: formData.country === country.code }}
+                >
+                  <Text maxFontSizeMultiplier={1.3} style={[
+                    styles.pickerOptionText,
+                    formData.country === country.code && styles.pickerOptionTextSelected,
+                  ]}>
+                    {country.name}
+                  </Text>
+                  {formData.country === country.code && (
                     <Ionicons name="checkmark" size={20} color={colors.primary} />
                   )}
                 </TouchableOpacity>

@@ -17,9 +17,11 @@ import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-naviga
 import { Ionicons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useTerminal } from '../context/StripeTerminalContext';
 import { ordersApi, OrderPayment, stripeTerminalApi } from '../lib/api';
+import { formatCents, getCurrencySymbol } from '../utils/currency';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -39,6 +41,7 @@ type PaymentMethod = 'card' | 'cash' | 'tap_to_pay';
 
 export function SplitPaymentScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'SplitPayment'>>();
@@ -222,7 +225,7 @@ export function SplitPaymentScreen() {
       // Show change if any
       const change = tendered - amount;
       if (change > 0) {
-        Alert.alert('Change Due', `Give customer $${(change / 100).toFixed(2)} in change`);
+        Alert.alert('Change Due', `Give customer ${formatCents(change, currency)} in change`);
       }
 
       // Refresh payments
@@ -263,7 +266,7 @@ export function SplitPaymentScreen() {
     }
 
     if (amountCents > remainingBalance) {
-      Alert.alert('Amount Too High', `Maximum payment is $${(remainingBalance / 100).toFixed(2)}`);
+      Alert.alert('Amount Too High', `Maximum payment is ${formatCents(remainingBalance, currency)}`);
       return;
     }
 
@@ -349,20 +352,20 @@ export function SplitPaymentScreen() {
           automaticallyAdjustKeyboardInsets
         >
           {/* Order Summary */}
-          <View style={styles.summaryCard} accessibilityRole="summary" accessibilityLabel={`Order total $${(totalAmount / 100).toFixed(2)}, paid $${(totalPaid / 100).toFixed(2)}, remaining $${(remainingBalance / 100).toFixed(2)}`}>
+          <View style={styles.summaryCard} accessibilityRole="summary" accessibilityLabel={`Order total ${formatCents(totalAmount, currency)}, paid ${formatCents(totalPaid, currency)}, remaining ${formatCents(remainingBalance, currency)}`}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel} maxFontSizeMultiplier={1.5}>Order Total</Text>
-              <Text style={styles.summaryValue} maxFontSizeMultiplier={1.3}>${(totalAmount / 100).toFixed(2)}</Text>
+              <Text style={styles.summaryValue} maxFontSizeMultiplier={1.3}>{formatCents(totalAmount, currency)}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel} maxFontSizeMultiplier={1.5}>Total Paid</Text>
               <Text style={[styles.summaryValue, { color: colors.success }]} maxFontSizeMultiplier={1.3}>
-                ${(totalPaid / 100).toFixed(2)}
+                {formatCents(totalPaid, currency)}
               </Text>
             </View>
             <View style={[styles.summaryRow, styles.remainingRow]}>
               <Text style={styles.remainingLabel} maxFontSizeMultiplier={1.5}>Remaining</Text>
-              <Text style={styles.remainingValue} maxFontSizeMultiplier={1.2}>${(remainingBalance / 100).toFixed(2)}</Text>
+              <Text style={styles.remainingValue} maxFontSizeMultiplier={1.2}>{formatCents(remainingBalance, currency)}</Text>
             </View>
           </View>
 
@@ -383,7 +386,7 @@ export function SplitPaymentScreen() {
                     </Text>
                   </View>
                   <Text style={styles.paymentAmount} maxFontSizeMultiplier={1.5}>
-                    ${(payment.amount / 100).toFixed(2)}
+                    {formatCents(payment.amount, currency)}
                   </Text>
                 </View>
               ))}
@@ -399,7 +402,7 @@ export function SplitPaymentScreen() {
                   onPress={() => setShowAddPayment(true)}
                   accessibilityRole="button"
                   accessibilityLabel="Add payment"
-                  accessibilityHint={`$${(remainingBalance / 100).toFixed(2)} remaining`}
+                  accessibilityHint={`${formatCents(remainingBalance, currency)} remaining`}
                 >
                   <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
                   <Text style={styles.addPaymentButtonText} maxFontSizeMultiplier={1.3}>Add Payment</Text>
@@ -452,7 +455,7 @@ export function SplitPaymentScreen() {
                     <View style={styles.minimumWarning} accessibilityRole="alert">
                       <Ionicons name="warning" size={16} color={colors.warning} style={styles.minimumWarningIcon} />
                       <Text style={styles.minimumWarningText} maxFontSizeMultiplier={1.5}>
-                        Minimum for {selectedMethod === 'tap_to_pay' ? 'Tap to Pay' : 'Card'} is $0.50. Use cash for smaller amounts.
+                        {`Minimum for ${selectedMethod === 'tap_to_pay' ? 'Tap to Pay' : 'Card'} is ${formatCents(50, currency)}. Use cash for smaller amounts.`}
                       </Text>
                     </View>
                   )}
@@ -461,7 +464,7 @@ export function SplitPaymentScreen() {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel} maxFontSizeMultiplier={1.5}>Payment Amount</Text>
                     <View style={styles.amountInputContainer}>
-                      <Text style={styles.dollarSign} maxFontSizeMultiplier={1.3}>$</Text>
+                      <Text style={styles.dollarSign} maxFontSizeMultiplier={1.3}>{getCurrencySymbol(currency)}</Text>
                       <TextInput
                         style={styles.amountInput}
                         value={paymentAmount}
@@ -475,7 +478,7 @@ export function SplitPaymentScreen() {
                         style={styles.remainingButton}
                         onPress={handlePayRemaining}
                         accessibilityRole="button"
-                        accessibilityLabel={`Fill remaining balance $${(remainingBalance / 100).toFixed(2)}`}
+                        accessibilityLabel={`Fill remaining balance ${formatCents(remainingBalance, currency)}`}
                       >
                         <Text style={styles.remainingButtonText} maxFontSizeMultiplier={1.3}>Remaining</Text>
                       </TouchableOpacity>
@@ -487,7 +490,7 @@ export function SplitPaymentScreen() {
                     <View style={styles.inputGroup}>
                       <Text style={styles.inputLabel} maxFontSizeMultiplier={1.5}>Cash Tendered</Text>
                       <View style={styles.amountInputContainer}>
-                        <Text style={styles.dollarSign} maxFontSizeMultiplier={1.3}>$</Text>
+                        <Text style={styles.dollarSign} maxFontSizeMultiplier={1.3}>{getCurrencySymbol(currency)}</Text>
                         <TextInput
                           style={styles.amountInput}
                           value={cashTendered}
@@ -503,7 +506,7 @@ export function SplitPaymentScreen() {
                         <View style={styles.changeDisplay}>
                           <Text style={styles.changeLabel} maxFontSizeMultiplier={1.5}>Change Due:</Text>
                           <Text style={styles.changeAmount} maxFontSizeMultiplier={1.3}>
-                            ${Math.max(0, (parseFloat(cashTendered) - parseFloat(paymentAmount))).toFixed(2)}
+                            {formatCents(Math.round(Math.max(0, (parseFloat(cashTendered) - parseFloat(paymentAmount))) * 100), currency)}
                           </Text>
                         </View>
                       )}

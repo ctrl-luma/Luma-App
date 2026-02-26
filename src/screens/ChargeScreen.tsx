@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { formatCents, getCurrencySymbol } from '../utils/currency';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows, glow } from '../lib/shadows';
@@ -136,7 +137,7 @@ const KeypadButton = memo(function KeypadButton({ keyValue, onPress, colors, but
 export function ChargeScreen() {
   const { colors, isDark } = useTheme();
   const navigation = useNavigation<any>();
-  const { isPaymentReady, connectLoading, connectStatus } = useAuth();
+  const { isPaymentReady, connectLoading, connectStatus, currency } = useAuth();
   const { guardCheckout } = useTapToPayGuard();
   const insets = useSafeAreaInsets();
   const glassColors = isDark ? glass.dark : glass.light;
@@ -202,11 +203,12 @@ export function ChargeScreen() {
 
   const formatAmount = (value: string) => {
     const digits = value.replace(/\D/g, '');
-    const cents = parseInt(digits || '0', 10);
-    return (cents / 100).toFixed(2);
+    const rawCents = parseInt(digits || '0', 10);
+    return (rawCents / 100).toFixed(2);
   };
 
   const displayAmount = formatAmount(amount);
+  const formattedAmount = formatCents(parseInt(amount || '0', 10), currency);
   const cents = parseInt(amount || '0', 10);
 
   const handleKeypadPress = (key: string) => {
@@ -224,7 +226,7 @@ export function ChargeScreen() {
 
   const handleCharge = () => {
     if (cents < 50) {
-      Alert.alert('Invalid Amount', 'Minimum charge is $0.50');
+      Alert.alert('Invalid Amount', `Minimum charge is ${formatCents(50, currency)}`);
       return;
     }
 
@@ -235,7 +237,7 @@ export function ChargeScreen() {
     navigation.navigate('Checkout', {
       total: cents,
       isQuickCharge: true,
-      quickChargeDescription: `Quick Charge - $${displayAmount}`,
+      quickChargeDescription: `Quick Charge - ${formattedAmount}`,
     });
 
     // Reset form after navigation
@@ -271,8 +273,8 @@ export function ChargeScreen() {
       {/* Centered Content - Amount & Keypad */}
       <View style={styles.mainContent}>
         {/* Amount Display */}
-        <View style={styles.amountContainer} accessibilityRole="summary" accessibilityLabel={`Amount $${displayAmount}`}>
-          <Text style={[styles.currencySymbol, { fontSize: responsiveSizes.currencyFontSize }]} maxFontSizeMultiplier={1.2}>$</Text>
+        <View style={styles.amountContainer} accessibilityRole="summary" accessibilityLabel={`Amount ${formattedAmount}`}>
+          <Text style={[styles.currencySymbol, { fontSize: responsiveSizes.currencyFontSize }]} maxFontSizeMultiplier={1.2}>{getCurrencySymbol(currency)}</Text>
           <Text style={[styles.amount, { fontSize: responsiveSizes.amountFontSize }]} maxFontSizeMultiplier={1.2}>{displayAmount}</Text>
         </View>
 
@@ -306,7 +308,7 @@ export function ChargeScreen() {
           }}
           disabled={chargeDisabled}
           accessibilityRole="button"
-          accessibilityLabel={cents < 50 ? 'Enter amount' : `Charge $${displayAmount}`}
+          accessibilityLabel={cents < 50 ? 'Enter amount' : `Charge ${formattedAmount}`}
           accessibilityState={{ disabled: chargeDisabled }}
           style={({ pressed }) => [
             styles.chargeButton,
@@ -316,12 +318,12 @@ export function ChargeScreen() {
         >
           <Ionicons name="flash" size={22} color={chargeDisabled ? colors.textMuted : (isDark ? '#09090b' : '#fff')} />
           <Text style={[styles.chargeButtonText, { color: chargeDisabled ? colors.textMuted : (isDark ? '#09090b' : '#fff') }]} maxFontSizeMultiplier={1.3}>
-            {cents < 50 ? 'Enter Amount' : `Charge $${displayAmount}`}
+            {cents < 50 ? 'Enter Amount' : `Charge ${formattedAmount}`}
           </Text>
         </Pressable>
 
         <Text style={[styles.minimumHint, { opacity: cents > 0 && cents < 50 ? 1 : 0 }]} maxFontSizeMultiplier={1.5} accessibilityRole={cents > 0 && cents < 50 ? 'alert' : 'text'}>
-          Minimum charge is $0.50
+          {`Minimum charge is ${formatCents(50, currency)}`}
         </Text>
       </View>
       </View>

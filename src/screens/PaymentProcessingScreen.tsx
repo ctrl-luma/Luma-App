@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,20 +6,22 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 import { initStripe } from '@stripe/stripe-react-native';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useTerminal } from '../context/StripeTerminalContext';
 import { stripeTerminalApi } from '../lib/api';
+import { formatCents } from '../utils/currency';
 import { fonts } from '../lib/fonts';
 import { glass } from '../lib/colors';
 import { shadows } from '../lib/shadows';
 import { StarBackground } from '../components/StarBackground';
 import { config } from '../lib/config';
+import logger from '../lib/logger';
 
 
 type RouteParams = {
@@ -35,24 +37,95 @@ type RouteParams = {
   };
 };
 
+// Server-driven payment timeout (2 minutes)
+const SERVER_DRIVEN_TIMEOUT_MS = 120_000;
+
 export function PaymentProcessingScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<RouteParams, 'PaymentProcessing'>>();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { connectReader, processPayment: terminalProcessPayment, cancelPayment, waitForWarm } = useTerminal();
+  const {
+    connectReader,
+    processPayment: terminalProcessPayment,
+    processServerDrivenPayment,
+    cancelPayment,
+    waitForWarm,
+    preferredReader,
+    terminalPaymentResult,
+    clearTerminalPaymentResult,
+  } = useTerminal();
 
   const { paymentIntentId, clientSecret, stripeAccountId, amount, orderId, orderNumber, customerEmail, preorderId } = route.params;
   const [isCancelling, setIsCancelling] = useState(false);
   const [statusText, setStatusText] = useState('Preparing payment...');
-  const isCancelledRef = React.useRef(false);
+  const isCancelledRef = useRef(false);
+  const isServerDriven = preferredReader?.readerType === 'internet';
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Watch for server-driven payment results from Socket.IO
+  useEffect(() => {
+    if (!isServerDriven || !terminalPaymentResult) return;
+
+    // Only handle results for our PaymentIntent
+    if (terminalPaymentResult.paymentIntentId && terminalPaymentResult.paymentIntentId !== paymentIntentId) {
+      return;
+    }
+
+    if (isCancelledRef.current) return;
+
+    // Clear timeout since we got a result
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (terminalPaymentResult.status === 'succeeded') {
+      logger.log('[PaymentProcessing] Server-driven payment succeeded');
+      clearTerminalPaymentResult();
+      navigation.replace('PaymentResult', {
+        success: true,
+        amount,
+        paymentIntentId,
+        orderId,
+        orderNumber,
+        customerEmail,
+        preorderId,
+      });
+    } else {
+      logger.log('[PaymentProcessing] Server-driven payment failed:', terminalPaymentResult.error);
+      clearTerminalPaymentResult();
+      navigation.replace('PaymentResult', {
+        success: false,
+        amount,
+        paymentIntentId,
+        orderId,
+        orderNumber,
+        customerEmail,
+        errorMessage: terminalPaymentResult.error || 'Payment failed on reader',
+        preorderId,
+      });
+    }
+  }, [terminalPaymentResult, isServerDriven, paymentIntentId, isCancelledRef, amount, orderId, orderNumber, customerEmail, preorderId, navigation, clearTerminalPaymentResult]);
 
   useEffect(() => {
-    processPayment();
+    if (isServerDriven) {
+      processServerDrivenFlow();
+    } else {
+      processSDKFlow();
+    }
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
-  const processPayment = async () => {
+  // Mode A: SDK-driven payment (Tap to Pay or Bluetooth reader)
+  const processSDKFlow = async () => {
     try {
       if (Platform.OS === 'web') {
         setStatusText('Tap to Pay unavailable on web');
@@ -66,9 +139,10 @@ export function PaymentProcessingScreen() {
       // Ensure reader is connected (fast no-op if warm already connected it)
       setStatusText('Connecting...');
       try {
-        await connectReader();
+        // If preferred reader is Bluetooth, connect via bluetoothScan; otherwise default tapToPay
+        const discoveryMethod = preferredReader?.readerType === 'bluetooth' ? 'bluetoothScan' : 'tapToPay';
+        await connectReader(discoveryMethod);
       } catch (connectErr: any) {
-        // If the error is already user-friendly (e.g. merchant blocked), pass it through directly
         if (connectErr.message?.includes('contact support')) {
           throw connectErr;
         }
@@ -76,7 +150,6 @@ export function PaymentProcessingScreen() {
       }
 
       // Initialize Stripe SDK with connected account for Terminal PI retrieval
-      // This ensures retrievePaymentIntent finds the PI on the connected account
       await initStripe({
         publishableKey: config.stripePublishableKey,
         merchantIdentifier: 'merchant.com.lumapos',
@@ -101,14 +174,10 @@ export function PaymentProcessingScreen() {
         throw new Error(`Payment status: ${result.status}`);
       }
     } catch (error: any) {
-      // If user cancelled, don't show error screen - they already navigated away
-      if (isCancelledRef.current) {
-        return;
-      }
+      if (isCancelledRef.current) return;
 
       let errorMessage = error.message || 'Payment failed';
 
-      // Transform SDK error messages to be more user-friendly
       if (errorMessage.toLowerCase().includes('command was canceled') ||
           errorMessage.toLowerCase().includes('command was cancelled')) {
         errorMessage = 'The transaction was canceled.';
@@ -129,15 +198,85 @@ export function PaymentProcessingScreen() {
     }
   };
 
+  // Mode B: Server-driven payment (Smart/Internet reader like S700, WisePOS E)
+  const processServerDrivenFlow = async () => {
+    try {
+      if (!preferredReader) {
+        throw new Error('No preferred reader configured');
+      }
+
+      setStatusText(`Sending to ${preferredReader.label || 'reader'}...`);
+      logger.log('[PaymentProcessing] Starting server-driven flow, reader:', preferredReader.id);
+
+      // Clear any stale payment result
+      clearTerminalPaymentResult();
+
+      // Send the existing PaymentIntent to the reader
+      await processServerDrivenPayment(preferredReader.id, paymentIntentId);
+
+      setStatusText('Waiting for customer to tap card...');
+
+      // Set timeout — if no socket event within 2 minutes, fail
+      timeoutRef.current = setTimeout(() => {
+        if (!isCancelledRef.current) {
+          logger.warn('[PaymentProcessing] Server-driven payment timed out');
+          navigation.replace('PaymentResult', {
+            success: false,
+            amount,
+            paymentIntentId,
+            orderId,
+            orderNumber,
+            customerEmail,
+            errorMessage: 'Payment timed out. The reader may be offline or the customer did not tap their card.',
+            preorderId,
+          });
+        }
+      }, SERVER_DRIVEN_TIMEOUT_MS);
+
+      // Result will arrive via socket event, handled by the useEffect above
+
+    } catch (error: any) {
+      if (isCancelledRef.current) return;
+
+      let errorMessage = error.message || 'Failed to send payment to reader';
+
+      if (errorMessage.includes('No such terminal.reader')) {
+        errorMessage = 'Reader not found. It may have been removed or is offline.';
+      }
+
+      navigation.replace('PaymentResult', {
+        success: false,
+        amount,
+        paymentIntentId,
+        orderId,
+        orderNumber,
+        customerEmail,
+        errorMessage,
+        preorderId,
+      });
+    }
+  };
+
   const handleCancel = async () => {
     isCancelledRef.current = true;
     setIsCancelling(true);
 
-    // Navigate immediately for better UX - don't wait for cleanup
+    // Clear timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    // Navigate immediately for better UX
     navigation.goBack();
 
     // Cleanup in background (fire and forget)
-    cancelPayment().catch(() => {});
+    if (isServerDriven && preferredReader) {
+      // Cancel the action on the smart reader
+      stripeTerminalApi.cancelReaderAction(preferredReader.id).catch(() => {});
+    } else {
+      cancelPayment().catch(() => {});
+    }
     stripeTerminalApi.cancelPaymentIntent(paymentIntentId).catch(() => {});
   };
 
@@ -148,7 +287,7 @@ export function PaymentProcessingScreen() {
       <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.content}>
           {/* Amount Display */}
-          <Text style={styles.amount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount $${(amount / 100).toFixed(2)}`}>${(amount / 100).toFixed(2)}</Text>
+          <Text style={styles.amount} maxFontSizeMultiplier={1.2} accessibilityRole="summary" accessibilityLabel={`Amount ${formatCents(amount, currency)}`}>{formatCents(amount, currency)}</Text>
 
           {/* Loading indicator */}
           <View style={styles.loaderContainer}>
@@ -157,6 +296,13 @@ export function PaymentProcessingScreen() {
 
           {/* Status */}
           <Text style={styles.statusText} maxFontSizeMultiplier={1.5} accessibilityRole="text" accessibilityLiveRegion="polite">{statusText}</Text>
+
+          {/* Reader info for server-driven */}
+          {isServerDriven && preferredReader && (
+            <Text style={[styles.readerLabel, { color: colors.textMuted }]} maxFontSizeMultiplier={1.5}>
+              {preferredReader.label || preferredReader.deviceType}
+            </Text>
+          )}
 
         </View>
 
@@ -207,6 +353,12 @@ const createStyles = (colors: any, glassColors: typeof glass.dark) => {
       fontFamily: fonts.medium,
       color: colors.textSecondary,
       textAlign: 'center',
+    },
+    readerLabel: {
+      fontSize: 13,
+      fontFamily: fonts.regular,
+      textAlign: 'center',
+      marginTop: 8,
     },
     footer: {
       padding: 20,

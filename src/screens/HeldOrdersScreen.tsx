@@ -14,9 +14,11 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { useDevice } from '../context/DeviceContext';
 import { useSocketEvent, SocketEvents } from '../context/SocketContext';
 import { ordersApi, Order } from '../lib/api';
+import { formatCents } from '../utils/currency';
 import { glass } from '../lib/colors';
 import { fonts } from '../lib/fonts';
 import { shadows } from '../lib/shadows';
@@ -159,6 +161,7 @@ const loadingStyles = StyleSheet.create({
 
 export function HeldOrdersScreen() {
   const { colors, isDark } = useTheme();
+  const { currency } = useAuth();
   const { deviceId } = useDevice();
   const navigation = useNavigation<any>();
   const { guardCheckout } = useTapToPayGuard();
@@ -289,7 +292,7 @@ export function HeldOrdersScreen() {
           activeOpacity={0.7}
           disabled={isResuming}
           accessibilityRole="button"
-          accessibilityLabel={`${item.holdName || `Order ${item.orderNumber}`}, ${(item.itemCount || item.items?.length || 0)} items, $${(item.totalAmount / 100).toFixed(2)}`}
+          accessibilityLabel={`${item.holdName || `Order ${item.orderNumber}`}, ${(item.itemCount || item.items?.length || 0)} items, ${formatCents(item.totalAmount, currency)}`}
           accessibilityHint="Double tap to resume this order"
         >
           <View style={styles.orderHeader}>
@@ -319,7 +322,7 @@ export function HeldOrdersScreen() {
               )}
             </View>
             <Text style={styles.orderTotal} maxFontSizeMultiplier={1.3}>
-              ${(item.totalAmount / 100).toFixed(2)}
+              {formatCents(item.totalAmount, currency)}
             </Text>
           </View>
 

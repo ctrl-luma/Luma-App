@@ -30,6 +30,16 @@ export interface PaymentIntent {
   stripeAccountId: string;
 }
 
+export interface TerminalReader {
+  id: string;
+  label: string | null;
+  deviceType: string;
+  status: string | null;
+  ipAddress: string | null;
+  locationId: string | null;
+  serialNumber: string | null;
+}
+
 export const stripeTerminalApi = {
   /**
    * Get or create a Terminal location for Tap to Pay
@@ -76,4 +86,45 @@ export const stripeTerminalApi = {
       amount: number;
       receiptUrl: string | null;
     }>(`/stripe/terminal/payment-intent/${paymentIntentId}/simulate`, {}),
+
+  // ── Physical Terminal Reader Management ──
+
+  /**
+   * List all registered terminal readers for the organization
+   */
+  listReaders: () =>
+    apiClient.get<{ readers: TerminalReader[] }>('/stripe/terminal/readers'),
+
+  /**
+   * Register a new physical terminal reader
+   */
+  registerReader: (data: { registrationCode: string; label?: string }) =>
+    apiClient.post<{ id: string; label: string | null; deviceType: string; status: string | null; locationId: string | null }>(
+      '/stripe/terminal/readers',
+      data
+    ),
+
+  /**
+   * Delete/deregister a terminal reader
+   */
+  deleteReader: (readerId: string) =>
+    apiClient.delete<{ deleted: boolean; id: string }>(`/stripe/terminal/readers/${readerId}`),
+
+  /**
+   * Send an existing PaymentIntent to a smart reader for server-driven collection
+   */
+  processPayment: (readerId: string, data: { paymentIntentId: string }) =>
+    apiClient.post<{ paymentIntentId: string; readerId: string; readerLabel: string | null; actionStatus: string }>(
+      `/stripe/terminal/readers/${readerId}/process-payment`,
+      data
+    ),
+
+  /**
+   * Cancel a pending action on a reader
+   */
+  cancelReaderAction: (readerId: string) =>
+    apiClient.post<{ readerId: string; status: string }>(
+      `/stripe/terminal/readers/${readerId}/cancel-action`,
+      {}
+    ),
 };
