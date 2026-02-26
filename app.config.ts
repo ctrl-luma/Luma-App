@@ -33,6 +33,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         NSBluetoothPeripheralUsageDescription: 'This app uses Bluetooth to connect to card readers',
         NSFaceIDUsageDescription: 'This app uses Face ID to securely sign in to your account',
         ITSAppUsesNonExemptEncryption: false,
+        UIBackgroundModes: ['bluetooth-central'],
       },
     },
     android: {
