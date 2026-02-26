@@ -21,10 +21,11 @@ function isZeroDecimal(currency: string): boolean {
  * @param currency - 3-letter ISO currency code (default: 'usd')
  */
 export function formatCurrency(amount: number, currency: string = 'usd'): string {
-  const zd = isZeroDecimal(currency);
+  const code = (currency || 'usd').toUpperCase();
+  const zd = isZeroDecimal(code.toLowerCase());
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency.toUpperCase(),
+    currency: code,
     minimumFractionDigits: zd ? 0 : 2,
     maximumFractionDigits: zd ? 0 : 2,
   }).format(amount);
@@ -45,12 +46,17 @@ export function formatCents(cents: number, currency: string = 'usd'): string {
  * Get the currency symbol for a currency code.
  */
 export function getCurrencySymbol(currency: string = 'usd'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
-    .formatToParts(0)
-    .find((part) => part.type === 'currency')?.value || currency.toUpperCase();
+  const code = (currency || 'usd').toUpperCase();
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+      .formatToParts(0)
+      .find((part) => part.type === 'currency')?.value || code;
+  } catch {
+    return '$';
+  }
 }
