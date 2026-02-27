@@ -23,12 +23,20 @@ function isZeroDecimal(currency: string): boolean {
 export function formatCurrency(amount: number, currency: string = 'usd'): string {
   const code = (currency || 'usd').toUpperCase();
   const zd = isZeroDecimal(code.toLowerCase());
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: code,
-    minimumFractionDigits: zd ? 0 : 2,
-    maximumFractionDigits: zd ? 0 : 2,
-  }).format(amount);
+  try {
+    const result = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      minimumFractionDigits: zd ? 0 : 2,
+      maximumFractionDigits: zd ? 0 : 2,
+    }).format(amount);
+    console.log('[Currency] formatCurrency:', { amount, code, result });
+    return result;
+  } catch (err) {
+    console.error('[Currency] formatCurrency FAILED:', { amount, code, error: err });
+    const symbol = CURRENCY_SYMBOLS[code] || code;
+    return `${symbol}${zd ? amount.toFixed(0) : amount.toFixed(2)}`;
+  }
 }
 
 /**
@@ -43,20 +51,22 @@ export function formatCents(cents: number, currency: string = 'usd'): string {
 }
 
 /**
+ * Common currency symbols. Hermes (React Native) has limited Intl.formatToParts
+ * support, so we use a lookup table for reliability.
+ */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', EUR: '€', GBP: '£', JPY: '¥', CAD: 'CA$', AUD: 'A$',
+  NZD: 'NZ$', CHF: 'CHF', SEK: 'kr', NOK: 'kr', DKK: 'kr',
+  SGD: 'S$', MYR: 'RM', CZK: 'Kč', PLN: 'zł', HUF: 'Ft',
+  BRL: 'R$', MXN: 'MX$', INR: '₹', KRW: '₩', THB: '฿',
+  PHP: '₱', IDR: 'Rp', ZAR: 'R', TRY: '₺', ILS: '₪',
+  AED: 'د.إ', SAR: '﷼', HKD: 'HK$', TWD: 'NT$', CNY: '¥',
+};
+
+/**
  * Get the currency symbol for a currency code.
  */
 export function getCurrencySymbol(currency: string = 'usd'): string {
   const code = (currency || 'usd').toUpperCase();
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: code,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
-      .formatToParts(0)
-      .find((part) => part.type === 'currency')?.value || code;
-  } catch {
-    return '$';
-  }
+  return CURRENCY_SYMBOLS[code] || code;
 }
