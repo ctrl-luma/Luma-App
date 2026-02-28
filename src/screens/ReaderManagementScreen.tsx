@@ -133,23 +133,18 @@ export function ReaderManagementScreen() {
   }, [preferredReader, setPreferredReader, clearPreferredReader, deleteMutation]);
 
   const handleBluetoothScan = useCallback(async () => {
-    console.log('[ReaderMgmt] Bluetooth scan button pressed, isScanning:', isScanning);
     try {
       const found = await scanForBluetoothReaders();
-      console.log('[ReaderMgmt] Scan complete, found:', found.length, 'readers');
-      found.forEach((r: any, i: number) => {
-        console.log(`[ReaderMgmt] Reader ${i}:`, JSON.stringify({
-          serialNumber: r.serialNumber,
-          label: r.label,
-          deviceType: r.deviceType,
-          status: r.status,
-          batteryLevel: r.batteryLevel,
-        }));
-      });
+      if (found.length === 0) {
+        Alert.alert(
+          'No Readers Found',
+          'Make sure your Bluetooth reader is powered on, in pairing mode, and nearby. Then try again.',
+        );
+      }
     } catch (err: any) {
-      console.error('[ReaderMgmt] Scan error:', err.message);
+      Alert.alert('Scan Failed', err.message || 'Failed to scan for Bluetooth readers.');
     }
-  }, [scanForBluetoothReaders, isScanning]);
+  }, [scanForBluetoothReaders]);
 
   const handleConnectBluetooth = useCallback(async (reader: any) => {
     try {

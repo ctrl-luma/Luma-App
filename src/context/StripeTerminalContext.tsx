@@ -22,6 +22,14 @@ try {
 } catch {
   Device = null;
 }
+
+// Conditionally import expo-location for iOS Bluetooth permission requirements
+let Location: typeof import('expo-location') | null = null;
+try {
+  Location = require('expo-location');
+} catch {
+  Location = null;
+}
 import { stripeTerminalApi } from '../lib/api';
 import { useAuth } from './AuthContext';
 import { useDevice } from './DeviceContext';
@@ -556,7 +564,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     // Discover readers
     setConfigurationProgress(30);
     setConfigurationStage('discovering_reader');
-    const useSimulator = __DEV__;
+    const useSimulator = false;
     logger.log(`[StripeTerminal] Discovering ${discoveryMethod} reader...`);
 
     let readerToConnect: any;
@@ -891,6 +899,17 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     discoveredReadersRef.current = [];
 
     try {
+      // iOS: Request location permission (required for Bluetooth scanning)
+      if (Platform.OS === 'ios' && Location) {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        logger.log('[StripeTerminal] iOS location permission status:', status);
+        if (status !== 'granted') {
+          throw new Error(
+            'Location permission is required to scan for Bluetooth readers. Please enable it in Settings > Privacy > Location Services.'
+          );
+        }
+      }
+
       // Ensure SDK is initialized
       if (!isInitialized) {
         logger.log('[StripeTerminal] SDK not initialized, initializing for BT scan...');
@@ -903,16 +922,16 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 
       const discoverResult = await discoverReaders({
         discoveryMethod: 'bluetoothScan',
-        simulated: __DEV__,
+        simulated: false,
       });
 
       if (discoverResult.error) {
         throw new Error(discoverResult.error.message || 'Discovery failed');
       }
 
-      // Wait for readers to appear via callback (Bluetooth takes longer)
+      // Wait for readers to appear via callback (Bluetooth discovery can take 10-15s)
       let readers: any[] = [];
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < 75; i++) {
         await new Promise(resolve => setTimeout(resolve, 200));
         readers = discoveredReadersRef.current.length > 0
           ? discoveredReadersRef.current
