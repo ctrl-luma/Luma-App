@@ -142,7 +142,16 @@ export function ReaderManagementScreen() {
         );
       }
     } catch (err: any) {
-      Alert.alert('Scan Failed', err.message || 'Failed to scan for Bluetooth readers.');
+      const message = err.message || 'Failed to scan for Bluetooth readers.';
+      const isAccountError = message.toLowerCase().includes('not enabled') ||
+        message.toLowerCase().includes('connection token') ||
+        message.toLowerCase().includes('payments are not');
+      Alert.alert(
+        isAccountError ? 'Account Setup Required' : 'Scan Failed',
+        isAccountError
+          ? 'Payments are not enabled for this account. Please complete your Stripe account setup before connecting a reader.'
+          : message,
+      );
     }
   }, [scanForBluetoothReaders]);
 

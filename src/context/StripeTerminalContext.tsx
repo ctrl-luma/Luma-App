@@ -945,7 +945,7 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       logger.error('[StripeTerminal] Bluetooth scan failed:', err.message);
       setError(err.message);
-      return [];
+      throw err;
     } finally {
       setIsScanning(false);
     }
