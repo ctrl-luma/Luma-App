@@ -138,20 +138,12 @@ export function ReaderManagementScreen() {
       if (found.length === 0) {
         Alert.alert(
           'No Readers Found',
-          'Make sure your Bluetooth reader is powered on, in pairing mode, and nearby. Then try again.',
+          'Make sure your Bluetooth reader is powered on, in pairing mode, and within a few feet of your phone. Then try again.',
         );
       }
     } catch (err: any) {
       const message = err.message || 'Failed to scan for Bluetooth readers.';
-      const isAccountError = message.toLowerCase().includes('not enabled') ||
-        message.toLowerCase().includes('connection token') ||
-        message.toLowerCase().includes('payments are not');
-      Alert.alert(
-        isAccountError ? 'Account Setup Required' : 'Scan Failed',
-        isAccountError
-          ? 'Payments are not enabled for this account. Please complete your Stripe account setup before connecting a reader.'
-          : message,
-      );
+      Alert.alert('Scan Failed', message);
     }
   }, [scanForBluetoothReaders]);
 
