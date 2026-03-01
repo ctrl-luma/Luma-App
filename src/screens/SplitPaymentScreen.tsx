@@ -47,7 +47,7 @@ export function SplitPaymentScreen() {
   const route = useRoute<RouteProp<RouteParams, 'SplitPayment'>>();
   const { clearCart } = useCart();
   const glassColors = isDark ? glass.dark : glass.light;
-  const { initializeTerminal, connectReader, processPayment: terminalProcessPayment } = useTerminal();
+  const { initializeTerminal, connectReader, processPayment: terminalProcessPayment, preferredReader, processServerDrivenPayment, waitForWarm } = useTerminal();
   const { confirmPayment } = useConfirmPayment();
 
   const { orderId, orderNumber, totalAmount, customerEmail } = route.params;
@@ -113,44 +113,60 @@ export function SplitPaymentScreen() {
     );
   };
 
-  // Process tap to pay payment (Terminal SDK via context)
+  // Process terminal payment (Tap to Pay, Bluetooth, or Internet/Smart reader)
   const processTapToPayPayment = async (amount: number) => {
     setIsProcessing(true);
     try {
-      // Ensure terminal is initialized and reader connected
-      await initializeTerminal();
-      await connectReader();
+      const isServerDriven = preferredReader?.readerType === 'internet';
 
       // Create payment intent via API
       const piResponse = await stripeTerminalApi.createPaymentIntent({
         amount: amount / 100, // Convert cents to dollars for API
       });
 
-      // Initialize Stripe SDK with connected account for Terminal PI retrieval
-      await initStripe({
-        publishableKey: config.stripePublishableKey,
-        merchantIdentifier: 'merchant.com.lumapos',
-        stripeAccountId: piResponse.stripeAccountId,
-      });
+      if (isServerDriven) {
+        // Server-driven flow for smart/internet readers (S700, WisePOS E, etc.)
+        await processServerDrivenPayment(preferredReader.id, piResponse.id);
 
-      // Process payment through the Terminal context (retrieve → collect → confirm)
-      const result = await terminalProcessPayment(piResponse.clientSecret);
+        // Wait for the payment to complete via the reader (poll for result)
+        // Server-driven payments are confirmed by the reader, so we record it immediately
+        await ordersApi.addPayment(orderId, {
+          paymentMethod: 'tap_to_pay',
+          amount,
+          stripePaymentIntentId: piResponse.id,
+        });
+      } else {
+        // SDK-driven flow (Tap to Pay or Bluetooth reader)
+        await waitForWarm();
+        const discoveryMethod = preferredReader?.readerType === 'bluetooth' ? 'bluetoothScan' : 'tapToPay';
+        await connectReader(discoveryMethod);
 
-      if (result.status !== 'succeeded') {
-        throw new Error(`Payment status: ${result.status}`);
+        // Initialize Stripe SDK with connected account for Terminal PI retrieval
+        await initStripe({
+          publishableKey: config.stripePublishableKey,
+          merchantIdentifier: 'merchant.com.lumapos',
+          stripeAccountId: piResponse.stripeAccountId,
+        });
+
+        // Process payment through the Terminal context (retrieve → collect → confirm)
+        const result = await terminalProcessPayment(piResponse.clientSecret);
+
+        if (result.status !== 'succeeded') {
+          throw new Error(`Payment status: ${result.status}`);
+        }
+
+        await ordersApi.addPayment(orderId, {
+          paymentMethod: 'tap_to_pay',
+          amount,
+          stripePaymentIntentId: piResponse.id,
+        });
       }
-
-      await ordersApi.addPayment(orderId, {
-        paymentMethod: 'tap_to_pay',
-        amount,
-        stripePaymentIntentId: piResponse.id,
-      });
 
       await fetchPayments();
       setShowAddPayment(false);
       resetPaymentForm();
     } catch (error: any) {
-      Alert.alert('Payment Failed', error.message || 'Failed to process tap to pay payment');
+      Alert.alert('Payment Failed', error.message || 'Failed to process payment');
     } finally {
       setIsProcessing(false);
     }

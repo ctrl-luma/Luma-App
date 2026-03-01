@@ -943,9 +943,13 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
       setBluetoothReaders(readers);
       return readers;
     } catch (err: any) {
-      logger.error('[StripeTerminal] Bluetooth scan failed:', err.message);
-      setError(err.message);
-      throw err;
+      // Use the stashed connection token error if available (Stripe SDK replaces it with a generic message)
+      const realMessage = lastConnectionTokenError || err.message;
+      logger.error('[StripeTerminal] Bluetooth scan failed:', realMessage);
+      setError(realMessage);
+      const errorToThrow = new Error(realMessage);
+      lastConnectionTokenError = null;
+      throw errorToThrow;
     } finally {
       setIsScanning(false);
     }
@@ -1073,8 +1077,13 @@ function StripeTerminalInner({ children }: { children: React.ReactNode }) {
 }
 
 // Token provider function for StripeTerminalProvider
+// Stores the last connection token error so we can surface it in the UI
+// (the Stripe SDK replaces our error with a generic message)
+let lastConnectionTokenError: string | null = null;
+
 async function fetchConnectionToken(): Promise<string> {
   logger.log('[StripeTerminal] Fetching connection token...');
+  lastConnectionTokenError = null;
   try {
     const { secret } = await stripeTerminalApi.getConnectionToken();
     logger.log('[StripeTerminal] Connection token received');
@@ -1082,11 +1091,9 @@ async function fetchConnectionToken(): Promise<string> {
   } catch (error: any) {
     logger.error('[StripeTerminal] Failed to get connection token:', error);
 
-    // Check for common error conditions and provide clearer messages
     const errorMessage = error?.message?.toLowerCase() || '';
     const statusCode = error?.statusCode;
 
-    // If the error suggests Connect account isn't set up
     if (
       errorMessage.includes('connect') ||
       errorMessage.includes('account') ||
@@ -1095,13 +1102,12 @@ async function fetchConnectionToken(): Promise<string> {
       statusCode === 400 ||
       statusCode === 403
     ) {
-      throw new Error(
-        'Payment processing is not set up yet. Please complete Stripe Connect onboarding in Settings to accept payments.'
-      );
+      lastConnectionTokenError = 'Payment processing is not set up yet. Please complete Stripe Connect onboarding in Settings to accept payments.';
+    } else {
+      lastConnectionTokenError = error?.message || 'Failed to connect to payment service. Please try again.';
     }
 
-    // Re-throw with original or improved message
-    throw new Error(error?.message || 'Failed to connect to payment service. Please try again.');
+    throw new Error(lastConnectionTokenError);
   }
 }
 
